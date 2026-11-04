@@ -10,12 +10,14 @@
  */
 export type HapticKind = 'selection' | 'light' | 'medium' | 'success' | 'warning';
 
+// Android motors (especially ERM ones on mid-range phones) ignore pulses under ~15–20 ms,
+// so keep every pulse at 20 ms or more.
 const PATTERNS: Record<HapticKind, number | number[]> = {
-  selection: 8,
-  light: 12,
-  medium: 22,
-  success: [14, 60, 22],
-  warning: [24, 50, 24, 50, 24],
+  selection: 20,
+  light: 25,
+  medium: 40,
+  success: [30, 70, 45],
+  warning: [45, 60, 45, 60, 45],
 };
 
 // iOS only plays one tick per toggle: repeat for "stronger" kinds.
@@ -51,6 +53,30 @@ function getIosSwitch() {
 const isIOS = () =>
   typeof navigator !== 'undefined' &&
   (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+
+export type HapticSupport = 'vibration' | 'ios-switch' | 'none';
+
+/** What this device/browser can do — used by the Settings "Tester" button. */
+export function hapticSupport(): HapticSupport {
+  if (typeof window === 'undefined') return 'none';
+  if (isIOS()) return 'ios-switch';
+  if (typeof navigator.vibrate === 'function') return 'vibration';
+  return 'none';
+}
+
+/**
+ * Same as haptic() but reports the browser's answer. navigator.vibrate returns false when
+ * the call is refused (no user gesture yet, blocked by the browser or the page settings).
+ */
+export function testHaptic(): { support: HapticSupport; accepted: boolean } {
+  const support = hapticSupport();
+  if (support === 'vibration') return { support, accepted: navigator.vibrate([60, 80, 60]) };
+  if (support === 'ios-switch') {
+    getIosSwitch().click();
+    return { support, accepted: true };
+  }
+  return { support, accepted: false };
+}
 
 export function haptic(kind: HapticKind = 'selection') {
   if (!enabled || typeof window === 'undefined') return;

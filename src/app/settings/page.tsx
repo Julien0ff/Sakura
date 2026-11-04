@@ -3,7 +3,8 @@
 import { AppLayout } from '@/components/layout/app-layout';
 import { useAppStore, type Lang } from '@/core/store';
 import { Settings } from 'lucide-react';
-import { haptic } from '@/lib/haptics';
+import { haptic, testHaptic } from '@/lib/haptics';
+import { useState } from 'react';
 
 export default function SettingsPage() {
   const settings = useAppStore((s) => s.settings);
@@ -51,6 +52,7 @@ export default function SettingsPage() {
                 checked={settings.haptics}
                 onChange={(v) => updateSettings({ haptics: v })}
               />
+              <HapticTest />
             </div>
           </section>
 
@@ -116,5 +118,37 @@ function Toggle({ label, hint, checked, onChange }: { label: string; hint?: stri
         <span className="absolute top-[2px] left-[2px] w-[27px] h-[27px] rounded-full bg-white shadow-md transition-transform peer-checked:translate-x-5" />
       </span>
     </label>
+  );
+}
+
+const HAPTIC_MESSAGES = {
+  'vibration-ok': 'Vibration envoyée. Si vous ne sentez rien, vérifiez que le mode économie d’énergie est désactivé et que les vibrations au toucher sont activées dans les réglages Android.',
+  'vibration-refused': 'Le navigateur a refusé la vibration. Elle est peut-être bloquée pour ce site (paramètres du site dans Chrome) ou par le navigateur.',
+  'ios-switch': 'Retour haptique déclenché. Il nécessite iOS 18 ou plus récent, dans Safari ou depuis l’écran d’accueil.',
+  none: 'Ce navigateur ne permet pas les vibrations (Firefox, ordinateur, ancien iOS…). Sur Android, utilisez Chrome, Edge ou Samsung Internet.',
+} as const;
+
+function HapticTest() {
+  const [result, setResult] = useState<keyof typeof HAPTIC_MESSAGES | null>(null);
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-sm text-[#8E8E93]">Vous ne sentez rien ?</span>
+        <button
+          onClick={() => {
+            const { support, accepted } = testHaptic();
+            setResult(support === 'vibration' ? (accepted ? 'vibration-ok' : 'vibration-refused') : support);
+          }}
+          className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm cursor-pointer"
+        >
+          Tester
+        </button>
+      </div>
+      {result && (
+        <p role="status" className="text-[13px] leading-relaxed text-[#EBEBF5]/80 bg-white/5 rounded-xl px-3 py-2">
+          {HAPTIC_MESSAGES[result]}
+        </p>
+      )}
+    </div>
   );
 }

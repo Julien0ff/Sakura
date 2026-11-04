@@ -13,6 +13,7 @@ import { PlayerOverlay, type PlayerSource } from '@/components/player/player-ove
 import { getSkipTimes } from '@/core/api/aniskip';
 import { useAmbientColor } from '@/lib/use-ambient-color';
 import { readableOn } from '@/lib/color';
+import { haptic } from '@/lib/haptics';
 import { EasterEggDialog, HUNTER_EGG_SRC, isHunterXHunter, useRapidClicks } from '@/components/anime/easter-egg';
 import { getTMDBDetails, getTMDBSeasonEpisodes } from '@/core/api/tmdb';
 
@@ -218,6 +219,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
   const [eggActive, setEggActive] = useState(false);
   const [eggOpen, setEggOpen] = useState(false);
   const toggleEgg = useCallback(() => {
+    haptic('success');
     setEggActive((active) => {
       setEggOpen(!active);
       return !active;
@@ -409,7 +411,12 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
               </div>
               <div className="flex w-full md:w-auto items-center gap-3 mt-2">
                 <button
-                  onClick={() => (resumeEpisode ?? episodeList[0]) && playEpisode(resumeEpisode ?? episodeList[0], anime)}
+                  onClick={() => {
+                    const ep = resumeEpisode ?? episodeList[0];
+                    if (!ep) return;
+                    haptic('medium');
+                    playEpisode(ep, anime);
+                  }}
                   disabled={episodeList.length === 0}
                   className="flex-1 md:flex-none flex items-center justify-center gap-2 text-white h-12 md:h-auto px-6 md:py-2.5 rounded-full font-bold text-[15px] hover:scale-105 active:scale-[0.98] transition-all duration-300 shadow-xl cursor-pointer disabled:opacity-50"
                   style={{ backgroundColor: animeColor, color: readableOn(animeColor), boxShadow: `0 10px 30px -8px ${animeColor}` }}
@@ -418,14 +425,17 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                   {resumeEpisode ? `Reprendre · Ép. ${resumeEpisode.episode_number}` : 'Regarder'}
                 </button>
                 <button
-                  onClick={() => toggleWatchlist({
+                  onClick={() => {
+                    haptic(inWatchlist ? 'light' : 'success');
+                    toggleWatchlist({
                     id: anime.id,
                     title,
                     cover: anime.coverImage.extraLarge,
                     color: anime.coverImage.color,
                     score: anime.averageScore,
                     status: anime.status,
-                  })}
+                  });
+                  }}
                   aria-pressed={inWatchlist}
                   className="flex-1 md:flex-none flex items-center justify-center gap-2 liquid-glass text-white h-12 md:h-auto px-6 md:py-2.5 rounded-full font-semibold text-[15px] hover:bg-white/15 transition-all duration-300 cursor-pointer"
                 >
@@ -442,7 +452,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
           {['episodes', 'details', 'relations'].map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab as any)}
+              onClick={() => { haptic('selection'); setActiveTab(tab as any); }}
               role="tab"
               aria-selected={activeTab === tab}
               className={`pb-3 whitespace-nowrap shrink-0 text-[15px] font-semibold transition-colors relative cursor-pointer ${
@@ -474,7 +484,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                         {anime.tmdbSeasons.map((s: any) => (
                           <button
                             key={s.season_number}
-                            onClick={() => setActiveSeason(s.season_number)}
+                            onClick={() => { haptic('selection'); setActiveSeason(s.season_number); }}
                             className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-semibold transition-all cursor-pointer border ${
                               activeSeason === s.season_number 
                                 ? 'bg-white/20 text-white border-white/20 shadow-md' 
@@ -489,7 +499,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                   </div>
                   <div className="flex bg-black/40 p-1 rounded-xl border border-white/10 backdrop-blur-md shrink-0 self-start md:self-auto">
                     <button 
-                      onClick={() => setActiveLang('vostfr')}
+                      onClick={() => { haptic('selection'); setActiveLang('vostfr'); }}
                       className={`px-4 py-1.5 rounded-lg font-semibold text-sm transition-all cursor-pointer ${
                         activeLang === 'vostfr' ? 'bg-white/20 text-white shadow-sm' : 'text-[#8E8E93] hover:text-white'
                       }`}
@@ -497,7 +507,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                       VOSTFR
                     </button>
                     <button 
-                      onClick={() => setActiveLang('vf')}
+                      onClick={() => { haptic('selection'); setActiveLang('vf'); }}
                       className={`px-4 py-1.5 rounded-lg font-semibold text-sm transition-all cursor-pointer ${
                         activeLang === 'vf' ? 'bg-white/20 text-white shadow-sm' : 'text-[#8E8E93] hover:text-white'
                       }`}
@@ -522,7 +532,10 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                       return (
                         <button
                           key={ep.episode_number}
-                          onClick={() => playEpisode(ep, anime)}
+                          onClick={() => {
+                            haptic('medium');
+                            playEpisode(ep, anime);
+                          }}
                           className={`flex flex-col gap-3 p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-all duration-300 group border text-left cursor-pointer ${
                             isLast ? 'border-white/15' : 'border-transparent hover:border-white/10'
                           } ${watched ? 'opacity-70 hover:opacity-100' : ''}`}

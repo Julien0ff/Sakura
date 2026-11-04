@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { formatScore, statusLabel, type AnimeSummary } from '@/lib/anime';
 import { useAmbientColor } from '@/lib/use-ambient-color';
 import { readableOn } from '@/lib/color';
+import { haptic } from '@/lib/haptics';
 
 const SLIDE_MS = 7000;
 
@@ -88,7 +89,10 @@ export function HeroBanner() {
         if (touchStartX.current === null) return;
         const dx = e.changedTouches[0].clientX - touchStartX.current;
         touchStartX.current = null;
-        if (Math.abs(dx) > 50) goTo(currentIndex + (dx < 0 ? 1 : -1));
+        if (Math.abs(dx) > 50) {
+          haptic('selection');
+          goTo(currentIndex + (dx < 0 ? 1 : -1));
+        }
       }}
     >
       {animes.map((anime, index) => {
@@ -182,6 +186,7 @@ export function HeroBanner() {
               <div className="flex items-center gap-3 mt-1 md:mt-3">
                 <Link
                   href={`/anime?id=${anime.id}&play=1`}
+                  onClick={() => haptic('medium')}
                   tabIndex={isActive ? 0 : -1}
                   className="flex-1 md:flex-none flex items-center justify-center gap-2 text-white h-12 md:h-auto md:px-8 md:py-3.5 rounded-full font-bold text-[16px] md:text-[17px] hover:scale-105 active:scale-[0.98] transition-transform duration-300 shadow-xl"
                   style={{ backgroundColor: color, color: readableOn(color), boxShadow: `0 10px 30px -8px ${color}` }}
@@ -209,7 +214,10 @@ export function HeroBanner() {
         {animes.map((anime, idx) => (
           <button
             key={anime.id}
-            onClick={() => goTo(idx)}
+            onClick={() => {
+              haptic('selection');
+              goTo(idx);
+            }}
             aria-label={`Afficher la diapositive ${idx + 1}`}
             aria-current={idx === currentIndex}
             className="group h-11 px-1.5 flex items-center cursor-pointer"

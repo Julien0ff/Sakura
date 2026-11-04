@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { fetchAniList, AIRING_SCHEDULE } from '@/core/api/anilist';
 import { useAppStore, useHydrated, type Lang } from '@/core/store';
 import { LangTag } from '@/components/anime/lang-tag';
+import { haptic } from '@/lib/haptics';
 import { useQuery } from '@tanstack/react-query';
 import { CalendarDays } from 'lucide-react';
 import Link from 'next/link';
@@ -102,7 +103,10 @@ export default function CalendarPage() {
                 key={i}
                 role="tab"
                 aria-selected={selected === i}
-                onClick={() => setSelected(i)}
+                onClick={() => {
+                  haptic('selection');
+                  setSelected(i);
+                }}
                 className={`shrink-0 flex flex-col items-center min-w-[84px] px-4 py-2.5 rounded-2xl border transition-colors cursor-pointer ${
                   selected === i ? 'bg-white text-black border-white' : 'bg-white/5 text-white border-white/10 hover:bg-white/10'
                 }`}

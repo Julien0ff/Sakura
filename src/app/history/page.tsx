@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { useAppStore, useHydrated } from '@/core/store';
 import { Clock, Trash2, X } from 'lucide-react';
 import Link from 'next/link';
+import { haptic } from '@/lib/haptics';
 
 const dateFormatter = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
 
@@ -24,7 +25,10 @@ export default function HistoryPage() {
           {hydrated && history.length > 0 && (
             <button
               onClick={() => {
-                if (confirm('Effacer tout l’historique ?')) clearHistory();
+                if (confirm('Effacer tout l’historique ?')) {
+                  haptic('warning');
+                  clearHistory();
+                }
               }}
               className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-[#8E8E93] hover:text-white hover:bg-white/10 transition-colors text-sm cursor-pointer"
             >
@@ -55,7 +59,10 @@ export default function HistoryPage() {
                   </div>
                 </Link>
                 <button
-                  onClick={() => removeFromHistory(h.id)}
+                  onClick={() => {
+                    haptic('light');
+                    removeFromHistory(h.id);
+                  }}
                   aria-label={`Retirer ${h.title} de l'historique`}
                   className="p-2 rounded-full text-[#8E8E93] hover:text-white hover:bg-white/10 transition-colors cursor-pointer md:opacity-0 md:group-hover:opacity-100 focus:opacity-100"
                 >

@@ -7,6 +7,7 @@ import type { AnimeSummary } from '@/lib/anime';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Compass, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
+import { haptic } from '@/lib/haptics';
 import { useState } from 'react';
 
 // Labels FR -> genres AniList (les valeurs doivent correspondre exactement à l'API).
@@ -77,7 +78,10 @@ export default function DiscoverPage() {
 
         <div className="flex gap-3 mb-4 overflow-x-auto pb-2 scrollbar-none" role="tablist" aria-label="Genres">
           {GENRES.map((g) => (
-            <button key={g.value} role="tab" aria-selected={genre === g.value} onClick={() => setGenre(g.value)} className={chip(genre === g.value)}>
+            <button key={g.value} role="tab" aria-selected={genre === g.value} onClick={() => {
+                haptic('selection');
+                setGenre(g.value);
+              }} className={chip(genre === g.value)}>
               {g.label}
             </button>
           ))}
@@ -86,7 +90,10 @@ export default function DiscoverPage() {
           {SORTS.map((s) => (
             <button
               key={s.value}
-              onClick={() => setSort(s.value)}
+              onClick={() => {
+                haptic('selection');
+                setSort(s.value);
+              }}
               aria-pressed={sort === s.value}
               className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                 sort === s.value ? 'bg-white/20 text-white' : 'text-[#8E8E93] hover:text-white'

@@ -3,6 +3,7 @@
 import { AppLayout } from '@/components/layout/app-layout';
 import { useAppStore, type Lang } from '@/core/store';
 import { Settings } from 'lucide-react';
+import { haptic } from '@/lib/haptics';
 
 export default function SettingsPage() {
   const settings = useAppStore((s) => s.settings);
@@ -43,6 +44,12 @@ export default function SettingsPage() {
                 hint="Lance l'épisode suivant après un compte à rebours de 8 s."
                 checked={settings.autoNext}
                 onChange={(v) => updateSettings({ autoNext: v })}
+              />
+              <Toggle
+                label="Retour haptique"
+                hint="Petites vibrations au toucher (Android, et iPhone sous iOS 18 ou plus)."
+                checked={settings.haptics}
+                onChange={(v) => updateSettings({ haptics: v })}
               />
             </div>
           </section>
@@ -95,7 +102,16 @@ function Toggle({ label, hint, checked, onChange }: { label: string; hint?: stri
         {hint && <span className="block text-sm text-[#8E8E93]">{hint}</span>}
       </span>
       <span className="relative shrink-0">
-        <input type="checkbox" role="switch" className="peer sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+        <input
+          type="checkbox"
+          role="switch"
+          className="peer sr-only"
+          checked={checked}
+          onChange={(e) => {
+            onChange(e.target.checked);
+            haptic('selection');
+          }}
+        />
         <span className="block w-[51px] h-[31px] rounded-full bg-white/15 peer-checked:bg-[#30D158] transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-primary" />
         <span className="absolute top-[2px] left-[2px] w-[27px] h-[27px] rounded-full bg-white shadow-md transition-transform peer-checked:translate-x-5" />
       </span>

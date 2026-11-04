@@ -6,6 +6,7 @@ import 'plyr-react/plyr.css';
 import Hls from 'hls.js';
 import { FastForward } from 'lucide-react';
 import type { SkipInterval } from '@/core/api/aniskip';
+import { haptic } from '@/lib/haptics';
 
 interface VideoPlayerProps {
   src: string;
@@ -181,6 +182,7 @@ export function VideoPlayer({
   }, [src, type]);
 
   const skip = () => {
+    haptic('light');
     const video = getMedia();
     if (video && activeSkip) video.currentTime = activeSkip.end;
     setActiveSkip(null);

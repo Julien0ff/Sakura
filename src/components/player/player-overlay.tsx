@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { ArrowLeft, SkipForward, X } from 'lucide-react';
 import type { SkipInterval } from '@/core/api/aniskip';
+import { haptic } from '@/lib/haptics';
 
 const VideoPlayer = dynamic(() => import('./video-player').then((m) => m.VideoPlayer), { ssr: false });
 
@@ -197,7 +198,10 @@ function PlayerOverlayInner({
                     key={s.url}
                     role="radio"
                     aria-checked={current?.url === s.url}
-                    onClick={() => onSelectSource(s)}
+                    onClick={() => {
+                      haptic('selection');
+                      onSelectSource(s);
+                    }}
                     className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
                       current?.url === s.url ? 'bg-white text-black' : 'text-white/80 hover:text-white'
                     }`}
@@ -209,7 +213,10 @@ function PlayerOverlayInner({
             )}
             {next && (
               <button
-                onClick={next.onPlay}
+                onClick={() => {
+                  haptic('medium');
+                  next.onPlay();
+                }}
                 className="flex items-center gap-2 h-11 px-4 rounded-full bg-white/15 backdrop-blur-md text-white font-semibold text-sm hover:bg-white/25 transition-colors cursor-pointer"
               >
                 <SkipForward className="w-4 h-4" />
@@ -225,7 +232,10 @@ function PlayerOverlayInner({
             {sources.map((s, i) => (
               <button
                 key={s.url}
-                onClick={() => onSelectSource(s)}
+                onClick={() => {
+                  haptic('selection');
+                  onSelectSource(s);
+                }}
                 className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${current?.url === s.url ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
               >
                 {sourceName(s, i)}
@@ -252,6 +262,7 @@ function PlayerOverlayInner({
           </div>
           <button
             onClick={() => {
+              haptic('medium');
               setCountdown(null);
               next.onPlay();
             }}

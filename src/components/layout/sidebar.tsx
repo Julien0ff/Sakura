@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Home, Compass, Bookmark, Clock, Settings, Search, CalendarDays } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import { haptic } from '@/lib/haptics';
 
 export const navItems = [
   { name: 'Accueil', href: '/', icon: Home },
@@ -32,11 +33,19 @@ export function MobileNav() {
         <Link
           href="/settings"
           aria-label="Paramètres"
+          onClick={() => haptic('selection')}
           className="md:hidden fixed z-40 right-4 top-[max(env(safe-area-inset-top),16px)] w-11 h-11 rounded-full tab-bar-glass flex items-center justify-center text-white/90 active:scale-95 transition-transform"
         >
           <Settings className="w-5 h-5" strokeWidth={2} />
         </Link>
       )}
+
+      {/* Progressive blur + dim behind the bar so it always sits on a calm background. */}
+      <div aria-hidden className="scroll-edge-bottom md:hidden z-30">
+        <span />
+        <span />
+        <span />
+      </div>
 
       <nav
         aria-label="Navigation principale"
@@ -51,19 +60,20 @@ export function MobileNav() {
                 <Link
                   href={item.href}
                   aria-current={isActive ? 'page' : undefined}
+                  onClick={() => haptic(isActive ? 'light' : 'selection')}
                   className={`relative flex h-[54px] flex-col items-center justify-center gap-0.5 rounded-[22px] text-[11px] font-semibold tracking-tight transition-colors duration-300 active:scale-95 ${
-                    isActive ? 'text-white' : 'text-[#8E8E93] hover:text-white/90'
+                    isActive ? 'text-white' : 'text-[#A1A1A6] hover:text-white/90'
                   }`}
                 >
                   {isActive && (
                     <span
                       aria-hidden
-                      className="absolute inset-0 rounded-[22px] bg-white/[0.12] animate-in fade-in zoom-in-90 duration-300"
+                      className="absolute inset-0 rounded-[22px] bg-white/[0.16] animate-in fade-in zoom-in-90 duration-300"
                       style={{ boxShadow: 'inset 0 0.5px 0 rgba(255,255,255,0.15)' }}
                     />
                   )}
                   <Icon className="relative w-[22px] h-[22px]" strokeWidth={isActive ? 2.4 : 1.9} />
-                  <span className="relative truncate max-w-full px-1">{item.name}</span>
+                  <span className="tab-label relative truncate max-w-full px-1">{item.name}</span>
                 </Link>
               </li>
             );

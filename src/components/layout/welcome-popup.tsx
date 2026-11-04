@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { X, History, FastForward, CalendarDays } from 'lucide-react';
 import { useAppStore, type Lang } from '@/core/store';
 import { siteConfig } from '@/lib/site-config';
+import { haptic } from '@/lib/haptics';
 
 const STORAGE_KEY = 'hasSeenWelcome';
 
@@ -102,7 +103,10 @@ export function WelcomePopup() {
                     type="button"
                     role="radio"
                     aria-checked={defaultLang === lang}
-                    onClick={() => updateSettings({ defaultLang: lang })}
+                    onClick={() => {
+                  haptic('selection');
+                  updateSettings({ defaultLang: lang });
+                }}
                     className={`h-10 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
                       defaultLang === lang ? 'bg-white text-black' : 'text-white/75 hover:text-white'
                     }`}

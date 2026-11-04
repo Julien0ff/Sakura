@@ -10,15 +10,28 @@
  */
 export type HapticKind = 'selection' | 'light' | 'medium' | 'success' | 'warning';
 
-// Android motors (especially ERM ones on mid-range phones) ignore pulses under ~15–20 ms,
-// so keep every pulse at 20 ms or more.
-const PATTERNS: Record<HapticKind, number | number[]> = {
-  selection: 20,
-  light: 25,
-  medium: 40,
-  success: [30, 70, 45],
-  warning: [45, 60, 45, 60, 45],
+// The Vibration API has no amplitude control: perceived strength comes from duration only.
+// Base durations (ms) for "Normale"; pauses between pulses are not scaled.
+const PATTERNS: Record<HapticKind, number[]> = {
+  selection: [35],
+  light: [40],
+  medium: [65],
+  success: [50, 80, 75],
+  warning: [70, 70, 70, 70, 70],
 };
+
+export type HapticIntensity = 'soft' | 'normal' | 'strong';
+const SCALE: Record<HapticIntensity, number> = { soft: 0.6, normal: 1, strong: 1.7 };
+
+let intensity: HapticIntensity = 'normal';
+export function setHapticIntensity(value: HapticIntensity) {
+  intensity = value;
+}
+
+/** Scales vibration segments (even indexes), keeps pauses (odd indexes) as-is. */
+function scaled(pattern: number[], level: HapticIntensity = intensity) {
+  return pattern.map((ms, i) => (i % 2 === 0 ? Math.round(ms * SCALE[level]) : ms));
+}
 
 // iOS only plays one tick per toggle: repeat for "stronger" kinds.
 const IOS_TICKS: Record<HapticKind, number[]> = {
@@ -70,7 +83,7 @@ export function hapticSupport(): HapticSupport {
  */
 export function testHaptic(): { support: HapticSupport; accepted: boolean } {
   const support = hapticSupport();
-  if (support === 'vibration') return { support, accepted: navigator.vibrate([60, 80, 60]) };
+  if (support === 'vibration') return { support, accepted: navigator.vibrate(scaled([60, 90, 60])) };
   if (support === 'ios-switch') {
     getIosSwitch().click();
     return { support, accepted: true };
@@ -82,7 +95,7 @@ export function haptic(kind: HapticKind = 'selection') {
   if (!enabled || typeof window === 'undefined') return;
   try {
     if (typeof navigator.vibrate === 'function' && !isIOS()) {
-      navigator.vibrate(PATTERNS[kind]);
+      navigator.vibrate(scaled(PATTERNS[kind]));
       return;
     }
     if (isIOS()) {

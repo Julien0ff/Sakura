@@ -3,7 +3,7 @@
 import { AppLayout } from '@/components/layout/app-layout';
 import { useAppStore, type Lang } from '@/core/store';
 import { Settings } from 'lucide-react';
-import { haptic, testHaptic } from '@/lib/haptics';
+import { haptic, testHaptic, setHapticIntensity, type HapticIntensity } from '@/lib/haptics';
 import { useState } from 'react';
 
 export default function SettingsPage() {
@@ -52,6 +52,37 @@ export default function SettingsPage() {
                 checked={settings.haptics}
                 onChange={(v) => updateSettings({ haptics: v })}
               />
+              {settings.haptics && (
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-white">Intensité</span>
+                  <div role="radiogroup" aria-label="Intensité des vibrations" className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-black/50 border border-white/10">
+                    {(
+                      [
+                        ['soft', 'Douce'],
+                        ['normal', 'Normale'],
+                        ['strong', 'Forte'],
+                      ] as [HapticIntensity, string][]
+                    ).map(([value, label]) => (
+                      <button
+                        key={value}
+                        role="radio"
+                        aria-checked={settings.hapticIntensity === value}
+                        onClick={() => {
+                          updateSettings({ hapticIntensity: value });
+                          // Apply now so the preview vibration already uses the new level.
+                          setHapticIntensity(value);
+                          haptic('medium');
+                        }}
+                        className={`px-3 h-8 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
+                          settings.hapticIntensity === value ? 'bg-white text-black' : 'text-white/70 hover:text-white'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <HapticTest />
             </div>
           </section>

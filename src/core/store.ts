@@ -39,7 +39,7 @@ interface AppState {
   watchlist: SavedAnime[];
   history: HistoryEntry[];
   progress: Record<string, EpisodeProgress>;
-  settings: { defaultLang: Lang; autoSkip: boolean; autoNext: boolean; haptics: boolean };
+  settings: { defaultLang: Lang; autoSkip: boolean; autoNext: boolean; haptics: boolean; hapticIntensity: 'soft' | 'normal' | 'strong' };
   saveProgress: (key: string, time: number, duration: number) => void;
   toggleWatchlist: (anime: SavedAnime) => void;
   addToHistory: (entry: Omit<HistoryEntry, 'watchedAt'>) => void;
@@ -63,7 +63,7 @@ export const useAppStore = create<AppState>()(
       watchlist: [],
       history: [],
       progress: {},
-      settings: { defaultLang: 'vostfr', autoSkip: false, autoNext: true, haptics: true },
+      settings: { defaultLang: 'vostfr', autoSkip: false, autoNext: true, haptics: true, hapticIntensity: 'normal' },
       saveProgress: (key, time, duration) =>
         set((s) => {
           const progress = { ...s.progress, [key]: { time, duration, updatedAt: Date.now() } };
@@ -94,14 +94,14 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: STORE_KEY,
-      version: 2,
+      version: 3,
       // v0 → v1: settings gained autoSkip / autoNext, progress map added. v2: haptics.
       migrate: (persisted) => {
         const state = persisted as Partial<AppState>;
         return {
           ...state,
           progress: state.progress ?? {},
-          settings: { defaultLang: 'vostfr', autoSkip: false, autoNext: true, haptics: true, ...state.settings },
+          settings: { defaultLang: 'vostfr', autoSkip: false, autoNext: true, haptics: true, hapticIntensity: 'normal', ...state.settings },
         } as AppState;
       },
     }

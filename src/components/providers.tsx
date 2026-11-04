@@ -4,11 +4,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { useAppStore } from '@/core/store';
-import { setHapticsEnabled } from '@/lib/haptics';
+import { setHapticsEnabled, setHapticIntensity } from '@/lib/haptics';
 
 function HapticsSync() {
   const on = useAppStore((s) => s.settings.haptics);
+  const level = useAppStore((s) => s.settings.hapticIntensity);
   useEffect(() => setHapticsEnabled(on), [on]);
+  useEffect(() => setHapticIntensity(level), [level]);
   return null;
 }
 

@@ -13,126 +13,201 @@ export default function SettingsPage() {
 
   return (
     <AppLayout>
-      <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-6 md:pl-32 pr-6 pt-10 pb-32">
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-8 flex items-center gap-4" style={{ fontFamily: 'var(--font-impact)' }}>
-          <Settings className="w-8 h-8 text-primary" />
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-4 sm:px-6 md:pl-32 md:pr-10 pt-[max(env(safe-area-inset-top),24px)] md:pt-10 pb-10">
+        {/* pr-14 on phones keeps the title clear of the floating settings/gear button */}
+        <h1
+          className="text-[34px] md:text-5xl font-bold text-white mb-6 md:mb-8 flex items-center gap-3 md:gap-4 pr-14 md:pr-0"
+          style={{ fontFamily: 'var(--font-impact)' }}
+        >
+          <Settings className="w-7 h-7 md:w-8 md:h-8 text-primary shrink-0" />
           Paramètres
         </h1>
 
-        <div className="max-w-2xl space-y-6 mt-8">
-          <section className="p-6 rounded-2xl bg-white/5 border border-white/10">
-            <h2 className="text-xl font-bold text-white mb-4">Lecture</h2>
-            <div className="space-y-4">
-              <label className="flex items-center justify-between gap-4">
-                <span className="text-white">Langue par défaut</span>
-                <select
-                  value={settings.defaultLang}
-                  onChange={(e) => updateSettings({ defaultLang: e.target.value as Lang })}
-                  className="bg-black/50 border border-white/20 rounded-lg px-4 py-2 text-white outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="vostfr">VOSTFR</option>
-                  <option value="vf">VF</option>
-                </select>
-              </label>
-              <Toggle
-                label="Passer l'opening et l'ending automatiquement"
-                hint="Utilise les horaires communautaires AniSkip quand ils existent."
-                checked={settings.autoSkip}
-                onChange={(v) => updateSettings({ autoSkip: v })}
+        <div className="max-w-2xl space-y-7">
+          <Group title="Lecture">
+            <Row label="Langue par défaut" stackOnMobile>
+              <Segmented<Lang>
+                label="Langue par défaut"
+                value={settings.defaultLang}
+                options={[
+                  ['vostfr', 'VOSTFR'],
+                  ['vf', 'VF'],
+                ]}
+                onChange={(v) => updateSettings({ defaultLang: v })}
               />
-              <Toggle
-                label="Épisode suivant automatique"
-                hint="Lance l'épisode suivant après un compte à rebours de 8 s."
-                checked={settings.autoNext}
-                onChange={(v) => updateSettings({ autoNext: v })}
-              />
-              <Toggle
-                label="Retour haptique"
-                hint="Petites vibrations au toucher (Android, et iPhone sous iOS 18 ou plus)."
-                checked={settings.haptics}
-                onChange={(v) => updateSettings({ haptics: v })}
-              />
-              {settings.haptics && (
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-white">Intensité</span>
-                  <div role="radiogroup" aria-label="Intensité des vibrations" className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-black/50 border border-white/10">
-                    {(
-                      [
-                        ['soft', 'Douce'],
-                        ['normal', 'Normale'],
-                        ['strong', 'Forte'],
-                      ] as [HapticIntensity, string][]
-                    ).map(([value, label]) => (
-                      <button
-                        key={value}
-                        role="radio"
-                        aria-checked={settings.hapticIntensity === value}
-                        onClick={() => {
-                          updateSettings({ hapticIntensity: value });
-                          // Apply now so the preview vibration already uses the new level.
-                          setHapticIntensity(value);
-                          haptic('medium');
-                        }}
-                        className={`px-3 h-8 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
-                          settings.hapticIntensity === value ? 'bg-white text-black' : 'text-white/70 hover:text-white'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <HapticTest />
-            </div>
-          </section>
+            </Row>
+            <Toggle
+              label="Passer l'opening et l'ending"
+              hint="Automatiquement, avec les horaires communautaires AniSkip."
+              checked={settings.autoSkip}
+              onChange={(v) => updateSettings({ autoSkip: v })}
+            />
+            <Toggle
+              label="Épisode suivant automatique"
+              hint="Après un compte à rebours de 8 s."
+              checked={settings.autoNext}
+              onChange={(v) => updateSettings({ autoNext: v })}
+            />
+          </Group>
 
-          <section className="p-6 rounded-2xl bg-white/5 border border-white/10">
-            <h2 className="text-xl font-bold text-white mb-4">Données</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-white">Message de bienvenue</div>
-                  <div className="text-sm text-[#8E8E93]">Le réafficher maintenant.</div>
-                </div>
-                <button
-                  onClick={() => {
-                    localStorage.removeItem('hasSeenWelcome');
-                    location.reload();
-                  }}
-                  className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm cursor-pointer"
-                >
-                  Revoir
-                </button>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-white">Historique de visionnage</div>
-                  <div className="text-sm text-[#8E8E93]">Stocké uniquement sur cet appareil.</div>
-                </div>
-                <button
-                  onClick={() => {
-                    if (confirm('Effacer tout l’historique ?')) clearHistory();
-                  }}
-                  className="px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm cursor-pointer"
-                >
-                  Effacer
-                </button>
-              </div>
-            </div>
-          </section>
+          <Group title="Retour haptique" footer="Android (Chrome, Edge, Samsung Internet) et iPhone sous iOS 18 ou plus récent.">
+            <Toggle label="Vibrations au toucher" checked={settings.haptics} onChange={(v) => updateSettings({ haptics: v })} />
+            {settings.haptics && (
+              <>
+                <Row label="Intensité" stackOnMobile>
+                  <Segmented<HapticIntensity>
+                    label="Intensité des vibrations"
+                    value={settings.hapticIntensity}
+                    options={[
+                      ['soft', 'Douce'],
+                      ['normal', 'Normale'],
+                      ['strong', 'Forte'],
+                    ]}
+                    onChange={(v) => {
+                      updateSettings({ hapticIntensity: v });
+                      // Apply now so the preview vibration already uses the new level.
+                      setHapticIntensity(v);
+                      haptic('medium');
+                    }}
+                    silent
+                  />
+                </Row>
+                <HapticTest />
+              </>
+            )}
+          </Group>
+
+          <Group title="Données" footer="Votre liste, votre historique et vos réglages sont stockés uniquement sur cet appareil.">
+            <Row label="Message de bienvenue" hint="Le réafficher maintenant.">
+              <ActionButton
+                onClick={() => {
+                  localStorage.removeItem('hasSeenWelcome');
+                  location.reload();
+                }}
+              >
+                Revoir
+              </ActionButton>
+            </Row>
+            <Row label="Historique de visionnage" hint="Efface aussi la ligne « Reprendre ».">
+              <ActionButton
+                destructive
+                onClick={() => {
+                  if (confirm('Effacer tout l’historique ?')) {
+                    haptic('warning');
+                    clearHistory();
+                  }
+                }}
+              >
+                Effacer
+              </ActionButton>
+            </Row>
+          </Group>
         </div>
       </div>
     </AppLayout>
   );
 }
 
+/* ───────── Building blocks (iOS-style grouped list) ───────── */
+
+function Group({ title, footer, children }: { title: string; footer?: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h2 className="px-4 mb-2 text-[13px] font-semibold uppercase tracking-wide text-[#8E8E93]">{title}</h2>
+      <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] overflow-hidden divide-y divide-white/[0.08]">{children}</div>
+      {footer && <p className="px-4 mt-2 text-[13px] leading-snug text-[#8E8E93]">{footer}</p>}
+    </section>
+  );
+}
+
+function Row({
+  label,
+  hint,
+  stackOnMobile = false,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  /** Put the control under the label on phones (wide controls like segmented pickers). */
+  stackOnMobile?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`flex gap-3 px-4 py-3 min-h-[56px] ${
+        stackOnMobile ? 'flex-col sm:flex-row sm:items-center sm:justify-between sm:gap-4' : 'items-center justify-between gap-4'
+      }`}
+    >
+      <div className="min-w-0">
+        <div className="text-[16px] text-white">{label}</div>
+        {hint && <div className="text-[13px] leading-snug text-[#8E8E93] mt-0.5">{hint}</div>}
+      </div>
+      <div className={stackOnMobile ? 'w-full sm:w-auto shrink-0' : 'shrink-0'}>{children}</div>
+    </div>
+  );
+}
+
+function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  silent = false,
+}: {
+  label: string;
+  value: T;
+  options: [T, string][];
+  onChange: (v: T) => void;
+  /** Skip the default selection haptic (the caller plays its own). */
+  silent?: boolean;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className="grid gap-1 p-1 rounded-xl bg-black/40 border border-white/10 w-full sm:w-auto sm:min-w-[240px]"
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+    >
+      {options.map(([v, text]) => (
+        <button
+          key={v}
+          type="button"
+          role="radio"
+          aria-checked={value === v}
+          onClick={() => {
+            if (!silent) haptic('selection');
+            onChange(v);
+          }}
+          className={`h-9 px-3 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+            value === v ? 'bg-white text-black shadow-sm' : 'text-white/70 hover:text-white'
+          }`}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ActionButton({ children, onClick, destructive = false }: { children: React.ReactNode; onClick: () => void; destructive?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`h-9 px-4 rounded-lg text-sm font-semibold whitespace-nowrap cursor-pointer transition-colors ${
+        destructive ? 'bg-red-500/15 hover:bg-red-500/25 text-[#FF6961]' : 'bg-white/10 hover:bg-white/20 text-white'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function Toggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="flex items-center justify-between gap-4 cursor-pointer">
-      <span>
-        <span className="block text-white">{label}</span>
-        {hint && <span className="block text-sm text-[#8E8E93]">{hint}</span>}
+    <label className="flex items-center justify-between gap-4 px-4 py-3 min-h-[56px] cursor-pointer active:bg-white/[0.03]">
+      <span className="min-w-0">
+        <span className="block text-[16px] text-white">{label}</span>
+        {hint && <span className="block text-[13px] leading-snug text-[#8E8E93] mt-0.5">{hint}</span>}
       </span>
       <span className="relative shrink-0">
         <input
@@ -153,8 +228,8 @@ function Toggle({ label, hint, checked, onChange }: { label: string; hint?: stri
 }
 
 const HAPTIC_MESSAGES = {
-  'vibration-ok': 'Vibration envoyée. Si vous ne sentez rien, vérifiez que le mode économie d’énergie est désactivé et que les vibrations au toucher sont activées dans les réglages Android.',
-  'vibration-refused': 'Le navigateur a refusé la vibration. Elle est peut-être bloquée pour ce site (paramètres du site dans Chrome) ou par le navigateur.',
+  'vibration-ok': 'Vibration envoyée. Si vous ne sentez rien, désactivez le mode économie d’énergie et vérifiez que les vibrations au toucher sont activées dans les réglages Android.',
+  'vibration-refused': 'Le navigateur a refusé la vibration. Elle est peut-être bloquée pour ce site (paramètres du site dans Chrome).',
   'ios-switch': 'Retour haptique déclenché. Il nécessite iOS 18 ou plus récent, dans Safari ou depuis l’écran d’accueil.',
   none: 'Ce navigateur ne permet pas les vibrations (Firefox, ordinateur, ancien iOS…). Sur Android, utilisez Chrome, Edge ou Samsung Internet.',
 } as const;
@@ -162,21 +237,20 @@ const HAPTIC_MESSAGES = {
 function HapticTest() {
   const [result, setResult] = useState<keyof typeof HAPTIC_MESSAGES | null>(null);
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between gap-4">
-        <span className="text-sm text-[#8E8E93]">Vous ne sentez rien ?</span>
-        <button
+    <div className="px-4 py-3">
+      <div className="flex items-center justify-between gap-4 min-h-[32px]">
+        <span className="text-[15px] text-[#8E8E93]">Vous ne sentez rien ?</span>
+        <ActionButton
           onClick={() => {
             const { support, accepted } = testHaptic();
             setResult(support === 'vibration' ? (accepted ? 'vibration-ok' : 'vibration-refused') : support);
           }}
-          className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm cursor-pointer"
         >
           Tester
-        </button>
+        </ActionButton>
       </div>
       {result && (
-        <p role="status" className="text-[13px] leading-relaxed text-[#EBEBF5]/80 bg-white/5 rounded-xl px-3 py-2">
+        <p role="status" className="mt-3 text-[13px] leading-relaxed text-[#EBEBF5]/80 bg-white/5 rounded-xl px-3 py-2">
           {HAPTIC_MESSAGES[result]}
         </p>
       )}

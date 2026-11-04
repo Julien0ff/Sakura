@@ -12,6 +12,7 @@ import { useAppStore, progressKey, isWatched, type Lang } from '@/core/store';
 import { PlayerOverlay, type PlayerSource } from '@/components/player/player-overlay';
 import { getSkipTimes } from '@/core/api/aniskip';
 import { useAmbientColor } from '@/lib/use-ambient-color';
+import { readableOn } from '@/lib/color';
 import { getTMDBDetails, getTMDBSeasonEpisodes } from '@/core/api/tmdb';
 
 function AnimeDetailsContent() {
@@ -227,30 +228,6 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
     staleTime: Infinity,
   });
 
-  // Scroll-linked banner: parallax + --hero-progress for the ambient wash (same system as the home hero).
-  const bannerRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const scroller = document.getElementById('main-scroll');
-    const banner = bannerRef.current;
-    if (!scroller || !banner) return;
-    const root = document.documentElement;
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      const p = Math.min(1, Math.max(0, scroller.scrollTop / banner.offsetHeight));
-      root.style.setProperty('--hero-progress', p.toFixed(3));
-      banner.style.setProperty('--p', p.toFixed(3));
-    };
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(update);
-    };
-    update();
-    scroller.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      scroller.removeEventListener('scroll', onScroll);
-      cancelAnimationFrame(frame);
-    };
-  }, [anime?.id]);
 
   if (isLoading) {
     return (
@@ -310,35 +287,40 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
         )}
 
         {/* Banner Section */}
-        <div ref={bannerRef} className="relative w-full h-[62svh] min-h-[420px] md:h-[56vh] md:min-h-[440px] max-h-[720px] mb-6 md:mb-8 overflow-hidden">
-          {/* Parallax image: cover on phones, wide banner from md */}
+        <div className="relative w-full h-[62svh] min-h-[420px] md:h-[60vh] md:min-h-[460px] max-h-[760px] mb-4 md:mb-6 overflow-hidden">
+          {/* Image (cover on phones, wide banner from md). The mask dissolves the bottom edge
+              into the ambient color field so the banner melts into the page, no seam. */}
           <div
-            className="hero-parallax absolute inset-0 will-change-transform"
-            style={{ transform: 'translate3d(0, calc(var(--p, 0) * 30%), 0) scale(calc(1.02 + var(--p, 0) * 0.1))' }}
-          >
-            <picture>
-              {anime.bannerImage && <source media="(min-width: 768px)" srcSet={anime.bannerImage} />}
-              <img
-                src={anime.coverImage.extraLarge || anime.bannerImage}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover object-[center_25%] md:object-center"
-                style={{ filter: 'blur(calc(var(--p, 0) * 12px)) saturate(calc(1 + var(--p, 0) * 0.4))' }}
-              />
-            </picture>
-          </div>
-
-          {/* Color wash: the anime's color rises from the bottom and thickens as you scroll */}
-          <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/60 to-transparent" />
-          <div className="absolute inset-0 hidden md:block bg-gradient-to-r from-black/80 via-black/20 to-transparent" />
-          <div
+            data-sd="media"
             className="absolute inset-0"
             style={{
-              background: `linear-gradient(to top, #000 0%, color-mix(in oklab, ${animeColor} 22%, rgba(0,0,0,0.88)) 28%, color-mix(in oklab, ${animeColor} 12%, transparent) 60%, transparent 100%)`,
+              maskImage: 'linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%)',
             }}
+          >
+            <div data-sd="parallax" className="absolute inset-0">
+              <picture>
+                {anime.bannerImage && <source media="(min-width: 768px)" srcSet={anime.bannerImage} />}
+                <img
+                  src={anime.coverImage.extraLarge || anime.bannerImage}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover object-[center_25%] md:object-center"
+                />
+              </picture>
+            </div>
+          </div>
+
+          {/* Legibility scrims: top (status bar / back button), left on desktop, tinted bottom fading to transparent */}
+          <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/60 to-transparent" />
+          <div
+            className="absolute inset-0 hidden md:block bg-gradient-to-r from-black/75 via-black/20 to-transparent"
+            style={{ maskImage: 'linear-gradient(to bottom, #000 55%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to bottom, #000 55%, transparent 100%)' }}
           />
           <div
-            className="absolute inset-0 pointer-events-none"
-            style={{ backgroundColor: animeColor, opacity: 'calc(var(--p, 0) * 0.35)', mixBlendMode: 'soft-light' }}
+            className="absolute inset-x-0 bottom-0 h-[80%]"
+            style={{
+              background: `linear-gradient(to top, transparent 0%, color-mix(in oklab, ${animeColor} 10%, rgba(0,0,0,0.5)) 25%, rgba(0,0,0,0.25) 60%, transparent 100%)`,
+            }}
           />
 
           {/* Top Bar Navigation */}
@@ -353,8 +335,8 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
           </div>
 
           <div
+            data-sd="content"
             className="absolute bottom-0 left-0 w-full px-5 pb-6 md:py-10 md:pr-10 md:pl-32 flex flex-col md:flex-row gap-6 md:gap-10 items-start md:items-end z-20"
-            style={{ opacity: 'calc(1 - var(--p, 0) * 1.4)', transform: 'translate3d(0, calc(var(--p, 0) * -32px), 0)' }}
           >
             <div className="relative w-32 md:w-48 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl shrink-0 apple-squircle hidden md:block">
               <img 
@@ -401,7 +383,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                   onClick={() => (resumeEpisode ?? episodeList[0]) && playEpisode(resumeEpisode ?? episodeList[0], anime)}
                   disabled={episodeList.length === 0}
                   className="flex-1 md:flex-none flex items-center justify-center gap-2 text-white h-12 md:h-auto px-6 md:py-2.5 rounded-full font-bold text-[15px] hover:scale-105 active:scale-[0.98] transition-all duration-300 shadow-xl cursor-pointer disabled:opacity-50"
-                  style={{ backgroundColor: animeColor, boxShadow: `0 10px 30px -8px ${animeColor}` }}
+                  style={{ backgroundColor: animeColor, color: readableOn(animeColor), boxShadow: `0 10px 30px -8px ${animeColor}` }}
                 >
                   <Play className="w-4 h-4" fill="currentColor" />
                   {resumeEpisode ? `Reprendre · Ép. ${resumeEpisode.episode_number}` : 'Regarder'}
@@ -427,7 +409,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
         </div>
 
         {/* Content Tabs */}
-        <div role="tablist" className="flex items-center gap-6 border-b border-white/10 mb-8 pl-6 pr-6 md:pl-32 overflow-x-auto scrollbar-none">
+        <div role="tablist" className="flex items-center gap-6 border-b border-white/[0.06] mb-8 pl-6 pr-6 md:pl-32 overflow-x-auto scrollbar-none">
           {['episodes', 'details', 'relations'].map((tab) => (
             <button
               key={tab}

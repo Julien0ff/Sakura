@@ -53,13 +53,16 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="text-white">Message de bienvenue</div>
-                  <div className="text-sm text-[#8E8E93]">Le réafficher au prochain chargement.</div>
+                  <div className="text-sm text-[#8E8E93]">Le réafficher maintenant.</div>
                 </div>
                 <button
-                  onClick={() => localStorage.removeItem('hasSeenWelcome')}
+                  onClick={() => {
+                    localStorage.removeItem('hasSeenWelcome');
+                    location.reload();
+                  }}
                   className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm cursor-pointer"
                 >
-                  Réinitialiser
+                  Revoir
                 </button>
               </div>
               <div className="flex items-center justify-between gap-4">

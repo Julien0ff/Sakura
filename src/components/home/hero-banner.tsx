@@ -8,6 +8,7 @@ import { Play, Info } from 'lucide-react';
 import Link from 'next/link';
 import { formatScore, statusLabel, type AnimeSummary } from '@/lib/anime';
 import { useAmbientColor } from '@/lib/use-ambient-color';
+import { readableOn } from '@/lib/color';
 
 const SLIDE_MS = 7000;
 
@@ -26,7 +27,6 @@ function plainText(html?: string | null) {
 export function HeroBanner() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [paused, setPaused] = useState(false);
-  const heroRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -68,43 +68,15 @@ export function HeroBanner() {
     return () => clearTimeout(t);
   }, [count, paused, currentIndex]);
 
-  // Scroll-linked effects: parallax on the image, content fade, and --hero-progress
-  // on <html> which drives the ambient color wash (see .ambient-tint in globals.css).
-  useEffect(() => {
-    const scroller = document.getElementById('main-scroll');
-    const hero = heroRef.current;
-    if (!scroller || !hero) return;
-    const root = document.documentElement;
-    let frame = 0;
-
-    const update = () => {
-      frame = 0;
-      const progress = Math.min(1, Math.max(0, scroller.scrollTop / hero.offsetHeight));
-      root.style.setProperty('--hero-progress', progress.toFixed(3));
-      hero.style.setProperty('--p', progress.toFixed(3));
-    };
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(update);
-    };
-
-    update();
-    scroller.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      scroller.removeEventListener('scroll', onScroll);
-      cancelAnimationFrame(frame);
-    };
-  }, [count]);
-
   if (isLoading || count === 0) {
-    return <div className="relative w-full h-[72svh] min-h-[440px] md:h-[75vh] md:min-h-[560px] max-h-[850px] mb-8 bg-white/5 animate-pulse md:rounded-b-[60px]" />;
+    return <div className="relative w-full h-[72svh] min-h-[440px] md:h-[75vh] md:min-h-[560px] max-h-[850px] mb-6 bg-white/5 animate-pulse md:rounded-b-[48px]" />;
   }
 
   return (
     <section
-      ref={heroRef}
       aria-roledescription="carrousel"
       aria-label="À la une"
-      className="relative w-full h-[72svh] min-h-[440px] md:h-[75vh] md:min-h-[560px] max-h-[850px] mb-6 md:mb-10 overflow-hidden md:rounded-b-[60px] md:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)]"
+      className="relative w-full h-[72svh] min-h-[440px] md:h-[75vh] md:min-h-[560px] max-h-[850px] mb-2 md:mb-10 overflow-hidden md:rounded-b-[48px] md:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
@@ -136,11 +108,10 @@ export function HeroBanner() {
             aria-hidden={!isActive}
             className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
           >
-            {/* Image: portrait cover on phones, wide banner from md. Parallax follows --p. */}
-            <div
-              className="hero-parallax absolute inset-0 will-change-transform"
-              style={{ transform: 'translate3d(0, calc(var(--p, 0) * 25%), 0) scale(calc(1 + var(--p, 0) * 0.08))' }}
-            >
+            {/* Image: portrait cover on phones, wide banner from md. On phones the bottom edge
+                dissolves into the page (.hero-fade); on desktop the card keeps its rounded corners. */}
+            <div data-sd="media" className="hero-fade absolute inset-0">
+            <div data-sd="parallax" className="absolute inset-0">
               <picture>
                 <source media="(min-width: 768px)" srcSet={wide} />
                 <img
@@ -151,22 +122,29 @@ export function HeroBanner() {
                 />
               </picture>
             </div>
+            </div>
 
             {/* Legibility: top scrim for the status bar, side scrim on desktop, bottom fade into the page tinted with the anime color. */}
             <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/60 to-transparent" />
             <div className="absolute inset-0 hidden md:block bg-gradient-to-r from-black/85 via-black/30 to-transparent" />
+            {/* Text scrim. Transparent at both ends: the bottom edge must match the page behind
+                (ambient color on black), otherwise a seam appears where the banner ends. */}
             <div
-              className="absolute inset-x-0 bottom-0 h-[70%] md:h-1/2"
+              className="absolute inset-x-0 bottom-0 h-[75%] md:hidden"
               style={{
-                background: `linear-gradient(to top, #000 0%, color-mix(in oklab, ${color} 18%, rgba(0,0,0,0.85)) 30%, transparent 100%)`,
+                background: `linear-gradient(to top, transparent 0%, color-mix(in oklab, ${color} 10%, rgba(0,0,0,0.5)) 25%, rgba(0,0,0,0.25) 60%, transparent 100%)`,
+              }}
+            />
+            {/* Desktop: the card has an edge, so the scrim can go fully dark at the bottom (best contrast). */}
+            <div
+              className="absolute inset-x-0 bottom-0 h-[65%] hidden md:block"
+              style={{
+                background: `linear-gradient(to top, rgba(0,0,0,0.92) 0%, color-mix(in oklab, ${color} 12%, rgba(0,0,0,0.6)) 35%, transparent 100%)`,
               }}
             />
 
             {/* Content */}
-            <div
-              className="absolute inset-x-0 bottom-0 z-20 px-5 pb-16 md:pb-[9%] md:pl-32 md:pr-10 md:w-2/3 lg:w-1/2"
-              style={{ opacity: 'calc(1 - var(--p, 0) * 1.6)', transform: 'translate3d(0, calc(var(--p, 0) * -40px), 0)' }}
-            >
+            <div data-sd="content" className="absolute inset-x-0 bottom-0 z-20 px-5 pb-16 md:pb-[9%] md:pl-32 md:pr-10 md:w-2/3 lg:w-1/2">
               {/* Text leaves fast and arrives after the image crossfade, so two titles never overlap. */}
               <div
                 className={`flex flex-col gap-3 md:gap-5 transition-all ease-out ${
@@ -206,7 +184,7 @@ export function HeroBanner() {
                   href={`/anime?id=${anime.id}&play=1`}
                   tabIndex={isActive ? 0 : -1}
                   className="flex-1 md:flex-none flex items-center justify-center gap-2 text-white h-12 md:h-auto md:px-8 md:py-3.5 rounded-full font-bold text-[16px] md:text-[17px] hover:scale-105 active:scale-[0.98] transition-transform duration-300 shadow-xl"
-                  style={{ backgroundColor: color, boxShadow: `0 10px 30px -8px ${color}` }}
+                  style={{ backgroundColor: color, color: readableOn(color), boxShadow: `0 10px 30px -8px ${color}` }}
                 >
                   <Play className="w-5 h-5" fill="currentColor" />
                   Lecture

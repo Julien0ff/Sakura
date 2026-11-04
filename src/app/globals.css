@@ -182,26 +182,85 @@
   }
 }
 /* ───────── Ambient tint (couleur dynamique de l'anime en cours) ─────────
-   --anime-color est posé sur <html> par la bannière / la page anime.
-   --hero-progress (0 → 1) suit le scroll de la bannière. */
+   --anime-color est posé sur <html> (useAmbientColor). La teinte change en fondu
+   (@property permet d'animer une couleur). Au scroll, seules des opacités bougent :
+   aucune repeinture de dégradé, tout reste sur le compositeur. */
 @property --anime-color {
   syntax: '<color>';
   inherits: true;
   initial-value: #0a84ff;
 }
 
-.ambient-tint {
+.ambient {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  /* Deux halos : un lavis principal en haut, un écho plus diffus qui descend au scroll. */
-  background:
-    radial-gradient(120% 70% at 30% 0%, color-mix(in oklab, var(--anime-color) 55%, transparent) 0%, transparent 70%),
-    radial-gradient(90% 60% at 85% calc(10% + var(--hero-progress, 0) * 50%), color-mix(in oklab, var(--anime-color) 30%, transparent) 0%, transparent 75%);
-  opacity: calc(var(--ambient-strength, 0) * (0.55 - var(--hero-progress, 0) * 0.3));
-  transition: --anime-color 1.2s ease, opacity 0.6s ease;
+  opacity: var(--ambient-strength, 0);
+  transition: opacity 0.8s ease;
 }
+
+.ambient > div {
+  position: absolute;
+  inset: 0;
+  transition: --anime-color 1.2s ease;
+}
+
+/* Halo principal : épouse la bannière, s'estompe quand on la quitte. */
+.ambient-glow {
+  background:
+    radial-gradient(110% 75% at 25% 0%, color-mix(in oklab, var(--anime-color) 58%, transparent) 0%, transparent 72%),
+    radial-gradient(70% 55% at 90% 20%, color-mix(in oklab, var(--anime-color) 32%, transparent) 0%, transparent 75%);
+  opacity: 0.6;
+}
+
+/* Lavis diffus sur toute la page : prend le relais quand on descend, pour que la
+   couleur continue sous le contenu au lieu de s'arrêter net au bas de la bannière. */
+.ambient-wash {
+  background: linear-gradient(to bottom,
+    color-mix(in oklab, var(--anime-color) 26%, transparent) 0%,
+    color-mix(in oklab, var(--anime-color) 12%, transparent) 45%,
+    color-mix(in oklab, var(--anime-color) 6%, transparent) 100%);
+  opacity: 0.35;
+}
+
+/* ───────── Effets liés au scroll ─────────
+   Timeline nommée sur le conteneur qui défile ; timeline-scope la rend visible au
+   calque .ambient, qui est un frère de <main>. Plage : la première hauteur de bannière. */
+.app-root { timeline-scope: --page; }
+#main-scroll { scroll-timeline: --page block; }
+
+@keyframes sd-parallax {
+  to { transform: translate3d(0, 28%, 0) scale(1.08); }
+}
+@keyframes sd-content {
+  to { opacity: 0; transform: translate3d(0, -40px, 0); }
+}
+@keyframes sd-fade-media {
+  to { opacity: 0.3; }
+}
+@keyframes sd-glow {
+  to { opacity: 0.18; }
+}
+@keyframes sd-wash {
+  to { opacity: 1; }
+}
+
+@supports (animation-timeline: scroll()) {
+  [data-sd] {
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-timeline: --page;
+    animation-range: 0 75vh;
+  }
+  [data-sd='parallax'] { animation-name: sd-parallax; }
+  [data-sd='content'] { animation-name: sd-content; animation-range: 0 45vh; }
+  [data-sd='media'] { animation-name: sd-fade-media; }
+  .ambient-glow { animation: sd-glow linear both; animation-timeline: --page; animation-range: 0 90vh; }
+  .ambient-wash { animation: sd-wash linear both; animation-timeline: --page; animation-range: 0 90vh; }
+}
+
+[data-sd] { will-change: transform, opacity; }
 
 /* ───────── Barre d'onglets mobile (couche fonctionnelle flottante) ───────── */
 .tab-bar-glass {
@@ -227,10 +286,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ambient-tint {
+  .ambient > div {
     transition: none;
   }
-  .hero-parallax {
+  [data-sd='parallax'],
+  [data-sd='content'] {
+    animation: none !important;
     transform: none !important;
   }
 }
@@ -238,4 +299,63 @@
 @keyframes hero-progress {
   from { width: 0%; }
   to { width: 100%; }
+}
+
+/* Pages légales */
+.legal-prose h2 { color: #fff; font-size: 1.25rem; font-weight: 700; margin: 2.25rem 0 0.75rem; }
+.legal-prose p, .legal-prose li { color: rgba(235, 235, 245, 0.8); font-size: 15px; line-height: 1.7; }
+.legal-prose p + p { margin-top: 0.75rem; }
+.legal-prose ul { list-style: disc; padding-left: 1.25rem; margin: 0.5rem 0; }
+.legal-prose li + li { margin-top: 0.35rem; }
+.legal-prose a { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
+.legal-prose strong { color: #fff; font-weight: 600; }
+.legal-prose dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.4rem 1.5rem; font-size: 15px; }
+.legal-prose dt { color: #8E8E93; }
+.legal-prose dd { color: #fff; }
+@media (max-width: 640px) {
+  .legal-prose dl { grid-template-columns: 1fr; }
+  .legal-prose dd { margin-bottom: 0.5rem; }
+}
+
+/* Popup de bienvenue (<dialog> natif) */
+.welcome-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: welcome-backdrop 0.3s ease both;
+}
+.welcome-dialog[open] {
+  animation: welcome-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.welcome-dialog.welcome-out {
+  animation: welcome-out 0.2s ease-in both;
+}
+.welcome-dialog.welcome-out::backdrop {
+  animation: welcome-backdrop 0.2s ease-in reverse both;
+}
+@keyframes welcome-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes welcome-out {
+  to { opacity: 0; transform: translateY(8px) scale(0.98); }
+}
+@keyframes welcome-backdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-dialog[open],
+  .welcome-dialog.welcome-out,
+  .welcome-dialog::backdrop {
+    animation-duration: 0.01s;
+  }
+}
+
+/* Bannière d'accueil : fondu vers la page sur mobile uniquement (sur desktop, carte à coins arrondis). */
+.hero-fade {
+  mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+}
+@media (min-width: 768px) {
+  .hero-fade { mask-image: none; }
 }

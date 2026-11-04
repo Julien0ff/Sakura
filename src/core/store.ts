@@ -48,6 +48,15 @@ interface AppState {
   updateSettings: (patch: Partial<AppState['settings']>) => void;
 }
 
+// One-time migration of the pre-rename storage key, so nobody loses their list/history.
+const STORE_KEY = 'sakura-store';
+const LEGACY_STORE_KEY = 'anime-premium-store';
+if (typeof window !== 'undefined') {
+  const legacy = localStorage.getItem(LEGACY_STORE_KEY);
+  if (legacy && !localStorage.getItem(STORE_KEY)) localStorage.setItem(STORE_KEY, legacy);
+  if (legacy) localStorage.removeItem(LEGACY_STORE_KEY);
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
@@ -84,7 +93,7 @@ export const useAppStore = create<AppState>()(
       updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
     }),
     {
-      name: 'anime-premium-store',
+      name: STORE_KEY,
       version: 1,
       // v0 → v1: settings gained autoSkip / autoNext, progress map added.
       migrate: (persisted) => {

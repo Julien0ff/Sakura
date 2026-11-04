@@ -8,8 +8,17 @@ const graffitiFont = Permanent_Marker({ weight: "400", subsets: ["latin"], varia
 const impactFont = Bebas_Neue({ weight: "400", subsets: ["latin"], variable: "--font-impact" });
 
 export const metadata: Metadata = {
-  title: "Anime Premium - Streaming Sans Pub",
-  description: "Plateforme de streaming d'animes sans publicité avec une expérience premium.",
+  title: { default: "SAKURA", template: "%s · SAKURA" },
+  description: "SAKURA — catalogue d'animes, suivi de visionnage et lecteur sans publicité.",
+  applicationName: "SAKURA",
+  icons: { icon: "/icon.png", apple: "/icon.png" },
+  openGraph: {
+    title: "SAKURA",
+    description: "Catalogue d'animes, suivi de visionnage et lecteur sans publicité.",
+    images: [{ url: "/banner.png", width: 1500, height: 500, alt: "SAKURA" }],
+    locale: "fr_FR",
+    type: "website",
+  },
 };
 
 export const viewport: Viewport = {

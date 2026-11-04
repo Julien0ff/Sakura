@@ -1,9 +1,9 @@
 [package]
-name = "app"
+name = "sakura"
 version = "0.1.0"
-description = "A Tauri App"
+description = "SAKURA — catalogue et lecteur d'animes"
 authors = ["you"]
-license = ""
+license = "GPL-3.0-or-later"
 repository = ""
 edition = "2024"
 rust-version = "1.90"

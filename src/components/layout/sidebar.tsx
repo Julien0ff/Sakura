@@ -105,9 +105,9 @@ export function Sidebar() {
                   ? 'shadow-lg shadow-black/40' 
                   : 'text-[#8E8E93] hover:bg-black/30 hover:text-white'
               }`}
-              style={isActive ? { backgroundColor: 'var(--anime-color, rgba(255,255,255,0.1))', color: '#FFFFFF' } : {}}
+              style={isActive ? { backgroundColor: 'var(--anime-color, rgba(255,255,255,0.1))', color: 'var(--anime-on, #FFFFFF)' } : {}}
             >
-              <Icon className={`w-6 h-6 ${isActive ? 'text-white' : 'opacity-80'}`} strokeWidth={isActive ? 2.5 : 2} />
+              <Icon className={`w-6 h-6 ${isActive ? '' : 'opacity-80'}`} strokeWidth={isActive ? 2.5 : 2} />
               
               {isActive && (
                 <div className="absolute -left-[12px] w-1.5 h-6 rounded-r-full" style={{ backgroundColor: 'var(--anime-color, #FFFFFF)' }} />

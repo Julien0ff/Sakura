@@ -13,6 +13,7 @@ import { PlayerOverlay, type PlayerSource } from '@/components/player/player-ove
 import { getSkipTimes } from '@/core/api/aniskip';
 import { useAmbientColor } from '@/lib/use-ambient-color';
 import { readableOn } from '@/lib/color';
+import { EasterEggDialog, HUNTER_EGG_SRC, isHunterXHunter, useRapidClicks } from '@/components/anime/easter-egg';
 import { getTMDBDetails, getTMDBSeasonEpisodes } from '@/core/api/tmdb';
 
 function AnimeDetailsContent() {
@@ -211,6 +212,19 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
 
   useAmbientColor(anime?.coverImage?.color);
 
+  // Easter egg (Hunter×Hunter only): 5 quick clicks on the poster swap it for a hidden
+  // image and show it in a popup; 5 more quick clicks bring the original back.
+  const hasEgg = isHunterXHunter(anime?.title);
+  const [eggActive, setEggActive] = useState(false);
+  const [eggOpen, setEggOpen] = useState(false);
+  const toggleEgg = useCallback(() => {
+    setEggActive((active) => {
+      setEggOpen(!active);
+      return !active;
+    });
+  }, []);
+  const onPosterClick = useRapidClicks(toggleEgg, hasEgg);
+
   const closePlayer = useCallback(() => {
     requestIdRef.current++;
     setPlayingEpisode(null);
@@ -287,7 +301,15 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
         )}
 
         {/* Banner Section */}
-        <div className="relative w-full h-[62svh] min-h-[420px] md:h-[60vh] md:min-h-[460px] max-h-[760px] mb-4 md:mb-6 overflow-hidden">
+        {hasEgg && <EasterEggDialog open={eggOpen} onClose={() => setEggOpen(false)} src={HUNTER_EGG_SRC} />}
+
+        <div
+          className="relative w-full h-[62svh] min-h-[420px] md:h-[60vh] md:min-h-[460px] max-h-[760px] mb-4 md:mb-6 overflow-hidden"
+          // On phones the poster *is* the banner background, so the banner takes the taps.
+          onClick={(e) => {
+            if (window.matchMedia('(max-width: 767px)').matches) onPosterClick(e);
+          }}
+        >
           {/* Image (cover on phones, wide banner from md). The mask dissolves the bottom edge
               into the ambient color field so the banner melts into the page, no seam. */}
           <div
@@ -302,7 +324,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
               <picture>
                 {anime.bannerImage && <source media="(min-width: 768px)" srcSet={anime.bannerImage} />}
                 <img
-                  src={anime.coverImage.extraLarge || anime.bannerImage}
+                  src={eggActive ? HUNTER_EGG_SRC : anime.coverImage.extraLarge || anime.bannerImage}
                   alt=""
                   className="absolute inset-0 w-full h-full object-cover object-[center_25%] md:object-center"
                 />
@@ -338,11 +360,18 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
             data-sd="content"
             className="absolute bottom-0 left-0 w-full px-5 pb-6 md:py-10 md:pr-10 md:pl-32 flex flex-col md:flex-row gap-6 md:gap-10 items-start md:items-end z-20"
           >
-            <div className="relative w-32 md:w-48 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl shrink-0 apple-squircle hidden md:block">
-              <img 
-                src={anime.coverImage.extraLarge}
-                alt="Cover"
-                className="w-full h-full object-cover"
+            <div
+              onClick={onPosterClick}
+              className={`relative w-32 md:w-48 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl shrink-0 apple-squircle hidden md:block select-none ${
+                hasEgg ? 'active:scale-[0.97] transition-transform' : ''
+              }`}
+            >
+              <img
+                key={eggActive ? 'egg' : 'cover'}
+                src={eggActive ? HUNTER_EGG_SRC : anime.coverImage.extraLarge}
+                alt={`Affiche de ${title}`}
+                draggable={false}
+                className="w-full h-full object-cover animate-in fade-in zoom-in-95 duration-500"
               />
             </div>
             

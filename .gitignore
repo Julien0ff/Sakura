@@ -39,3 +39,21 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# IA
+.agents
+.claude
+
+# Fichiers locaux (scripts de test, pages HTML sauvegardées, config d'éditeur)
+/check_tmdb.js
+/test-*.js
+/test-*.ts
+/*.html
+.directory
+.vscode/
+skills-lock.json
+
+# Tauri
+/src-tauri/target/
+/src-tauri/gen/
+!.env.example

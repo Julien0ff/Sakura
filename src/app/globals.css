@@ -1,26 +1,241 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  /* Apple Dark Mode Palette */
+  --background: #000000;
+  --foreground: #FFFFFF;
+  --card: #1C1C1E;
+  --card-foreground: #FFFFFF;
+  --popover: #1C1C1E;
+  --popover-foreground: #FFFFFF;
+
+  /* Apple Blue Accent */
+  --primary: #0A84FF;
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #2C2C2E;
+  --secondary-foreground: #FFFFFF;
+
+  --muted: #2C2C2E;
+  --muted-foreground: #8E8E93;
+
+  --accent: #2C2C2E;
+  --accent-foreground: #FFFFFF;
+
+  /* Apple Red */
+  --destructive: #FF453A;
+  --destructive-foreground: #FFFFFF;
+
+  --border: rgba(255, 255, 255, 0.15);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #0A84FF;
+  --radius: 12px;
+
+  --sidebar: rgba(28, 28, 30, 0.5);
+  /* Transluscency for Glass */
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #0A84FF;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(255, 255, 255, 0.1);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #0A84FF;
+}
+
+.dark {
+  /* Same as above because we force dark mode */
+  --background: #000000;
+  --foreground: #FFFFFF;
+  --card: #1C1C1E;
+  --card-foreground: #FFFFFF;
+  --popover: #1C1C1E;
+  --popover-foreground: #FFFFFF;
+  --primary: #0A84FF;
+  --primary-foreground: #FFFFFF;
+  --secondary: #2C2C2E;
+  --secondary-foreground: #FFFFFF;
+  --muted: #2C2C2E;
+  --muted-foreground: #8E8E93;
+  --accent: #2C2C2E;
+  --accent-foreground: #FFFFFF;
+  --destructive: #FF453A;
+  --destructive-foreground: #FFFFFF;
+  --border: rgba(255, 255, 255, 0.15);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #0A84FF;
+
+  --sidebar: rgba(28, 28, 30, 0.6);
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #0A84FF;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(255, 255, 255, 0.1);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: rgba(255, 255, 255, 0.15);
+  --sidebar-ring: #0A84FF;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  .liquid-glass {
+    background: rgba(30, 30, 30, 0.5);
+    backdrop-filter: blur(40px) saturate(150%);
+    -webkit-backdrop-filter: blur(40px) saturate(150%);
+    border-right: 0.5px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .liquid-glass-card {
+    background: rgba(44, 44, 46, 0.4);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    border: 0.5px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.2);
+  }
+
+  .glass-sidebar {
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(30px) saturate(150%);
+    -webkit-backdrop-filter: blur(30px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  .apple-squircle {
+    border-radius: 16px;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Force Plyr to take full height and center the video properly */
+  .plyr {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .plyr__video-wrapper {
+    width: 100% !important;
+    height: 100% !important;
+    background: black !important;
+  }
+  .plyr__video-wrapper video {
+    height: 100% !important;
+    object-fit: contain !important;
+  }
+}
+/* ───────── Ambient tint (couleur dynamique de l'anime en cours) ─────────
+   --anime-color est posé sur <html> par la bannière / la page anime.
+   --hero-progress (0 → 1) suit le scroll de la bannière. */
+@property --anime-color {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #0a84ff;
+}
+
+.ambient-tint {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  /* Deux halos : un lavis principal en haut, un écho plus diffus qui descend au scroll. */
+  background:
+    radial-gradient(120% 70% at 30% 0%, color-mix(in oklab, var(--anime-color) 55%, transparent) 0%, transparent 70%),
+    radial-gradient(90% 60% at 85% calc(10% + var(--hero-progress, 0) * 50%), color-mix(in oklab, var(--anime-color) 30%, transparent) 0%, transparent 75%);
+  opacity: calc(var(--ambient-strength, 0) * (0.55 - var(--hero-progress, 0) * 0.3));
+  transition: --anime-color 1.2s ease, opacity 0.6s ease;
+}
+
+/* ───────── Barre d'onglets mobile (couche fonctionnelle flottante) ───────── */
+.tab-bar-glass {
+  background: rgba(28, 28, 30, 0.62);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
+}
+
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .tab-bar-glass,
+  .liquid-glass,
+  .glass-sidebar {
+    background: rgb(28, 28, 30);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-tint {
+    transition: none;
+  }
+  .hero-parallax {
+    transform: none !important;
+  }
+}
+
+@keyframes hero-progress {
+  from { width: 0%; }
+  to { width: 100%; }
 }

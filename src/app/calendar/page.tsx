@@ -6,7 +6,7 @@ import { useAppStore, useHydrated, type Lang } from '@/core/store';
 import { LangTag } from '@/components/anime/lang-tag';
 import { haptic } from '@/lib/haptics';
 import { useQuery } from '@tanstack/react-query';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays } from '@/components/ui/icons';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 

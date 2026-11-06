@@ -5,7 +5,7 @@ import { AnimeResults } from '@/components/anime/anime-results';
 import { fetchAniList, BROWSE_ANIMES } from '@/core/api/anilist';
 import type { AnimeSummary } from '@/lib/anime';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { Compass, CalendarDays } from 'lucide-react';
+import { Compass, CalendarDays } from '@/components/ui/icons';
 import Link from 'next/link';
 import { haptic } from '@/lib/haptics';
 import { useState } from 'react';

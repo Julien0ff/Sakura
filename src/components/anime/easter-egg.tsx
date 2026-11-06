@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { X } from '@/components/ui/icons';
 
 /** Image served from /public (the file name contains a space, hence the encoding). */
 export const HUNTER_EGG_SRC = encodeURI('/easter-egg Hunter.jpg');

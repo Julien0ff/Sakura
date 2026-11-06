@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAniList, GET_TRENDING_ANIMES } from '@/core/api/anilist';
 import { getTMDBDetails } from '@/core/api/tmdb';
-import { Play, Info } from 'lucide-react';
+import { Play, Info } from '@/components/ui/icons';
 import Link from 'next/link';
 import { formatScore, statusLabel, type AnimeSummary } from '@/lib/anime';
 import { useAmbientColor } from '@/lib/use-ambient-color';
@@ -58,7 +58,8 @@ export function HeroBanner() {
 
   const goTo = useCallback((i: number) => setCurrentIndex(((i % count) + count) % count), [count]);
 
-  // Auto-advance. Restarts after every manual change; pauses on hover/focus,
+  // Auto-advance. Restarts after every manual change; pauses while keyboard focus is inside
+  // (not on mouse hover: passing the pointer over the banner shouldn't freeze it),
   // in background tabs and when the user prefers reduced motion.
   useEffect(() => {
     if (count < 2 || paused) return;
@@ -78,9 +79,9 @@ export function HeroBanner() {
       aria-roledescription="carrousel"
       aria-label="À la une"
       className="relative w-full h-[72svh] min-h-[440px] md:h-[75vh] md:min-h-[560px] max-h-[850px] mb-2 md:mb-10 overflow-hidden md:rounded-b-[48px] md:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)]"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocusCapture={() => setPaused(true)}
+      onFocusCapture={(e) => {
+        if ((e.target as HTMLElement).matches(':focus-visible')) setPaused(true);
+      }}
       onBlurCapture={() => setPaused(false)}
       onTouchStart={(e) => {
         touchStartX.current = e.touches[0].clientX;

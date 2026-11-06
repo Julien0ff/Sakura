@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePlyr, APITypes } from 'plyr-react';
 import 'plyr-react/plyr.css';
 import Hls from 'hls.js';
-import { FastForward } from 'lucide-react';
+import { FastForward } from '@/components/ui/icons';
 import type { SkipInterval } from '@/core/api/aniskip';
 import { haptic } from '@/lib/haptics';
 

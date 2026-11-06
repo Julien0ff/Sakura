@@ -45,7 +45,10 @@
 - Ma liste, Historique, ligne « Reprendre » sur l'accueil
 - Position de lecture mémorisée pour chaque épisode, barre de progression et badge « Vu »
 - Bouton « Reprendre · Ép. N » sur chaque fiche
-- Aucun compte : tout reste sur l'appareil (localStorage), aucun cookie
+- Statuts (À voir, En cours, En pause, Terminé, Abandonné) et notes de 1 à 10 par anime et par épisode ; « En cours » et « Terminé » se posent tout seuls
+- Profil partageable `sakura.thefoxy.me/<pseudo>` (privé par défaut) : blocs à afficher et à ordonner, bannière par défaut ou débloquée en terminant un anime sur SAKURA, trophées 🏆 pour les plus populaires
+- Compte facultatif (Discord ou Google, via Supabase) : liste, historique, progression et réglages synchronisés entre appareils ; comptes Discord et Google liables
+- Sans compte : tout reste sur l'appareil (localStorage), aucun cookie
 
 **Lecteur**
 - Plyr + HLS.js, choix de la qualité et de la vitesse
@@ -87,6 +90,7 @@ npm run dev                  # http://localhost:3000
 | Variable | Rôle |
 | --- | --- |
 | `TMDB_READ_TOKEN` | « API Read Access Token » TMDB ([réglages API](https://www.themoviedb.org/settings/api)). Il n'est utilisé que côté serveur par le proxy `/api/tmdb` et n'est jamais envoyé au navigateur. |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Projet Supabase des comptes (facultatif : sans elles, le site fonctionne sans comptes). Clés publiques ; les données sont protégées par les règles RLS de `supabase/migrations/`. |
 
 ### Scripts
 
@@ -95,6 +99,7 @@ npm run dev                  # http://localhost:3000
 | `npm run dev` | Serveur de développement |
 | `npm run build` puis `npm start` | Build et serveur de production |
 | `npm run lint` | ESLint |
+| `npm test` | Tests unitaires (synchro, pseudos) avec `node --test` |
 | `npx tauri dev` | Version desktop en développement |
 
 ## Déploiement (Vercel)
@@ -102,7 +107,7 @@ npm run dev                  # http://localhost:3000
 SAKURA est hébergé sur [Vercel](https://vercel.com).
 
 1. Importer le dépôt dans Vercel (le framework Next.js est détecté automatiquement).
-2. Dans *Settings → Environment Variables*, ajouter `TMDB_READ_TOKEN`.
+2. Dans *Settings → Environment Variables*, ajouter `TMDB_READ_TOKEN`, `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 3. Déployer. Chaque push sur `main` déclenche ensuite un déploiement de production, et chaque pull request un aperçu.
 
 Avant la mise en ligne publique, complétez les informations légales dans [`src/lib/site-config.ts`](src/lib/site-config.ts) : éditeur, contact et adresse de signalement. Elles alimentent le footer et les pages `/legal/*`.

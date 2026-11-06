@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { X, History, FastForward, CalendarDays } from 'lucide-react';
+import { X, History, FastForward, CalendarDays } from '@/components/ui/icons';
 import { useAppStore, type Lang } from '@/core/store';
 import { siteConfig } from '@/lib/site-config';
 import { haptic } from '@/lib/haptics';
@@ -75,7 +75,7 @@ export function WelcomePopup() {
             Bienvenue sur {siteConfig.name}
           </h2>
           <p className="mt-3 text-[15px] md:text-[16px] leading-relaxed text-[#EBEBF5]/75 max-w-xl">
-            Vos animes, sans publicité, avec un suivi qui se souvient de tout. Projet open-source, gratuit et sans compte.
+            Vos animes, sans publicité, avec un suivi qui se souvient de tout. Projet open-source et gratuit, compte facultatif.
           </p>
 
           <ul className="mt-5 md:mt-7 grid gap-3.5 md:grid-cols-3 md:gap-3">
@@ -130,7 +130,7 @@ export function WelcomePopup() {
             <Link href="/legal/cgu" onClick={close} className="underline underline-offset-2 hover:text-white">
               conditions d&apos;utilisation
             </Link>
-            . Aucun cookie, vos données restent sur cet appareil.
+            . Aucun cookie ; sans compte, vos données restent sur cet appareil.
           </p>
         </div>
       </div>

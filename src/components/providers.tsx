@@ -5,6 +5,9 @@ import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { useAppStore } from '@/core/store';
 import { setHapticsEnabled, setHapticIntensity } from '@/lib/haptics';
+import { AuthBootstrap } from '@/core/auth';
+import { SyncBootstrap } from '@/core/sync/engine';
+import { Toaster } from '@/components/ui/toast';
 
 function HapticsSync() {
   const on = useAppStore((s) => s.settings.haptics);
@@ -28,7 +31,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <NextThemesProvider attribute="class" defaultTheme="dark" enableSystem={false}>
         <HapticsSync />
+        <AuthBootstrap />
+        <SyncBootstrap />
         {children}
+        <Toaster />
       </NextThemesProvider>
     </QueryClientProvider>
   );

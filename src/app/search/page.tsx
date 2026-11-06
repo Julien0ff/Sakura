@@ -5,7 +5,7 @@ import { AnimeResults } from '@/components/anime/anime-results';
 import { fetchAniList, BROWSE_ANIMES } from '@/core/api/anilist';
 import type { AnimeSummary } from '@/lib/anime';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { Search as SearchIcon, X } from 'lucide-react';
+import { Search as SearchIcon, X } from '@/components/ui/icons';
 import { useEffect, useState } from 'react';
 
 export default function SearchPage() {

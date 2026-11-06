@@ -2,7 +2,7 @@
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { useAppStore, useHydrated } from '@/core/store';
-import { Clock, Trash2, X } from 'lucide-react';
+import { Clock, Trash2, X } from '@/components/ui/icons';
 import Link from 'next/link';
 import { haptic } from '@/lib/haptics';
 

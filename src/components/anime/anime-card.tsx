@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Play } from 'lucide-react';
+import { Play } from '@/components/ui/icons';
 import { formatScore, statusLabel } from '@/lib/anime';
 
 interface AnimeCardProps {
@@ -9,10 +9,12 @@ interface AnimeCardProps {
   status?: string | null;
   score?: number | null;
   subtitle?: string;
+  /** Small label on the cover (e.g. the user's list status). */
+  badge?: string;
   className?: string;
 }
 
-export function AnimeCard({ id, title, cover, status, score, subtitle, className = '' }: AnimeCardProps) {
+export function AnimeCard({ id, title, cover, status, score, subtitle, badge, className = '' }: AnimeCardProps) {
   const rating = formatScore(score);
 
   return (
@@ -25,6 +27,9 @@ export function AnimeCard({ id, title, cover, status, score, subtitle, className
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
             loading="lazy"
           />
+        )}
+        {badge && (
+          <span className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-md bg-black/65 backdrop-blur-md text-[11px] font-semibold text-white">{badge}</span>
         )}
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
           <div className="w-14 h-14 rounded-full liquid-glass flex items-center justify-center pl-1 shadow-2xl scale-75 group-hover:scale-100 transition-transform duration-300 ease-out">

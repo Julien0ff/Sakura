@@ -1,15 +1,20 @@
 'use client';
 
 import { AppLayout } from '@/components/layout/app-layout';
-import { useAppStore, type Lang } from '@/core/store';
-import { Settings } from 'lucide-react';
+import { useAuth } from '@/core/auth';
+import { useAppStore, type EpisodeView, type Lang } from '@/core/store';
+import { Settings } from '@/components/ui/icons';
 import { haptic, testHaptic, setHapticIntensity, type HapticIntensity } from '@/lib/haptics';
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
+import { Group, Row, Segmented, ActionButton, Toggle } from '@/components/settings/grouped-list';
+import { AccountGroup } from '@/components/settings/account-group';
 
 export default function SettingsPage() {
   const settings = useAppStore((s) => s.settings);
   const updateSettings = useAppStore((s) => s.updateSettings);
   const clearHistory = useAppStore((s) => s.clearHistory);
+  const { user } = useAuth();
+  const touchDevice = useTouchDevice();
 
   return (
     <AppLayout>
@@ -24,6 +29,8 @@ export default function SettingsPage() {
         </h1>
 
         <div className="max-w-2xl space-y-7">
+          <AccountGroup />
+
           <Group title="Lecture">
             <Row label="Langue par défaut" stackOnMobile>
               <Segmented<Lang>
@@ -42,6 +49,18 @@ export default function SettingsPage() {
               checked={settings.autoSkip}
               onChange={(v) => updateSettings({ autoSkip: v })}
             />
+            <Row label="Affichage des épisodes" hint="Automatique : liste sur téléphone, cartes sur ordinateur." stackOnMobile>
+              <Segmented<EpisodeView>
+                label="Affichage des épisodes"
+                value={settings.episodeView ?? 'auto'}
+                options={[
+                  ['auto', 'Auto'],
+                  ['cards', 'Cartes'],
+                  ['list', 'Liste'],
+                ]}
+                onChange={(v) => updateSettings({ episodeView: v })}
+              />
+            </Row>
             <Toggle
               label="Épisode suivant automatique"
               hint="Après un compte à rebours de 8 s."
@@ -50,6 +69,7 @@ export default function SettingsPage() {
             />
           </Group>
 
+          {touchDevice && (
           <Group title="Retour haptique" footer="Android (Chrome, Edge, Samsung Internet) et iPhone sous iOS 18 ou plus récent.">
             <Toggle label="Vibrations au toucher" checked={settings.haptics} onChange={(v) => updateSettings({ haptics: v })} />
             {settings.haptics && (
@@ -76,8 +96,9 @@ export default function SettingsPage() {
               </>
             )}
           </Group>
+          )}
 
-          <Group title="Données" footer="Votre liste, votre historique et vos réglages sont stockés uniquement sur cet appareil.">
+          <Group title="Données" footer={user ? 'Votre liste, votre historique et vos réglages sont synchronisés avec votre compte.' : 'Votre liste, votre historique et vos réglages sont stockés uniquement sur cet appareil.'}>
             <Row label="Message de bienvenue" hint="Le réafficher maintenant.">
               <ActionButton
                 onClick={() => {
@@ -108,122 +129,17 @@ export default function SettingsPage() {
   );
 }
 
-/* ───────── Building blocks (iOS-style grouped list) ───────── */
-
-function Group({ title, footer, children }: { title: string; footer?: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h2 className="px-4 mb-2 text-[13px] font-semibold uppercase tracking-wide text-[#8E8E93]">{title}</h2>
-      <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] overflow-hidden divide-y divide-white/[0.08]">{children}</div>
-      {footer && <p className="px-4 mt-2 text-[13px] leading-snug text-[#8E8E93]">{footer}</p>}
-    </section>
-  );
-}
-
-function Row({
-  label,
-  hint,
-  stackOnMobile = false,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  /** Put the control under the label on phones (wide controls like segmented pickers). */
-  stackOnMobile?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className={`flex gap-3 px-4 py-3 min-h-[56px] ${
-        stackOnMobile ? 'flex-col sm:flex-row sm:items-center sm:justify-between sm:gap-4' : 'items-center justify-between gap-4'
-      }`}
-    >
-      <div className="min-w-0">
-        <div className="text-[16px] text-white">{label}</div>
-        {hint && <div className="text-[13px] leading-snug text-[#8E8E93] mt-0.5">{hint}</div>}
-      </div>
-      <div className={stackOnMobile ? 'w-full sm:w-auto shrink-0' : 'shrink-0'}>{children}</div>
-    </div>
-  );
-}
-
-function Segmented<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-  silent = false,
-}: {
-  label: string;
-  value: T;
-  options: [T, string][];
-  onChange: (v: T) => void;
-  /** Skip the default selection haptic (the caller plays its own). */
-  silent?: boolean;
-}) {
-  return (
-    <div
-      role="radiogroup"
-      aria-label={label}
-      className="grid gap-1 p-1 rounded-xl bg-black/40 border border-white/10 w-full sm:w-auto sm:min-w-[240px]"
-      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
-    >
-      {options.map(([v, text]) => (
-        <button
-          key={v}
-          type="button"
-          role="radio"
-          aria-checked={value === v}
-          onClick={() => {
-            if (!silent) haptic('selection');
-            onChange(v);
-          }}
-          className={`h-9 px-3 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors cursor-pointer ${
-            value === v ? 'bg-white text-black shadow-sm' : 'text-white/70 hover:text-white'
-          }`}
-        >
-          {text}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function ActionButton({ children, onClick, destructive = false }: { children: React.ReactNode; onClick: () => void; destructive?: boolean }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`h-9 px-4 rounded-lg text-sm font-semibold whitespace-nowrap cursor-pointer transition-colors ${
-        destructive ? 'bg-red-500/15 hover:bg-red-500/25 text-[#FF6961]' : 'bg-white/10 hover:bg-white/20 text-white'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Toggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <label className="flex items-center justify-between gap-4 px-4 py-3 min-h-[56px] cursor-pointer active:bg-white/[0.03]">
-      <span className="min-w-0">
-        <span className="block text-[16px] text-white">{label}</span>
-        {hint && <span className="block text-[13px] leading-snug text-[#8E8E93] mt-0.5">{hint}</span>}
-      </span>
-      <span className="relative shrink-0">
-        <input
-          type="checkbox"
-          role="switch"
-          className="peer sr-only"
-          checked={checked}
-          onChange={(e) => {
-            onChange(e.target.checked);
-            haptic('selection');
-          }}
-        />
-        <span className="block w-[51px] h-[31px] rounded-full bg-white/15 peer-checked:bg-[#30D158] transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-primary" />
-        <span className="absolute top-[2px] left-[2px] w-[27px] h-[27px] rounded-full bg-white shadow-md transition-transform peer-checked:translate-x-5" />
-      </span>
-    </label>
+/** Haptics only exist on touch devices: hide the section on mouse-driven computers. */
+const COARSE = '(pointer: coarse)';
+function useTouchDevice() {
+  return useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia(COARSE);
+      mq.addEventListener('change', cb);
+      return () => mq.removeEventListener('change', cb);
+    },
+    () => window.matchMedia(COARSE).matches,
+    () => false
   );
 }
 

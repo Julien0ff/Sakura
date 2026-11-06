@@ -106,6 +106,7 @@ query ($id: Int) {
     seasonYear
     genres
     averageScore
+    popularity
     trailer {
       id
       site

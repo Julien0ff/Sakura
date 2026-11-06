@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { fetchAniList, GET_TRENDING_ANIMES } from '@/core/api/anilist';
-import { Play } from 'lucide-react';
+import { Play } from '@/components/ui/icons';
 import Image from 'next/image';
 
 export function TrendingList() {

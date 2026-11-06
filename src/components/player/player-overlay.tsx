@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, SkipForward, X } from 'lucide-react';
+import { ArrowLeft, SkipForward, X } from '@/components/ui/icons';
 import type { SkipInterval } from '@/core/api/aniskip';
+import { RatingPicker } from '@/components/anime/rating-picker';
 import { haptic } from '@/lib/haptics';
 
 const VideoPlayer = dynamic(() => import('./video-player').then((m) => m.VideoPlayer), { ssr: false });
@@ -33,9 +34,14 @@ interface PlayerOverlayProps {
   autoSkip: boolean;
   startAt: number;
   onProgress: (time: number, duration: number) => void;
+  /** The user's rating for this episode (1–10). */
+  episodeRating?: number | null;
+  onRateEpisode?: (rating: number | null) => void;
 }
 
 const NEXT_COUNTDOWN = 8;
+/** The end-of-episode rating card hides itself after this long. */
+const RATE_PROMPT_MS = 12000;
 const IDLE_MS = 3000;
 
 function sourceName(s: PlayerSource, i: number) {
@@ -72,7 +78,24 @@ function PlayerOverlayInner({
   autoSkip,
   startAt,
   onProgress,
+  episodeRating = null,
+  onRateEpisode,
 }: PlayerOverlayProps) {
+  // End-of-episode rating prompt: shown once per episode, never touches the next-episode countdown.
+  const [ratePrompt, setRatePrompt] = useState<'hidden' | 'shown' | 'done'>('hidden');
+  const [promptFor, setPromptFor] = useState(episodeLabel);
+  if (promptFor !== episodeLabel) {
+    setPromptFor(episodeLabel);
+    setRatePrompt('hidden');
+  }
+  const showRatePrompt = () => {
+    if (onRateEpisode) setRatePrompt((r) => (r === 'hidden' ? 'shown' : r));
+  };
+  useEffect(() => {
+    if (ratePrompt !== 'shown') return;
+    const t = setTimeout(() => setRatePrompt('done'), RATE_PROMPT_MS);
+    return () => clearTimeout(t);
+  }, [ratePrompt]);
   const [idle, setIdle] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -159,12 +182,16 @@ function PlayerOverlayInner({
             startAt={startAt}
             skipTimes={skipTimes}
             autoSkip={autoSkip}
-            onProgress={onProgress}
+            onProgress={(time, duration) => {
+              onProgress(time, duration);
+              if (duration > 0 && time / duration >= 0.9) showRatePrompt();
+            }}
             onPlayingChange={(p) => {
               setPlaying(p);
               if (p) wake();
             }}
             onEnded={() => {
+              showRatePrompt();
               if (next && autoNext) setCountdown(NEXT_COUNTDOWN);
             }}
           />
@@ -244,6 +271,27 @@ function PlayerOverlayInner({
           </div>
         )}
       </div>
+
+      {/* End-of-episode rating (bottom-left, independent from the up-next card) */}
+      {ratePrompt === 'shown' && onRateEpisode && (
+        <div className="absolute z-[120] left-4 md:left-10 bottom-24 w-[min(92vw,340px)] p-4 rounded-3xl bg-black/70 backdrop-blur-xl border border-white/10 text-white shadow-2xl animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="text-xs font-semibold uppercase tracking-wider text-white/60">Noter cet épisode</div>
+            <button onClick={() => setRatePrompt('done')} aria-label="Fermer" className="p-1 rounded-full hover:bg-white/10 cursor-pointer">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <RatingPicker
+            value={episodeRating}
+            size="sm"
+            label="Note de cet épisode"
+            onChange={(r) => {
+              onRateEpisode(r);
+              setRatePrompt('done');
+            }}
+          />
+        </div>
+      )}
 
       {/* Up-next card */}
       {countdown !== null && next && (

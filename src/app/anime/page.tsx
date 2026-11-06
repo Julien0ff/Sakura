@@ -4,11 +4,15 @@ import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAniList, GET_ANIME_DETAILS } from '@/core/api/anilist';
 import { AppLayout } from '@/components/layout/app-layout';
-import { Play, ArrowLeft, Star, Calendar, MonitorPlay, Tags, Bookmark, BookmarkCheck, Check } from 'lucide-react';
+import { Play, ArrowLeft, Star, Calendar, MonitorPlay, Tags, Bookmark, BookmarkCheck, Check } from '@/components/ui/icons';
 import Link from 'next/link';
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { formatScore, statusLabel } from '@/lib/anime';
 import { useAppStore, progressKey, isWatched, type Lang } from '@/core/store';
+import { StatusPicker } from '@/components/anime/status-picker';
+import { RatingPicker } from '@/components/anime/rating-picker';
+import { Popover } from '@/components/ui/popover';
+import { onEpisodeWatched } from '@/core/auto-track';
 import { PlayerOverlay, type PlayerSource } from '@/components/player/player-overlay';
 import { getSkipTimes } from '@/core/api/aniskip';
 import { useAmbientColor } from '@/lib/use-ambient-color';
@@ -24,10 +28,37 @@ function AnimeDetailsContent() {
   return <AnimeDetails key={id ?? ''} id={id} autoPlay={searchParams.get('play') === '1'} />;
 }
 
+/** Episode list layouts (Settings › Affichage des épisodes). `auto` = list on phones, cards from md. */
+const EPISODE_LAYOUTS = {
+  cards: {
+    container: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4',
+    item: 'flex flex-col gap-3 p-3',
+    thumb: 'w-full',
+    play: 'w-12 h-12',
+    rating: 'bottom-3',
+  },
+  list: {
+    container: 'flex flex-col gap-2',
+    item: 'flex flex-row items-center gap-3 p-2',
+    thumb: 'w-32 md:w-40 shrink-0',
+    play: 'w-8 h-8',
+    rating: 'top-1/2 -translate-y-1/2',
+  },
+  auto: {
+    container: 'flex flex-col gap-2 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-4',
+    item: 'flex flex-row items-center gap-3 p-2 md:flex-col md:items-stretch md:p-3',
+    thumb: 'w-32 shrink-0 md:w-full',
+    play: 'w-8 h-8 md:w-12 md:h-12',
+    rating: 'top-1/2 -translate-y-1/2 md:top-auto md:translate-y-0 md:bottom-3',
+  },
+} as const;
+
 function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }) {
   const defaultLang = useAppStore((s) => s.settings.defaultLang);
   const watchlist = useAppStore((s) => s.watchlist);
-  const toggleWatchlist = useAppStore((s) => s.toggleWatchlist);
+  const setAnimeRating = useAppStore((s) => s.setAnimeRating);
+  const rateEpisode = useAppStore((s) => s.rateEpisode);
+  const episodeRatings = useAppStore((s) => s.episodeRatings);
   const addToHistory = useAppStore((s) => s.addToHistory);
   const history = useAppStore((s) => s.history);
   const progress = useAppStore((s) => s.progress);
@@ -303,7 +334,8 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
   const animeColor = anime.coverImage.color || '#0A84FF';
   const title = anime.tmdbTitle || anime.title.english || anime.title.romaji;
   const rating = formatScore(anime.averageScore);
-  const inWatchlist = watchlist.some((a) => a.id === anime.id);
+  const listEntry = watchlist.find((a) => a.id === anime.id);
+  const epLayout = EPISODE_LAYOUTS[settings.episodeView ?? 'auto'];
   // Last episode watched in the current season → "Reprendre".
   const lastWatched = history.find((h) => h.id === anime.id && h.season === activeSeason);
   const resumeEpisode = lastWatched ? episodeList.find((e) => e.episode_number === lastWatched.episodeNumber) : undefined;
@@ -352,7 +384,32 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
             skipTimes={skipTimes}
             autoSkip={settings.autoSkip}
             startAt={progress[currentProgressKey]?.time ?? 0}
-            onProgress={(time, duration) => saveProgress(currentProgressKey, time, duration)}
+            episodeRating={episodeRatings[currentProgressKey]?.rating ?? null}
+            onRateEpisode={(r) => rateEpisode(anime.id, activeSeason, playingEpisode.episode_number, r)}
+            onProgress={(time, duration) => {
+              // First crossing of the "watched" threshold → auto status / completion / banner unlock.
+              const before = isWatched(useAppStore.getState().progress[currentProgressKey]);
+              saveProgress(currentProgressKey, time, duration);
+              if (!before && isWatched({ time, duration, updatedAt: 0 })) {
+                onEpisodeWatched(
+                  {
+                    id: anime.id,
+                    title,
+                    cover: anime.coverImage.extraLarge,
+                    color: anime.coverImage.color,
+                    score: anime.averageScore,
+                    status: anime.status,
+                    anilistStatus: anime.status,
+                    anilistEpisodes: anime.episodes,
+                    tmdbSeasons: anime.tmdbSeasons,
+                    bannerImage: anime.bannerImage,
+                    popularity: anime.popularity,
+                  },
+                  activeSeason,
+                  playingEpisode.episode_number
+                );
+              }
+            }}
           />
         )}
 
@@ -474,25 +531,25 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                   <Play className="w-4 h-4" fill="currentColor" />
                   {resumeEpisode ? `Reprendre · Ép. ${resumeEpisode.episode_number}` : 'Regarder'}
                 </button>
-                <button
-                  onClick={() => {
-                    haptic(inWatchlist ? 'light' : 'success');
-                    toggleWatchlist({
+                <StatusPicker
+                  anime={{
                     id: anime.id,
                     title,
                     cover: anime.coverImage.extraLarge,
                     color: anime.coverImage.color,
                     score: anime.averageScore,
                     status: anime.status,
-                  });
                   }}
-                  aria-pressed={inWatchlist}
-                  className="flex-1 md:flex-none flex items-center justify-center gap-2 liquid-glass text-white h-12 md:h-auto px-6 md:py-2.5 rounded-full font-semibold text-[15px] hover:bg-white/15 transition-all duration-300 cursor-pointer"
-                >
-                  {inWatchlist ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
-                  {inWatchlist ? 'Dans ma liste' : 'Ma liste'}
-                </button>
+                  wrapperClassName="flex-1 md:flex-none"
+                  className="w-full flex items-center justify-center gap-2 liquid-glass text-white h-12 md:h-auto px-6 md:py-2.5 rounded-full font-semibold text-[15px] hover:bg-white/15 transition-all duration-300 cursor-pointer"
+                />
               </div>
+              {listEntry && (
+                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+                  <span className="text-[13px] font-semibold text-[#8E8E93]">Ma note</span>
+                  <RatingPicker value={listEntry.rating} onChange={(r) => setAnimeRating(anime.id, r)} label="Ma note pour cet anime" size="sm" />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -567,7 +624,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pr-2 pb-4">
+                <div className={`${epLayout.container} pr-2 pb-4`}>
                   {isLoadingEpisodes ? (
                     Array.from({ length: 8 }, (_, i) => (
                       <div key={i} className="aspect-video rounded-2xl bg-white/5 animate-pulse" />
@@ -579,18 +636,19 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                       const watched = isWatched(epProgress);
                       const isLast = lastWatched?.episodeNumber === ep.episode_number;
                       const pct = epProgress?.duration ? Math.min(100, (epProgress.time / epProgress.duration) * 100) : 0;
+                      const epRating = episodeRatings[progressKey(anime.id, activeSeason, ep.episode_number)]?.rating ?? null;
                       return (
+                        <div key={ep.episode_number} className="relative">
                         <button
-                          key={ep.episode_number}
                           onClick={() => {
                             haptic('medium');
                             playEpisode(ep, anime);
                           }}
-                          className={`flex flex-col gap-3 p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-all duration-300 group border text-left cursor-pointer ${
+                          className={`w-full ${epLayout.item} rounded-2xl bg-white/5 hover:bg-white/10 transition-all duration-300 group border text-left cursor-pointer ${
                             isLast ? 'border-white/15' : 'border-transparent hover:border-white/10'
                           } ${watched ? 'opacity-70 hover:opacity-100' : ''}`}
                         >
-                          <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black/40">
+                          <div className={`relative ${epLayout.thumb} aspect-video rounded-xl overflow-hidden bg-black/40`}>
                             {thumb ? (
                               <img src={thumb} alt={ep.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                             ) : (
@@ -609,15 +667,53 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                               </div>
                             )}
                             <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-transparent transition-colors duration-300">
-                              <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center shadow-lg shadow-black/50 group-hover:scale-110 transition-transform duration-300">
-                                <Play className="w-5 h-5 text-white ml-1" fill="currentColor" />
+                              <div className={`${epLayout.play} rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center shadow-lg shadow-black/50 group-hover:scale-110 transition-transform duration-300`}>
+                                <Play className="w-1/2 h-1/2 text-white ml-0.5" fill="currentColor" />
                               </div>
                             </div>
                           </div>
-                          <div className="font-semibold text-white text-[14px] line-clamp-2 px-1">
+                          <div className="min-w-0 font-semibold text-white text-[14px] line-clamp-2 px-1 pr-12">
                             {ep.episode_number}. {ep.name}
                           </div>
                         </button>
+                        {/* Rating sits outside the play button (no nested buttons). */}
+                        <Popover
+                          label={`Noter l’épisode ${ep.episode_number}`}
+                          side="top"
+                          align="end"
+                          className={`!absolute right-3 ${epLayout.rating}`}
+                          trigger={({ open, toggle }) => (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                haptic('selection');
+                                toggle();
+                              }}
+                              aria-expanded={open}
+                              aria-label={epRating ? `Note : ${epRating} sur 10. Modifier` : `Noter l’épisode ${ep.episode_number}`}
+                              className={`h-8 min-w-8 px-2 rounded-full flex items-center justify-center gap-1 text-[12px] font-bold cursor-pointer transition-colors ${
+                                epRating ? 'bg-[#FFD60A] text-black' : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+                              }`}
+                            >
+                              ★{epRating ? ` ${epRating}` : ''}
+                            </button>
+                          )}
+                        >
+                          {(close) => (
+                            <div className="p-2 w-[min(80vw,300px)]">
+                              <RatingPicker
+                                value={epRating}
+                                label={`Note de l’épisode ${ep.episode_number}`}
+                                size="sm"
+                                onChange={(r) => {
+                                  rateEpisode(anime.id, activeSeason, ep.episode_number, r);
+                                  close();
+                                }}
+                              />
+                            </div>
+                          )}
+                        </Popover>
+                        </div>
                       );
                     })
                   )}

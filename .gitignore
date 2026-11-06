@@ -57,3 +57,6 @@ skills-lock.json
 /src-tauri/target/
 /src-tauri/gen/
 !.env.example
+
+# Superpowers scratch (mockups, plan ledgers)
+.superpowers/

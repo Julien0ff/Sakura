@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Compass, Bookmark, Clock, Settings, Search, CalendarDays } from 'lucide-react';
+import { Home, Compass, Bookmark, Clock, Search, CalendarDays } from '@/components/ui/icons';
+import { AccountMenu } from '@/components/account/account-menu';
 import { usePathname } from 'next/navigation';
 import { haptic } from '@/lib/haptics';
 
@@ -28,17 +29,10 @@ export function MobileNav() {
 
   return (
     <>
-      {/* Settings lives outside the tab bar on mobile (it's not a primary section). */}
-      {pathname !== '/settings' && (
-        <Link
-          href="/settings"
-          aria-label="Paramètres"
-          onClick={() => haptic('selection')}
-          className="md:hidden fixed z-40 right-4 top-[max(env(safe-area-inset-top),16px)] w-11 h-11 rounded-full tab-bar-glass flex items-center justify-center text-white/90 active:scale-95 transition-transform"
-        >
-          <Settings className="w-5 h-5" strokeWidth={2} />
-        </Link>
-      )}
+      {/* Account / settings entry lives outside the tab bar on mobile (it's not a primary section). */}
+      <div className="md:hidden fixed z-40 right-4 top-[max(env(safe-area-inset-top),16px)]">
+        <AccountMenu placement="mobile" />
+      </div>
 
       {/* Progressive blur + dim behind the bar so it always sits on a calm background. */}
       <div aria-hidden className="scroll-edge-bottom md:hidden z-30">
@@ -128,15 +122,7 @@ export function Sidebar() {
       </nav>
 
       <div className="mb-4 relative z-10">
-        <Link
-          href="/settings"
-          title="Paramètres"
-          aria-label="Paramètres"
-          aria-current={pathname === '/settings' ? 'page' : undefined}
-          className="flex items-center justify-center w-12 h-12 rounded-2xl text-[#8E8E93] hover:bg-white/10 hover:text-white transition-colors"
-        >
-          <Settings className="w-6 h-6 opacity-80" strokeWidth={2} />
-        </Link>
+        <AccountMenu placement="sidebar" />
       </div>
     </aside>
   );

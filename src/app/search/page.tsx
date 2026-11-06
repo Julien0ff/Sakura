@@ -30,7 +30,7 @@ export default function SearchPage() {
   return (
     <AppLayout>
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-6 md:pl-32 pr-6 pt-10 pb-32">
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-8" style={{ fontFamily: 'var(--font-impact)' }}>
+        <h1 className="text-4xl md:text-5xl font-bold text-white mb-8 max-md:pr-12" style={{ fontFamily: 'var(--font-impact)' }}>
           Recherche
         </h1>
 

@@ -85,7 +85,7 @@ export default function CalendarPage() {
   return (
     <AppLayout>
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-6 md:pl-32 pr-6 md:pr-10 pt-10 pb-16">
-        <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
+        <div className="flex flex-wrap items-end justify-between gap-4 mb-8 max-md:pr-12">
           <h1 className="text-4xl md:text-5xl font-bold text-white flex items-center gap-4" style={{ fontFamily: 'var(--font-impact)' }}>
             <CalendarDays className="w-8 h-8 text-primary" />
             Calendrier

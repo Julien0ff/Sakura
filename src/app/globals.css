@@ -389,12 +389,25 @@
   }
 }
 
-/* Bannière d'accueil : fondu vers la page sur mobile uniquement (sur desktop, carte à coins arrondis). */
+/* Bannières : fondu du bas vers la page.
+   Sur mobile, le masque est posé sur l'<img> elle-même et la parallaxe est coupée.
+   Raison : un masque sur un calque qui contient des calques composités (animations de scroll)
+   est rasterisé à part par Chrome Android ; lors d'un scroll rapide vers le haut il arrive
+   après l'image → trait net + clignotement au bas de la bannière. Sur une feuille non
+   composée, le masque est rasterisé avec l'image, en une seule passe. */
 .hero-fade {
   mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
 }
+.anime-hero-fade-img {
+  mask-image: linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%);
+}
 @media (min-width: 768px) {
-  .hero-fade { mask-image: none; }
+  .hero-fade, .anime-hero-fade-img { mask-image: none; }
+  /* Desktop : pas de bug observé, la parallaxe reste ; le masque de la fiche suit le calque. */
+  .anime-hero-fade { mask-image: linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%); }
+}
+@media (max-width: 767px) {
+  [data-sd='parallax'] { animation: none !important; transform: none !important; }
 }
 
 /* Easter egg */

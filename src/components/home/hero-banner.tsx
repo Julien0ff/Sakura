@@ -113,8 +113,8 @@ export function HeroBanner() {
             className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
           >
             {/* Image: portrait cover on phones, wide banner from md. On phones the bottom edge
-                dissolves into the page (.hero-fade); on desktop the card keeps its rounded corners. */}
-            <div data-sd="media" className="hero-fade absolute inset-0">
+                dissolves into the page (.hero-fade, on the <img> itself — see globals.css); on desktop the card keeps its rounded corners. */}
+            <div data-sd="media" className="absolute inset-0">
             <div data-sd="parallax" className="absolute inset-0">
               <picture>
                 <source media="(min-width: 768px)" srcSet={wide} />
@@ -122,7 +122,7 @@ export function HeroBanner() {
                   src={tall}
                   alt=""
                   fetchPriority={index === 0 ? 'high' : 'auto'}
-                  className={`absolute inset-0 w-full h-full object-cover object-[center_20%] md:object-center transition-transform duration-[7000ms] ease-linear ${isActive ? 'scale-105' : 'scale-100'}`}
+                  className={`hero-fade absolute inset-0 w-full h-full object-cover object-[center_20%] md:object-center transition-transform duration-[7000ms] ease-linear ${isActive ? 'scale-105' : 'scale-100'}`}
                 />
               </picture>
             </div>

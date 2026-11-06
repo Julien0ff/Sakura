@@ -370,11 +370,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
               into the ambient color field so the banner melts into the page, no seam. */}
           <div
             data-sd="media"
-            className="absolute inset-0"
-            style={{
-              maskImage: 'linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%)',
-              WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%)',
-            }}
+            className="anime-hero-fade absolute inset-0"
           >
             <div data-sd="parallax" className="absolute inset-0">
               <picture>
@@ -382,7 +378,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                 <img
                   src={eggActive ? HUNTER_EGG_SRC : anime.coverImage.extraLarge || anime.bannerImage}
                   alt=""
-                  className="absolute inset-0 w-full h-full object-cover object-[center_25%] md:object-center"
+                  className="anime-hero-fade-img absolute inset-0 w-full h-full object-cover object-[center_25%] md:object-center"
                 />
               </picture>
             </div>

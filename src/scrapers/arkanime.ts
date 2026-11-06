@@ -31,7 +31,7 @@ export class ArkanimeScraper implements AnimeScraper {
     }
   }
 
-  async getEpisodes(animeUrl: string, lang: 'vf' | 'vostfr' = 'vostfr'): Promise<AnimeEpisode[]> {
+  async getEpisodes(animeUrl: string, lang: 'vf' | 'vostfr' = 'vostfr', season?: number): Promise<AnimeEpisode[]> {
     try {
       const response = await fetch(`${this.info.baseUrl}/api/anime/${animeUrl}`);
       const data = await response.json();
@@ -42,10 +42,14 @@ export class ArkanimeScraper implements AnimeScraper {
       const episodes: AnimeEpisode[] = [];
 
       if (content.seasons && content.seasons.length > 0) {
-        // Collect all episodes across seasons
-        for (const season of content.seasons) {
-          if (season.episodes && season.episodes.length > 0) {
-            for (const ep of season.episodes) {
+        // If a specific season is requested, try to find it first
+        const targetSeasons = (season && content.seasons.some((s: any) => s.seasonNumber === Number(season)))
+          ? content.seasons.filter((s: any) => s.seasonNumber === Number(season))
+          : content.seasons;
+
+        for (const s of targetSeasons) {
+          if (s.episodes && s.episodes.length > 0) {
+            for (const ep of s.episodes) {
               // Filter by lang if needed.
               // Arkanime videoType can be 'multi', 'vostfr_only', 'vf_only'.
               if (lang === 'vf' && ep.videoType === 'vostfr_only') continue;

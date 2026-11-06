@@ -67,32 +67,68 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
     setIsLoadingVideo(true);
     
     const fetchFromScraper = async (scraperName: string) => {
-      let titleToSearch = currentAnime.title.romaji || currentAnime.title.english;
-      titleToSearch = titleToSearch
-        .replace(/×/g, ' x ')
-        .replace(/\(\d{4}\)/, '')
-        .replace(/ \d+(st|nd|rd|th) Season/i, '')
-        .replace(/ Season \d+/i, '')
-        .replace(/ Part \d+/i, '')
-        .trim();
+      const cleanTitle = (str: string) => {
+        return (str || '')
+          .toLowerCase()
+          .replace(/×/g, ' x ')
+          .replace(/\(\d{4}\)/g, '')
+          .replace(/ \d+(st|nd|rd|th) Season/gi, '')
+          .replace(/ Season \d+/gi, '')
+          .replace(/ Saison \d+/gi, '')
+          .replace(/ Part \d+/gi, '')
+          .replace(/ Partie \d+/gi, '')
+          .replace(/[:\-–—!?,.'"]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      };
 
-      const searchQuery = activeSeason > 1 ? `${titleToSearch} saison ${activeSeason}` : titleToSearch;
+      const titleRo = currentAnime.title?.romaji || '';
+      const titleEn = currentAnime.title?.english || '';
+      const titleFr = currentAnime.tmdbTitle || '';
+
+      const cleanRo = cleanTitle(titleRo);
+      const cleanEn = cleanTitle(titleEn);
+      const cleanFr = cleanTitle(titleFr);
+
+      const baseTitles = Array.from(new Set([cleanRo, cleanEn, cleanFr].filter(Boolean)));
       
-      const searchRes = await fetch(`/api/scraper?action=search&query=${encodeURIComponent(searchQuery)}&scraper=${scraperName}`);
-      const searchData = await searchRes.json();
-      
+      const queriesToTry: string[] = [];
+      if (activeSeason > 1) {
+        for (const t of baseTitles) {
+          queriesToTry.push(`${t} saison ${activeSeason}`);
+        }
+      }
+      for (const t of baseTitles) {
+        queriesToTry.push(t);
+      }
+
+      const isTitleMatch = (resTitle: string) => {
+        const cleanRes = cleanTitle(resTitle);
+        if (!cleanRes) return false;
+        for (const candidate of [cleanRo, cleanEn, cleanFr]) {
+          if (!candidate) continue;
+          if (candidate === cleanRes) return true;
+          if (candidate.length >= 4 && cleanRes.includes(candidate)) return true;
+          if (cleanRes.length >= 4 && candidate.includes(cleanRes)) return true;
+        }
+        return false;
+      };
+
+      let searchData: any[] = [];
+      for (const query of queriesToTry) {
+        try {
+          const searchRes = await fetch(`/api/scraper?action=search&query=${encodeURIComponent(query)}&scraper=${scraperName}`);
+          const data = await searchRes.json();
+          if (Array.isArray(data) && data.length > 0) {
+            searchData = data;
+            break;
+          }
+        } catch {}
+      }
+
       if (searchData && searchData.length > 0) {
-        const titleEn = currentAnime.title.english?.toLowerCase() || '';
-        const titleRo = currentAnime.title.romaji?.toLowerCase() || '';
-        
-        // Strict matching to prevent finding 'Blue Lock' when searching for 'Blue Box'
-        const strictMatches = searchData.filter((res: any) => {
-          const resTitle = res.title.toLowerCase();
-          return (titleRo && resTitle.includes(titleRo)) || 
-                 (titleEn && resTitle.includes(titleEn)) || 
-                 resTitle.includes(titleToSearch.toLowerCase());
-        });
-        
+        const strictMatches = searchData.filter((res: any) => isTitleMatch(res.title));
+
         if (strictMatches.length > 0) {
           let bestMatch = strictMatches.find((res: any) => {
             const t = res.title.toLowerCase();
@@ -103,27 +139,27 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
               return t.includes('vostfr') || u.includes('-vostfr-');
             }
           });
-          
-          // Since our API now returns results from the fallback chain (Vostfree -> Arkanime -> AnimeSama),
-          // if we didn't find a strict VF/VOSTFR string match (which happens for Arkanime and AnimeSama),
-          // we should just use the first strict match.
+
           if (!bestMatch) {
             bestMatch = strictMatches[0];
           }
-          
+
           if (bestMatch) {
-            const epRes = await fetch(`/api/scraper?action=episodes&url=${encodeURIComponent(bestMatch.url)}&lang=${lang}`);
-        const episodesList = await epRes.json();
-        
-        // Exact number match only: an index fallback silently played the wrong episode
-        // (e.g. a page listing episodes 747+ returned ep. 747 for "episode 1").
-        const matchedEp = Array.isArray(episodesList) ? episodesList.find((e: any) => e.number === ep.episode_number) : undefined;
-        
-        if (matchedEp) {
-          const resolveRes = await fetch(`/api/scraper?action=resolve&url=${encodeURIComponent(matchedEp.url)}`);
-          return await resolveRes.json();
-        }
-        }
+            const epRes = await fetch(`/api/scraper?action=episodes&url=${encodeURIComponent(bestMatch.url)}&lang=${lang}&season=${activeSeason}`);
+            const episodesList = await epRes.json();
+
+            const matchedEp = Array.isArray(episodesList)
+              ? episodesList.find((e: any) => Number(e.number) === Number(ep.episode_number))
+              : undefined;
+
+            if (matchedEp) {
+              const resolveRes = await fetch(`/api/scraper?action=resolve&url=${encodeURIComponent(matchedEp.url)}`);
+              const resolved = await resolveRes.json();
+              if (Array.isArray(resolved) && resolved.length > 0 && resolved[0]?.url) {
+                return resolved;
+              }
+            }
+          }
         }
       }
       return null;
@@ -288,7 +324,25 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
             poster={playingEpisode.still_path ? `https://image.tmdb.org/t/p/w1280${playingEpisode.still_path}` : anime.bannerImage}
             isLoading={isLoadingVideo}
             error={videoError}
-            errorAction={activeLang === 'vf' ? { label: 'Essayer en VOSTFR', onClick: () => { setActiveLang('vostfr'); playEpisode(playingEpisode, anime, 'vostfr'); } } : undefined}
+            errorAction={
+              activeLang === 'vf'
+                ? {
+                    label: 'Essayer en VOSTFR',
+                    onClick: () => {
+                      haptic('selection');
+                      setActiveLang('vostfr');
+                      playEpisode(playingEpisode, anime, 'vostfr');
+                    },
+                  }
+                : {
+                    label: 'Essayer en VF',
+                    onClick: () => {
+                      haptic('selection');
+                      setActiveLang('vf');
+                      playEpisode(playingEpisode, anime, 'vf');
+                    },
+                  }
+            }
             sources={availableSources}
             current={videoData}
             onSelectSource={setVideoData}

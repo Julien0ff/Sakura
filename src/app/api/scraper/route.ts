@@ -69,15 +69,17 @@ export async function GET(request: Request) {
     if (action === 'episodes') {
       if (!url) return NextResponse.json({ error: 'Missing url' }, { status: 400 });
       const lang = (searchParams.get('lang') || 'vostfr') as 'vf' | 'vostfr';
+      const seasonParam = searchParams.get('season');
+      const season = seasonParam ? parseInt(seasonParam, 10) : undefined;
       
       let episodes: any[] = [];
       try {
         if (url.startsWith('vostfree:')) {
           episodes = await vostfree.getEpisodes(url.replace('vostfree:', ''), lang);
         } else if (url.startsWith('animesama:')) {
-          episodes = await animesama.getEpisodes(url.replace('animesama:', ''), lang);
+          episodes = await animesama.getEpisodes(url.replace('animesama:', ''), lang, season);
         } else if (url.startsWith('arkanime:')) {
-          episodes = await arkanime.getEpisodes(url.replace('arkanime:', ''), lang);
+          episodes = await arkanime.getEpisodes(url.replace('arkanime:', ''), lang, season);
         }
         
         // Re-prefix episode urls
@@ -116,10 +118,18 @@ export async function GET(request: Request) {
             headers,
             body: JSON.stringify({ episodeId: parseInt(epId) })
           });
-          const { token } = await res.json();
-          const resolveRes = await fetch(`https://arkanim.net/api/source/resolve?token=${token}`, { headers });
-          const { videoUrl } = await resolveRes.json();
-          sources = [{ url: videoUrl, type: 'hls' }];
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.token) {
+              const resolveRes = await fetch(`https://arkanim.net/api/source/resolve?token=${data.token}`, { headers });
+              if (resolveRes.ok) {
+                const resolveData = await resolveRes.json();
+                if (resolveData?.videoUrl) {
+                  sources = [{ url: resolveData.videoUrl, type: 'hls' }];
+                }
+              }
+            }
+          }
         } else if (url.startsWith('montmyoboky_movie:')) {
           const movieId = url.replace('montmyoboky_movie:', '');
           const headers = {
@@ -132,10 +142,18 @@ export async function GET(request: Request) {
             headers,
             body: JSON.stringify({ movieId: parseInt(movieId) })
           });
-          const { token } = await res.json();
-          const resolveRes = await fetch(`https://arkanim.net/api/source/resolve?token=${token}`, { headers });
-          const { videoUrl } = await resolveRes.json();
-          sources = [{ url: videoUrl, type: 'hls' }];
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.token) {
+              const resolveRes = await fetch(`https://arkanim.net/api/source/resolve?token=${data.token}`, { headers });
+              if (resolveRes.ok) {
+                const resolveData = await resolveRes.json();
+                if (resolveData?.videoUrl) {
+                  sources = [{ url: resolveData.videoUrl, type: 'hls' }];
+                }
+              }
+            }
+          }
         }
       } catch (e) {
         console.warn('Scraper resolve failed', e);

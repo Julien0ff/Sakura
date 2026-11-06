@@ -8,62 +8,91 @@ export class AnimeSamaScraper implements AnimeScraper {
     lang: ['fr', 'vostfr'],
   };
 
-  async search(query: string) {
-    const url = `${this.info.baseUrl}/catalogue/?search=${encodeURIComponent(query)}`;
-    const response = await fetch(url);
-    const html = await response.text();
-    const $ = cheerio.load(html);
-
-    const results: { title: string; url: string; poster?: string }[] = [];
-    $('.catalog-card').each((_, el) => {
-      const a = $(el).find('a').first();
-      const title = $(el).find('.card-title').text().trim();
-      const altTitles = $(el).find('.alternate-titles').text().trim();
-      const href = a.attr('href');
-      const poster = $(el).find('img').attr('src');
-      
-      if (title && href) {
-        results.push({
-          title: altTitles ? `${title} (${altTitles})` : title,
-          url: href,
-          poster
-        });
-      }
-    });
-
-    return results;
+  private getHeaders(referer?: string) {
+    return {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Referer': referer || `${this.info.baseUrl}/catalogue/`,
+      'Accept': 'application/json, text/javascript, */*; q=0.01'
+    };
   }
 
-  async getEpisodes(animeUrl: string, lang: 'vf' | 'vostfr' = 'vostfr'): Promise<AnimeEpisode[]> {
-    const response = await fetch(animeUrl);
-    const html = await response.text();
-    
-    // Anime-Sama uses `panneauAnime("Saison 1", "saison1/vostfr");`
-    let episodesPath = '';
-    
-    if (lang === 'vf') {
-      const matchVf = html.match(/panneauAnime\([^,]+,\s*"([^"]+vf[^"]*)"\)/i);
-      if (matchVf && matchVf[1]) {
-        episodesPath = matchVf[1];
-      }
-    } else {
-      const match = html.match(/panneauAnime\([^,]+,\s*"([^"]+vostfr[^"]*)"\)/i);
-      if (match && match[1]) {
-        episodesPath = match[1];
-      }
-    }
+  async search(query: string) {
+    try {
+      const url = `${this.info.baseUrl}/catalogue/fragment.php?search=${encodeURIComponent(query)}`;
+      const response = await fetch(url, { headers: this.getHeaders() });
+      const data = await response.json();
+      
+      if (!data || !data.liste) return [];
 
-    if (!episodesPath) return [];
-    
-    let epsJsUrl = '';
-    if (episodesPath) {
-      epsJsUrl = `${animeUrl}/${episodesPath}/episodes.js`.replace(/([^:])\/\//g, '$1/');
-    } else {
-      epsJsUrl = `${animeUrl}/episodes.js`.replace(/([^:])\/\//g, '$1/');
-    }
+      const $ = cheerio.load(data.liste);
+      const results: { title: string; url: string; poster?: string }[] = [];
 
-    const epsResponse = await fetch(epsJsUrl);
-    if (!epsResponse.ok) return [];
+      $('.as-carte, .catalog-card').each((_, el) => {
+        const a = $(el).find('a').first();
+        const title = $(el).attr('data-nom') || $(el).find('.as-carte-titre, .card-title').text().trim();
+        let href = $(el).attr('data-url') || a.attr('href');
+        const poster = $(el).attr('data-img') || $(el).find('img').attr('src');
+        
+        if (title && href) {
+          if (!href.startsWith('http')) {
+            href = `${this.info.baseUrl}${href.startsWith('/') ? '' : '/'}${href}`;
+          }
+          results.push({
+            title: title.trim(),
+            url: href,
+            poster
+          });
+        }
+      });
+
+      return results;
+    } catch (e) {
+      console.error('AnimeSama search error:', e);
+      return [];
+    }
+  }
+
+  async getEpisodes(animeUrl: string, lang: 'vf' | 'vostfr' = 'vostfr', season?: number): Promise<AnimeEpisode[]> {
+    try {
+      const response = await fetch(animeUrl, { headers: this.getHeaders(animeUrl) });
+      const html = await response.text();
+      
+      // Anime-Sama uses `panneauAnime("Saison 1", "saison1/vostfr");`
+      let episodesPath = '';
+      
+      if (season) {
+        const seasonRegex = new RegExp(`panneauAnime\\([^,]+,\\s*"([^"]*saison\\s*0*${season}[^"]*${lang === 'vf' ? 'vf' : 'vostfr'}[^"]*)"\\)`, 'i');
+        const match = html.match(seasonRegex);
+        if (match && match[1]) {
+          episodesPath = match[1];
+        }
+      }
+
+      if (!episodesPath) {
+        if (lang === 'vf') {
+          const matchVf = html.match(/panneauAnime\([^,]+,\s*"([^"]+vf[^"]*)"\)/i);
+          if (matchVf && matchVf[1]) {
+            episodesPath = matchVf[1];
+          }
+        } else {
+          const match = html.match(/panneauAnime\([^,]+,\s*"([^"]+vostfr[^"]*)"\)/i);
+          if (match && match[1]) {
+            episodesPath = match[1];
+          }
+        }
+      }
+
+      if (!episodesPath) return [];
+      
+      let epsJsUrl = '';
+      if (episodesPath) {
+        epsJsUrl = `${animeUrl}/${episodesPath}/episodes.js`.replace(/([^:])\/\//g, '$1/');
+      } else {
+        epsJsUrl = `${animeUrl}/episodes.js`.replace(/([^:])\/\//g, '$1/');
+      }
+
+      const epsResponse = await fetch(epsJsUrl, { headers: this.getHeaders(animeUrl) });
+      if (!epsResponse.ok) return [];
     
     const epsJs = await epsResponse.text();
     
@@ -103,7 +132,11 @@ export class AnimeSamaScraper implements AnimeScraper {
     }
 
     return episodes;
+  } catch (e) {
+    console.error('AnimeSama getEpisodes error:', e);
+    return [];
   }
+}
 
   async resolveVideo(episodeUrl: string): Promise<VideoSource[]> {
     try {

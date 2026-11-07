@@ -4,6 +4,7 @@ import { useSyncExternalStore } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ListStatus } from './tracking';
+import type { NotifyLang } from '@/lib/notify-targets';
 import { DEFAULT_SETTINGS, STORE_VERSION, migrateStore } from './store-migrate';
 
 /** What the UI knows about an anime when saving it. */
@@ -68,6 +69,12 @@ export type Settings = {
   hapticIntensity: 'soft' | 'normal' | 'strong';
   episodeView: EpisodeView;
   calendarLang: CalendarLang;
+  /** Desktop app: show « Regarde <anime> » on Discord while playing. */
+  discordPresence: boolean;
+  /** Desktop app: system notification when a followed anime gets a new episode. */
+  releaseNotifications: boolean;
+  /** Which releases to notify: 'auto' = the default language. */
+  notifyLang: NotifyLang;
 };
 
 /** Tombstone keys in `deleted`: a removal must reach the other devices. */

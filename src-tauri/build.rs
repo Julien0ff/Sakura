@@ -10,6 +10,8 @@ fn main() {
     "retry_connection",
     "check_update",
     "install_update",
+    "set_presence",
+    "set_notify_targets",
   ])))
   .expect("failed to run tauri-build");
 }

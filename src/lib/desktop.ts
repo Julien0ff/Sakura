@@ -4,6 +4,8 @@
  */
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import type { PresencePayload } from '@/lib/presence';
+import type { NotifyTargets } from '@/lib/notify-targets';
 
 export interface AuthLink {
   code: string | null;
@@ -54,5 +56,9 @@ export const desktop = {
   version: () => call<string>('app_version'),
   checkUpdate: () => call<UpdateInfo>('check_update'),
   installUpdate: () => callOrThrow<void>('install_update'),
+  /** Discord « Regarde … »; null clears it. */
+  setPresence: (activity: PresencePayload | null) => call<void>('set_presence', { activity }),
+  /** Anime + languages the app checks for new episodes (persisted by the app). */
+  setNotifyTargets: (targets: NotifyTargets) => call<void>('set_notify_targets', { targets }),
   onUpdateAvailable: (cb: (info: UpdateInfo) => void) => on<UpdateInfo>('update-available', cb),
 };

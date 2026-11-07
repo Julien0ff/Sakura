@@ -6,6 +6,8 @@ import { toast } from '@/components/ui/toast';
 import { routeAfterSignIn } from '@/core/auth';
 import { supabase } from '@/lib/supabase';
 import { desktop, isDesktop, RELEASES_URL, type AuthLink, type UpdateInfo } from '@/lib/desktop';
+import { useAppStore, useHydrated } from '@/core/store';
+import { notifyTargets } from '@/lib/notify-targets';
 
 const safeNext = (n: string | null) => (n && n.startsWith('/') && !n.startsWith('//') ? n : '/');
 
@@ -69,6 +71,24 @@ export function DesktopBridge() {
 
     return () => unlisteners.forEach((u) => void u.then((f) => f()));
   }, [router]);
+
+  return <NotifyTargetsSync />;
+}
+
+/** Keeps the app's release-notification list in sync with « Ma liste » and the settings. */
+function NotifyTargetsSync() {
+  const hydrated = useHydrated();
+  const watchlist = useAppStore((s) => s.watchlist);
+  const enabled = useAppStore((s) => s.settings.releaseNotifications ?? true);
+  const lang = useAppStore((s) => s.settings.notifyLang ?? 'auto');
+  const defaultLang = useAppStore((s) => s.settings.defaultLang);
+
+  useEffect(() => {
+    if (!hydrated || !isDesktop()) return;
+    // Debounced: list edits come in bursts (sync pulls, status changes).
+    const t = setTimeout(() => void desktop.setNotifyTargets(notifyTargets(watchlist, { enabled, lang, defaultLang })), 1000);
+    return () => clearTimeout(t);
+  }, [hydrated, watchlist, enabled, lang, defaultLang]);
 
   return null;
 }

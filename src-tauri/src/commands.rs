@@ -64,3 +64,15 @@ pub async fn check_update(app: AppHandle) -> Option<crate::update::UpdateInfo> {
 pub async fn install_update(app: AppHandle) -> Result<(), String> {
   crate::update::install(&app).await
 }
+
+/// Discord activity while watching; `None` clears it.
+#[tauri::command]
+pub fn set_presence(state: State<'_, crate::presence::Presence>, activity: Option<crate::presence::PresencePayload>) {
+  state.set(activity);
+}
+
+/// Anime + languages to watch for new episodes (from « Ma liste » and the settings).
+#[tauri::command]
+pub fn set_notify_targets(app: AppHandle, state: State<'_, crate::notify::NotifyState>, targets: crate::notify::Targets) {
+  state.set(&app, targets);
+}

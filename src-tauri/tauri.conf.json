@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "SAKURA",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "app.sakura.desktop",
   "build": {
     "frontendDist": "offline",
@@ -25,15 +25,20 @@
     ],
     "icon": [
       "icons/32x32.png",
+      "icons/64x64.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
+      "icons/icon.png",
       "icons/icon.icns",
       "icons/icon.ico"
     ],
     "android": {
       "debugApplicationIdSuffix": ".debug"
     },
-    "createUpdaterArtifacts": true
+    "createUpdaterArtifacts": true,
+    "category": "Video",
+    "shortDescription": "Catalogue et lecteur d’animes",
+    "longDescription": "SAKURA : catalogue d’animes, lecteur sans publicité, suivi de visionnage, calendrier des sorties VF/VOSTFR et statut Discord."
   },
   "plugins": {
     "deep-link": {

@@ -35,3 +35,14 @@ test('migrate v6→v7 adds calendarLang and keeps a chosen one', () => {
   assert.equal(migrateStore({ settings: { defaultLang: 'vf', episodeView: 'list' } }, 6).settings.calendarLang, 'all');
   assert.equal(migrateStore({ settings: { calendarLang: 'vf' } }, 7).settings.calendarLang, 'vf');
 });
+
+test('migrate v7→v8 turns the Discord status on by default and keeps a choice', () => {
+  assert.equal(migrateStore({ settings: { defaultLang: 'vf' } }, 7).settings.discordPresence, true);
+  assert.equal(migrateStore({ settings: { discordPresence: false } }, 8).settings.discordPresence, false);
+});
+
+test('migrate v8→v9 adds release notifications (on, language auto)', () => {
+  const s = migrateStore({ settings: { defaultLang: 'vf' } }, 8).settings;
+  assert.equal(s.releaseNotifications, true);
+  assert.equal(s.notifyLang, 'auto');
+});

@@ -114,7 +114,7 @@ Avant la mise en ligne publique, complétez les informations légales dans [`src
 
 ## Version desktop (Tauri)
 
-L'app desktop (Windows, Linux) affiche le site en ligne (`https://sakura.thefoxy.me`) dans une fenêtre native et ajoute : connexion Discord / Google via le navigateur, icône dans la barre des tâches (fermer = réduire), lancement au démarrage, mises à jour automatiques. Hors connexion, elle affiche une page « Pas de connexion ».
+L'app desktop (Windows, Linux) affiche le site en ligne (`https://sakura.thefoxy.me`) dans une fenêtre native et ajoute : connexion Discord / Google via le navigateur, statut Discord « Regarde … » pendant la lecture, notifications de sortie des animes suivis (même fenêtre fermée), icône dans la barre des tâches (fermer = réduire), lancement au démarrage, mises à jour automatiques. Réglages dans Paramètres › Application. Hors connexion, elle affiche une page « Pas de connexion ».
 
 Prérequis : [Rust](https://rustup.rs) et les dépendances système de Tauri (sous Linux : `webkit2gtk-4.1`, `libappindicator-gtk3`).
 

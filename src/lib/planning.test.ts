@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { inferDate, parisToEpoch, parsePlanning } from './planning.ts';
+import { buildResolveQuery, inferDate, parisToEpoch, parsePlanning, readResolved } from './planning.ts';
 
 const card = (classes: string, nom: string, lien: string, time: string, label = 'Saison 1') =>
   `<div class="as-carte as-carte-anime planning-card Anime ${classes}" data-url="/catalogue/${lien.split('/')[2]}/" data-cat="oeuvre" data-nom="${nom}" data-img="https://cdn.example/${nom}.jpg" data-lien="${lien}"><a><div class="as-carte-texte"><div class="as-carte-info"><svg></svg><span>${label}</span><span class="as-carte-temps">${time}</span></div></div></a></div>`;
@@ -54,4 +54,23 @@ test('inferDate picks the year closest to now across New Year', () => {
 test('parisToEpoch handles winter and summer time', () => {
   assert.equal(parisToEpoch('2026-11-02', '18:05'), Date.UTC(2026, 10, 2, 17, 5) / 1000);
   assert.equal(parisToEpoch('2026-07-01', '18:05'), Date.UTC(2026, 6, 1, 16, 5) / 1000);
+});
+
+test('buildResolveQuery aliases one search per title, with variables', () => {
+  const { query, variables } = buildResolveQuery(['Blue Box', 'Ranma 1/2']);
+  assert.match(query, /query \(\$s0: String, \$s1: String\)/);
+  assert.match(query, /a0: Page\(perPage: 1\) \{ media\(search: \$s0/);
+  assert.match(query, /a1: Page\(perPage: 1\) \{ media\(search: \$s1/);
+  assert.deepEqual(variables, { s0: 'Blue Box', s1: 'Ranma 1/2' });
+});
+
+test('readResolved maps titles to AniList media and skips misses and adult entries', () => {
+  const data = {
+    a0: { media: [{ id: 1, isAdult: false, coverImage: { large: 'c', color: '#fff' }, title: { romaji: 'Ao no Hako' } }] },
+    a1: { media: [] },
+    a2: { media: [{ id: 3, isAdult: true, coverImage: { large: 'x' }, title: { romaji: 'x' } }] },
+  };
+  const m = readResolved(['Blue Box', 'Nope', 'Adult'], data);
+  assert.deepEqual([...m.keys()], ['Blue Box']);
+  assert.equal(m.get('Blue Box')!.id, 1);
 });

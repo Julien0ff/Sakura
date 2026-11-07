@@ -34,6 +34,8 @@ interface PlayerOverlayProps {
   autoSkip: boolean;
   startAt: number;
   onProgress: (time: number, duration: number) => void;
+  /** Play / pause from the video element (not reported by embedded iframe players). */
+  onPlayingChange?: (playing: boolean) => void;
   /** The user's rating for this episode (1–10). */
   episodeRating?: number | null;
   onRateEpisode?: (rating: number | null) => void;
@@ -78,6 +80,7 @@ function PlayerOverlayInner({
   autoSkip,
   startAt,
   onProgress,
+  onPlayingChange,
   episodeRating = null,
   onRateEpisode,
 }: PlayerOverlayProps) {
@@ -188,6 +191,7 @@ function PlayerOverlayInner({
             }}
             onPlayingChange={(p) => {
               setPlaying(p);
+              onPlayingChange?.(p);
               if (p) wake();
             }}
             onEnded={() => {

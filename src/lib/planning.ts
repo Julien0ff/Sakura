@@ -100,3 +100,40 @@ export function parisToEpoch(date: string, time: string): number {
   ts = guess - offsetAt(ts);
   return Math.floor(ts / 1000);
 }
+
+/** AniList media matched to a planning title. */
+export interface ResolvedMedia {
+  id: number;
+  isAdult: boolean;
+  countryOfOrigin?: string;
+  popularity?: number;
+  format?: string;
+  title: { romaji?: string; english?: string };
+  coverImage: { large?: string; color?: string };
+}
+
+/** One aliased AniList query searching every title (a Page search returns [] instead of a 404). */
+export function buildResolveQuery(titles: string[]): { query: string; variables: Record<string, string> } {
+  const fields = 'id isAdult countryOfOrigin popularity format title { romaji english } coverImage { large color }';
+  const vars = titles.map((_, i) => `$s${i}: String`).join(', ');
+  const body = titles
+    .map((_, i) => `a${i}: Page(perPage: 1) { media(search: $s${i}, type: ANIME, sort: [SEARCH_MATCH, POPULARITY_DESC]) { ${fields} } }`)
+    .join('\n');
+  return { query: `query (${vars}) {\n${body}\n}`, variables: Object.fromEntries(titles.map((t, i) => [`s${i}`, t])) };
+}
+
+export function readResolved(titles: string[], data: Record<string, { media?: ResolvedMedia[] } | null> | null): Map<string, ResolvedMedia> {
+  const out = new Map<string, ResolvedMedia>();
+  titles.forEach((t, i) => {
+    const m = data?.[`a${i}`]?.media?.[0];
+    if (m && !m.isAdult) out.set(t, m);
+  });
+  return out;
+}
+
+/** What /api/planning serves: a planning entry with its time and its AniList match (VF only). */
+export interface PlanningItem extends PlanningEntry {
+  /** Epoch seconds (Paris time; 23:59 when the hour isn't announced). */
+  airingAt: number;
+  anilist: ResolvedMedia | null;
+}

@@ -1,9 +1,11 @@
 mod commands;
 mod links;
+mod notify;
+mod presence;
 mod shell;
 mod update;
 
-use tauri::WindowEvent;
+use tauri::{Manager, WindowEvent};
 use tauri_plugin_deep_link::DeepLinkExt as _;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -33,6 +35,7 @@ pub fn run() {
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_updater::Builder::new().build())
     .manage(shell::PendingAuth::default())
+    .manage(presence::spawn())
     .invoke_handler(tauri::generate_handler![
       commands::take_pending_auth,
       commands::open_external,
@@ -42,6 +45,8 @@ pub fn run() {
       commands::retry_connection,
       commands::check_update,
       commands::install_update,
+      commands::set_presence,
+      commands::set_notify_targets,
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
@@ -62,6 +67,8 @@ pub fn run() {
       shell::create_main_window(app.handle())?;
       shell::build_tray(app.handle())?;
       update::spawn_checks(app.handle().clone());
+      app.manage(notify::NotifyState::load(app.handle()));
+      notify::spawn_checks(app.handle().clone());
 
       // Cold start through a link: the URL is in the launch arguments.
       if let Ok(Some(urls)) = app.deep_link().get_current() {

@@ -3,7 +3,7 @@
 import { AppLayout } from '@/components/layout/app-layout';
 import { fetchAniList, AIRING_SCHEDULE } from '@/core/api/anilist';
 import { useAppStore, useHydrated, type CalendarLang, type Lang } from '@/core/store';
-import { parisToEpoch, type PlanningEntry } from '@/lib/planning';
+import type { PlanningItem } from '@/lib/planning';
 import { LangTag } from '@/components/anime/lang-tag';
 import { haptic } from '@/lib/haptics';
 import { useQuery } from '@tanstack/react-query';
@@ -61,40 +61,25 @@ async function fetchWeek(from: number, to: number) {
 
 type AniMedia = AiringItem['media'];
 
-/** Resolves French-planning titles to AniList media (one aliased query, empty result when no match). */
-async function resolveTitles(titles: string[]): Promise<Map<string, AniMedia>> {
-  const out = new Map<string, AniMedia>();
-  if (titles.length === 0) return out;
-  const fields = 'id isAdult countryOfOrigin popularity format title { romaji english } coverImage { large color }';
-  const vars = titles.map((_, i) => `$s${i}: String`).join(', ');
-  const body = titles.map((_, i) => `a${i}: Page(perPage: 1) { media(search: $s${i}, type: ANIME, sort: [SEARCH_MATCH, POPULARITY_DESC]) { ${fields} } }`).join('\n');
-  const variables = Object.fromEntries(titles.map((t, i) => [`s${i}`, t]));
-  const data = await fetchAniList(`query (${vars}) {\n${body}\n}`, variables);
-  titles.forEach((t, i) => {
-    const m = data?.[`a${i}`]?.media?.[0] as AniMedia | undefined;
-    if (m && !m.isAdult) out.set(t, m);
-  });
-  return out;
-}
-
-/** French dubs for the 7 days from `from`: this week's planning, projected one week ahead for the rest. */
+/** French dubs for the 7 days from `from`: this week's planning, projected one week ahead for the rest.
+ * Titles are already matched to AniList by /api/planning. */
 async function fetchVfWeek(from: number): Promise<AiringItem[]> {
   const res = await fetch('/api/planning');
   if (!res.ok) throw new Error('planning');
-  const entries = ((await res.json()) as PlanningEntry[]).filter((e) => e.lang === 'vf');
-  const media = await resolveTitles([...new Set(entries.map((e) => e.title))]);
+  const entries = ((await res.json()) as PlanningItem[]).filter((e) => e.lang === 'vf');
 
-  const toItem = (e: PlanningEntry, shiftDays: number): AiringItem | null => {
+  const toItem = (e: PlanningItem, shiftDays: number): AiringItem | null => {
     // Unmatched on AniList: still listed, with the planning artwork and no link (id 0).
-    const m: AniMedia | undefined =
-      media.get(e.title) ??
-      (e.image ? { id: 0, isAdult: false, countryOfOrigin: 'JP', popularity: 0, title: { romaji: e.title }, coverImage: { large: e.image } } : undefined);
+    const m: AniMedia | undefined = e.anilist
+      ? { ...e.anilist, countryOfOrigin: e.anilist.countryOfOrigin ?? 'JP', popularity: e.anilist.popularity ?? 0 }
+      : e.image
+        ? { id: 0, isAdult: false, countryOfOrigin: 'JP', popularity: 0, title: { romaji: e.title }, coverImage: { large: e.image } }
+        : undefined;
     if (!m) return null;
-    const at = parisToEpoch(e.date, e.time ?? '23:59') + shiftDays * DAY;
     return {
       id: `vf:${e.slug}:${e.label ?? ''}:${shiftDays}`,
       episode: null,
-      airingAt: at,
+      airingAt: e.airingAt + shiftDays * DAY,
       lang: 'vf',
       label: e.label,
       timeUnknown: !e.time,

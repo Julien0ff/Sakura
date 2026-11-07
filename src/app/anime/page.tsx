@@ -6,7 +6,8 @@ import { fetchAniList, GET_ANIME_DETAILS } from '@/core/api/anilist';
 import { AppLayout } from '@/components/layout/app-layout';
 import { Play, ArrowLeft, Star, Calendar, MonitorPlay, Tags, Bookmark, BookmarkCheck, Check } from '@/components/ui/icons';
 import Link from 'next/link';
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
+import { useDiscordPresence, type Playback, type PresenceEpisode } from '@/components/desktop/use-discord-presence';
 import { formatScore, statusLabel } from '@/lib/anime';
 import { useAppStore, progressKey, isWatched, type Lang } from '@/core/store';
 import { StatusPicker } from '@/components/anime/status-picker';
@@ -301,6 +302,31 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
     setIsLoadingVideo(false);
   }, []);
 
+  // Discord « Regarde … » (desktop app). Playback is tracked per episode/source; embedded iframe
+  // players report nothing, so they show as playing without a time bar.
+  const playbackKey = playingEpisode && videoData ? `${anime?.id}:${activeSeason}:${playingEpisode.episode_number}:${videoData.url}` : '';
+  const [playbackState, setPlaybackState] = useState<Playback & { key: string }>({ key: '', playing: true, time: 0, duration: 0 });
+  const playback: Playback = playbackState.key === playbackKey ? playbackState : { playing: true, time: 0, duration: 0 };
+  const updatePlayback = (patch: Partial<Playback>) =>
+    setPlaybackState((p) => ({ ...(p.key === playbackKey ? p : { playing: true, time: 0, duration: 0 }), ...patch, key: playbackKey }));
+  const presenceEpisode = useMemo<PresenceEpisode | null>(
+    () =>
+      anime && playingEpisode && videoData
+        ? {
+            animeId: anime.id,
+            title: anime.tmdbTitle || anime.title.english || anime.title.romaji,
+            cover: anime.coverImage?.extraLarge || anime.coverImage?.large || null,
+            season: activeSeason,
+            multiSeason: (anime.tmdbSeasons?.length ?? 0) > 1,
+            episode: playingEpisode.episode_number,
+            lang: activeLang,
+          }
+        : null,
+    [anime, playingEpisode, videoData, activeSeason, activeLang]
+  );
+  const presencePlayback = useMemo(() => playback, [playback.playing, playback.time, playback.duration]); // eslint-disable-line react-hooks/exhaustive-deps
+  useDiscordPresence(presenceEpisode, presencePlayback);
+
   // AniSkip is keyed by MyAnimeList id + episode number of *this* AniList entry. TMDB seasons > 1
   // usually map to another AniList entry, so only look it up for season 1 / single-season shows.
   const skipEnabled = !!anime?.idMal && !!playingEpisode && (activeSeason === 1 || !(anime?.tmdbSeasons?.length > 1));
@@ -386,7 +412,9 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
             startAt={progress[currentProgressKey]?.time ?? 0}
             episodeRating={episodeRatings[currentProgressKey]?.rating ?? null}
             onRateEpisode={(r) => rateEpisode(anime.id, activeSeason, playingEpisode.episode_number, r)}
+            onPlayingChange={(playing) => updatePlayback({ playing })}
             onProgress={(time, duration) => {
+              updatePlayback({ time, duration });
               // First crossing of the "watched" threshold → auto status / completion / banner unlock.
               const before = isWatched(useAppStore.getState().progress[currentProgressKey]);
               saveProgress(currentProgressKey, time, duration);

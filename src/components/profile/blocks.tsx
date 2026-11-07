@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- AniList covers, images are unoptimized anyway */
 import Link from 'next/link';
+import { Star } from '@/components/ui/icons';
 import { BLOCK_LABELS } from '@/core/tracking';
 import type { ProfileBlock, ProfileItem } from '@/lib/public-profile';
 
@@ -12,13 +13,13 @@ const EMPTY: Record<string, string> = {
   planned: 'Rien à voir pour l’instant.',
 };
 
-function Cover({ item, caption }: { item: ProfileItem; caption?: string }) {
+function Cover({ item, caption }: { item: ProfileItem; caption?: React.ReactNode }) {
   return (
     <Link href={`/anime?id=${item.anime_id}`} className="shrink-0 w-[104px] md:w-[124px] group">
       <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-white/5 border border-white/[0.06]">
         {item.cover && <img src={item.cover} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />}
         {caption && (
-          <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[11px] font-bold text-white">{caption}</span>
+          <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[11px] font-bold text-white inline-flex items-center gap-1">{caption}</span>
         )}
         {item.completed_on_sakura && (
           <span title="Terminé sur SAKURA" className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 backdrop-blur-md flex items-center justify-center text-[12px]">
@@ -31,10 +32,23 @@ function Cover({ item, caption }: { item: ProfileItem; caption?: string }) {
   );
 }
 
-function caption(blockId: string, item: ProfileItem) {
-  if (blockId === 'episode_ratings') return `${item.season && item.season > 1 ? `S${item.season} ` : ''}Ép. ${item.episode} · ★ ${item.rating}`;
-  if (blockId === 'watching' && item.episode) return `${item.season && item.season > 1 ? `S${item.season} · ` : ''}Ép. ${item.episode}`;
-  if (item.rating) return `★ ${item.rating}`;
+const Rated = ({ value }: { value: number }) => (
+  <>
+    <Star className="w-3 h-3 text-[#FFD60A]" aria-label="Note" /> {value}
+  </>
+);
+
+function caption(blockId: string, item: ProfileItem): React.ReactNode {
+  const season = item.season && item.season > 1 ? `S${item.season} ` : '';
+  if (blockId === 'episode_ratings' && item.rating) {
+    return (
+      <>
+        {season}Ép. {item.episode} · <Rated value={item.rating} />
+      </>
+    );
+  }
+  if (blockId === 'watching' && item.episode) return `${season ? `${season}· ` : ''}Ép. ${item.episode}`;
+  if (item.rating) return <Rated value={item.rating} />;
   return undefined;
 }
 

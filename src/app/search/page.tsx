@@ -30,7 +30,8 @@ export default function SearchPage() {
   return (
     <AppLayout>
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-6 md:pl-32 pr-6 pt-10 pb-32">
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-8 max-md:pr-12" style={{ fontFamily: 'var(--font-impact)' }}>
+        <h1 className="text-4xl md:text-5xl font-bold text-white mb-8 max-md:pr-12 flex items-center gap-4" style={{ fontFamily: 'var(--font-impact)' }}>
+          <SearchIcon className="w-8 h-8 text-sakura" />
           Recherche
         </h1>
 
@@ -42,7 +43,7 @@ export default function SearchPage() {
             type="search"
             autoFocus
             aria-label="Rechercher un anime"
-            className="block w-full pl-12 pr-12 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-[#8E8E93] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all [&::-webkit-search-cancel-button]:hidden"
+            className="block w-full pl-12 pr-12 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-[#8E8E93] focus:outline-none focus:ring-2 focus:ring-sakura focus:border-transparent transition-all [&::-webkit-search-cancel-button]:hidden"
             placeholder="Rechercher un anime, un film..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}

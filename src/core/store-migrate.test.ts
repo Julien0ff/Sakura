@@ -13,6 +13,7 @@ test('migrate v4→v5 sets planned and episodeRatings', () => {
   assert.equal(out.settings.defaultLang, 'vf');
   assert.equal(out.settings.autoNext, true);
   assert.equal(out.settings.episodeView, 'auto');
+  assert.equal(out.settings.calendarLang, 'all');
   assert.equal(out.settingsUpdatedAt, 3);
 });
 
@@ -28,4 +29,9 @@ test('migrate v3→v5 adds updatedAt, deleted and status', () => {
 test('migrate keeps a valid existing status', () => {
   const out = migrateStore({ watchlist: [{ id: 3, title: 'C', cover: 'c', updatedAt: 1, listStatus: 'completed' }] }, 5);
   assert.equal(out.watchlist[0].listStatus, 'completed');
+});
+
+test('migrate v6→v7 adds calendarLang and keeps a chosen one', () => {
+  assert.equal(migrateStore({ settings: { defaultLang: 'vf', episodeView: 'list' } }, 6).settings.calendarLang, 'all');
+  assert.equal(migrateStore({ settings: { calendarLang: 'vf' } }, 7).settings.calendarLang, 'vf');
 });

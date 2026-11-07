@@ -2,20 +2,28 @@
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { fetchAniList, AIRING_SCHEDULE } from '@/core/api/anilist';
-import { useAppStore, useHydrated, type Lang } from '@/core/store';
+import { useAppStore, useHydrated, type CalendarLang, type Lang } from '@/core/store';
+import { parisToEpoch, type PlanningEntry } from '@/lib/planning';
 import { LangTag } from '@/components/anime/lang-tag';
 import { haptic } from '@/lib/haptics';
 import { useQuery } from '@tanstack/react-query';
-import { CalendarDays } from '@/components/ui/icons';
+import { Bookmark, CalendarDays } from '@/components/ui/icons';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 interface AiringItem {
-  id: number;
-  episode: number;
+  id: number | string;
+  /** Unknown for VF releases (the French planning only gives the season). */
+  episode: number | null;
   airingAt: number;
-  /** AniList only knows the Japanese broadcast → subtitled. VF needs another source. */
+  /** VOSTFR: AniList (Japanese broadcast). VF: Anime-Sama planning (French dub). */
   lang: Lang;
+  /** « Saison 2 »… when there is no episode number. */
+  label?: string | null;
+  /** Release day known, hour not announced. */
+  timeUnknown?: boolean;
+  /** Projected from last week's planning (French dubs air weekly). */
+  estimated?: boolean;
   media: {
     id: number;
     isAdult: boolean;
@@ -51,6 +59,72 @@ async function fetchWeek(from: number, to: number) {
     .map((i) => ({ ...i, lang: i.lang ?? ('vostfr' as const) }));
 }
 
+type AniMedia = AiringItem['media'];
+
+/** Resolves French-planning titles to AniList media (one aliased query, empty result when no match). */
+async function resolveTitles(titles: string[]): Promise<Map<string, AniMedia>> {
+  const out = new Map<string, AniMedia>();
+  if (titles.length === 0) return out;
+  const fields = 'id isAdult countryOfOrigin popularity format title { romaji english } coverImage { large color }';
+  const vars = titles.map((_, i) => `$s${i}: String`).join(', ');
+  const body = titles.map((_, i) => `a${i}: Page(perPage: 1) { media(search: $s${i}, type: ANIME, sort: [SEARCH_MATCH, POPULARITY_DESC]) { ${fields} } }`).join('\n');
+  const variables = Object.fromEntries(titles.map((t, i) => [`s${i}`, t]));
+  const data = await fetchAniList(`query (${vars}) {\n${body}\n}`, variables);
+  titles.forEach((t, i) => {
+    const m = data?.[`a${i}`]?.media?.[0] as AniMedia | undefined;
+    if (m && !m.isAdult) out.set(t, m);
+  });
+  return out;
+}
+
+/** French dubs for the 7 days from `from`: this week's planning, projected one week ahead for the rest. */
+async function fetchVfWeek(from: number): Promise<AiringItem[]> {
+  const res = await fetch('/api/planning');
+  if (!res.ok) throw new Error('planning');
+  const entries = ((await res.json()) as PlanningEntry[]).filter((e) => e.lang === 'vf');
+  const media = await resolveTitles([...new Set(entries.map((e) => e.title))]);
+
+  const toItem = (e: PlanningEntry, shiftDays: number): AiringItem | null => {
+    // Unmatched on AniList: still listed, with the planning artwork and no link (id 0).
+    const m: AniMedia | undefined =
+      media.get(e.title) ??
+      (e.image ? { id: 0, isAdult: false, countryOfOrigin: 'JP', popularity: 0, title: { romaji: e.title }, coverImage: { large: e.image } } : undefined);
+    if (!m) return null;
+    const at = parisToEpoch(e.date, e.time ?? '23:59') + shiftDays * DAY;
+    return {
+      id: `vf:${e.slug}:${e.label ?? ''}:${shiftDays}`,
+      episode: null,
+      airingAt: at,
+      lang: 'vf',
+      label: e.label,
+      timeUnknown: !e.time,
+      estimated: shiftDays > 0,
+      media: { ...m, title: { ...m.title, english: e.title } },
+    };
+  };
+
+  const items: AiringItem[] = [];
+  const covered = new Set(entries.map((e) => e.date));
+  for (const e of entries) {
+    const item = toItem(e, 0);
+    if (item) items.push(item);
+    // Days after the planning week: assume the weekly slot repeats (postponed ones excluded).
+    const next = new Date(`${e.date}T12:00:00Z`);
+    next.setUTCDate(next.getUTCDate() + 7);
+    if (!e.postponed && !covered.has(next.toISOString().slice(0, 10))) {
+      const projected = toItem(e, 7);
+      if (projected) items.push(projected);
+    }
+  }
+  return items.filter((i) => i.airingAt >= from && i.airingAt < from + 7 * DAY);
+}
+
+const LANG_FILTERS: { value: CalendarLang; label: string }[] = [
+  { value: 'all', label: 'Tout' },
+  { value: 'vostfr', label: 'VOSTFR' },
+  { value: 'vf', label: 'VF' },
+];
+
 export default function CalendarPage() {
   const [today] = useState(() => startOfDay());
   // Captured once per mount; good enough to mark episodes as already aired.
@@ -58,14 +132,29 @@ export default function CalendarPage() {
   const [selected, setSelected] = useState(0); // 0 = today … 6
   const hydrated = useHydrated();
   const watchlistIds = useAppStore((s) => s.watchlist.map((a) => a.id).join(','));
+  const storedLang = useAppStore((s) => s.settings.calendarLang ?? 'all');
+  const updateSettings = useAppStore((s) => s.updateSettings);
+  const langFilter: CalendarLang = hydrated ? storedLang : 'all';
   const tabsRef = useRef<HTMLDivElement>(null);
 
   const from = Math.floor(today.getTime() / 1000);
-  const { data, isLoading, error } = useQuery({
+  const vostfr = useQuery({
     queryKey: ['calendar', from],
     queryFn: () => fetchWeek(from, from + 7 * DAY),
     staleTime: 15 * 60 * 1000,
+    enabled: langFilter !== 'vf',
   });
+  const vf = useQuery({
+    queryKey: ['calendar-vf', from],
+    queryFn: () => fetchVfWeek(from),
+    staleTime: 30 * 60 * 1000,
+    enabled: langFilter !== 'vostfr',
+  });
+  const sources = langFilter === 'all' ? [vostfr, vf] : langFilter === 'vf' ? [vf] : [vostfr];
+  const isLoading = sources.some((q) => q.isLoading);
+  // One failing source must not blank the other.
+  const error = sources.every((q) => q.error) ? sources[0].error : null;
+  const data = sources.flatMap((q) => q.data ?? []);
 
   useEffect(() => {
     tabsRef.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
@@ -87,13 +176,43 @@ export default function CalendarPage() {
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-6 md:pl-32 pr-6 md:pr-10 pt-10 pb-16">
         <div className="flex flex-wrap items-end justify-between gap-4 mb-8 max-md:pr-12">
           <h1 className="text-4xl md:text-5xl font-bold text-white flex items-center gap-4" style={{ fontFamily: 'var(--font-impact)' }}>
-            <CalendarDays className="w-8 h-8 text-primary" />
+            <CalendarDays className="w-8 h-8 text-sakura" />
             Calendrier
           </h1>
-          <p className="text-[13px] md:text-sm text-[#8E8E93] leading-relaxed">
-            Diffusion japonaise, à votre heure locale · <LangTag lang="vostfr" className="align-[1px] mx-0.5" /> sous-titré
-          </p>
+          <div role="radiogroup" aria-label="Langue" className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-white/[0.06] text-sm w-full sm:w-auto">
+            {LANG_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                role="radio"
+                aria-checked={langFilter === f.value}
+                onClick={() => {
+                  haptic('selection');
+                  updateSettings({ calendarLang: f.value });
+                }}
+                className={`h-9 px-4 rounded-lg font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                  langFilter === f.value ? 'bg-white/20 text-white shadow-sm' : 'text-[#8E8E93] hover:text-white'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
+        <p className="-mt-4 mb-6 text-[13px] text-[#8E8E93] leading-relaxed flex flex-wrap items-center gap-x-1.5 gap-y-1">
+          À votre heure locale ·
+          {langFilter !== 'vf' && (
+            <span>
+              <LangTag lang="vostfr" className="align-[1px]" /> diffusion japonaise
+            </span>
+          )}
+          {langFilter === 'all' && '·'}
+          {langFilter !== 'vostfr' && (
+            <span>
+              <LangTag lang="vf" className="align-[1px]" /> sortie française (Anime-Sama)
+            </span>
+          )}
+        </p>
 
         {/* Phones / tablets: one day at a time */}
         <div className="xl:hidden">
@@ -163,6 +282,11 @@ export default function CalendarPage() {
   );
 }
 
+/** Link to the anime page, or a plain block when the release isn't matched on AniList (id 0). */
+function MaybeLink({ id, ...props }: { id: number; className: string; title?: string; children: React.ReactNode }) {
+  return id ? <Link href={`/anime?id=${id}`} {...props} /> : <div {...props} />;
+}
+
 function DayList({
   items,
   isLoading,
@@ -196,8 +320,8 @@ function DayList({
         const isFollowed = followed.has(item.media.id);
         return (
           <li key={item.id}>
-            <Link
-              href={`/anime?id=${item.media.id}`}
+            <MaybeLink
+              id={item.media.id}
               className={`flex items-center gap-4 p-3 rounded-2xl border transition-colors ${
                 isFollowed ? 'bg-white/10 border-white/15' : 'bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10'
               }`}
@@ -206,7 +330,7 @@ function DayList({
                 dateTime={new Date(item.airingAt * 1000).toISOString()}
                 className={`w-14 shrink-0 text-center font-bold tabular-nums ${aired ? 'text-[#8E8E93]' : 'text-white'}`}
               >
-                {timeFmt.format(item.airingAt * 1000)}
+                {item.timeUnknown ? <span className="text-[#8E8E93]" title="Heure non annoncée">--:--</span> : timeFmt.format(item.airingAt * 1000)}
               </time>
               {item.media.coverImage.large && (
                 <img src={item.media.coverImage.large} alt="" loading="lazy" className="w-12 aspect-[2/3] object-cover rounded-lg shrink-0" />
@@ -214,14 +338,15 @@ function DayList({
               <div className="min-w-0 flex-1">
                 <div className="font-semibold text-white truncate">{title}</div>
                 <div className="mt-0.5 text-sm text-[#8E8E93] flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span>Épisode {item.episode}</span>
+                  <span>{item.episode != null ? `Épisode ${item.episode}` : item.label ?? 'Nouvel épisode'}</span>
                   <LangTag lang={item.lang} />
                   {isFollowed && <span className="px-1.5 py-[1px] rounded-md bg-white/15 text-white text-[10px] font-bold uppercase leading-4">Ma liste</span>}
-                  {aired && <span className="text-[11px] font-semibold text-[#30D158]">Disponible</span>}
+                  {aired && !item.timeUnknown && <span className="text-[11px] font-semibold text-[#30D158]">Disponible</span>}
+                  {item.estimated && <span className="text-[11px] text-[#8E8E93]" title="D’après le créneau de la semaine dernière">Estimé</span>}
                 </div>
               </div>
               <span className="w-1.5 self-stretch rounded-full shrink-0" style={{ backgroundColor: item.media.coverImage.color || 'transparent' }} aria-hidden />
-            </Link>
+            </MaybeLink>
           </li>
         );
       })}
@@ -233,8 +358,8 @@ function WeekCard({ item, followed, aired }: { item: AiringItem; followed: boole
   const title = item.media.title.english || item.media.title.romaji;
   const color = item.media.coverImage.color || '#3A3A3C';
   return (
-    <Link
-      href={`/anime?id=${item.media.id}`}
+    <MaybeLink
+      id={item.media.id}
       title={title}
       className={`group relative flex gap-2.5 p-2 rounded-2xl border transition-colors overflow-hidden ${
         followed ? 'bg-white/10 border-white/15' : 'bg-white/[0.04] border-transparent hover:bg-white/[0.09] hover:border-white/10'
@@ -254,16 +379,21 @@ function WeekCard({ item, followed, aired }: { item: AiringItem; followed: boole
           dateTime={new Date(item.airingAt * 1000).toISOString()}
           className={`block text-[12px] font-bold tabular-nums ${aired ? 'text-[#8E8E93]' : 'text-white'}`}
         >
-          {timeFmt.format(item.airingAt * 1000)}
-          {aired && <span className="ml-1.5 font-semibold text-[#30D158]">●</span>}
+          {item.timeUnknown ? <span className="text-[#8E8E93]" title="Heure non annoncée">--:--</span> : timeFmt.format(item.airingAt * 1000)}
+          {aired && !item.timeUnknown && <span className="ml-1.5 font-semibold text-[#30D158]">●</span>}
+          {item.estimated && <span className="ml-1.5 font-medium text-[#8E8E93]" title="D’après le créneau de la semaine dernière">estimé</span>}
         </time>
         <div className="text-[13px] font-semibold leading-snug text-white line-clamp-2">{title}</div>
         <div className="mt-1 flex flex-wrap items-center gap-1">
-          <span className="text-[11px] text-[#8E8E93]">Ép. {item.episode}</span>
+          <span className="text-[11px] text-[#8E8E93]">{item.episode != null ? `Ép. ${item.episode}` : item.label ?? 'Nouvel ép.'}</span>
           <LangTag lang={item.lang} />
-          {followed && <span className="px-1 rounded bg-white/15 text-white text-[10px] font-bold leading-4">★</span>}
+          {followed && (
+            <span className="px-1 h-4 rounded bg-white/15 text-white inline-flex items-center" title="Dans Ma liste">
+              <Bookmark className="w-2.5 h-2.5" aria-label="Dans Ma liste" />
+            </span>
+          )}
         </div>
       </div>
-    </Link>
+    </MaybeLink>
   );
 }

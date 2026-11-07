@@ -7,6 +7,7 @@ import { Settings } from '@/components/ui/icons';
 import { haptic, testHaptic, setHapticIntensity, type HapticIntensity } from '@/lib/haptics';
 import { useState, useSyncExternalStore } from 'react';
 import { Group, Row, Segmented, ActionButton, Toggle } from '@/components/settings/grouped-list';
+import { openChangelog } from '@/components/layout/changelog-popup';
 import { AccountGroup } from '@/components/settings/account-group';
 
 export default function SettingsPage() {
@@ -24,7 +25,7 @@ export default function SettingsPage() {
           className="text-[34px] md:text-5xl font-bold text-white mb-6 md:mb-8 flex items-center gap-3 md:gap-4 pr-14 md:pr-0"
           style={{ fontFamily: 'var(--font-impact)' }}
         >
-          <Settings className="w-7 h-7 md:w-8 md:h-8 text-primary shrink-0" />
+          <Settings className="w-7 h-7 md:w-8 md:h-8 text-sakura shrink-0" />
           Paramètres
         </h1>
 
@@ -99,6 +100,9 @@ export default function SettingsPage() {
           )}
 
           <Group title="Données" footer={user ? 'Votre liste, votre historique et vos réglages sont synchronisés avec votre compte.' : 'Votre liste, votre historique et vos réglages sont stockés uniquement sur cet appareil.'}>
+            <Row label="Nouveautés" hint="Ce qui a changé dans la dernière version.">
+              <ActionButton onClick={openChangelog}>Voir</ActionButton>
+            </Row>
             <Row label="Message de bienvenue" hint="Le réafficher maintenant.">
               <ActionButton
                 onClick={() => {

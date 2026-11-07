@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Play } from '@/components/ui/icons';
+import { Play, Star } from '@/components/ui/icons';
 import { formatScore, statusLabel } from '@/lib/anime';
 
 interface AnimeCardProps {
@@ -11,15 +11,21 @@ interface AnimeCardProps {
   subtitle?: string;
   /** Small label on the cover (e.g. the user's list status). */
   badge?: string;
+  /** Series accent color (AniList coverImage.color): tints the hover glow. */
+  color?: string | null;
   className?: string;
 }
 
-export function AnimeCard({ id, title, cover, status, score, subtitle, badge, className = '' }: AnimeCardProps) {
+export function AnimeCard({ id, title, cover, status, score, subtitle, badge, color, className = '' }: AnimeCardProps) {
   const rating = formatScore(score);
 
   return (
-    <Link href={`/anime?id=${id}`} className={`flex flex-col gap-3 cursor-pointer group ${className}`}>
-      <div className="relative w-full aspect-[2/3] apple-squircle overflow-hidden border border-white/[0.05] bg-white/[0.03] shadow-md transition-all duration-400 group-hover:scale-105 group-hover:shadow-2xl group-hover:shadow-primary/20">
+    <Link
+      href={`/anime?id=${id}`}
+      className={`anime-card flex flex-col gap-3 cursor-pointer group outline-none ${className}`}
+      style={{ '--card-color': color || 'rgba(255,255,255,0.35)' } as React.CSSProperties}
+    >
+      <div className="anime-card-cover relative w-full aspect-[2/3] apple-squircle overflow-hidden border border-white/[0.05] bg-white/[0.03] shadow-md transition-all duration-400 group-hover:scale-105">
         {cover && (
           <img
             src={cover}
@@ -49,7 +55,9 @@ export function AnimeCard({ id, title, cover, status, score, subtitle, badge, cl
               {rating && (
                 <>
                   <span>•</span>
-                  <span className="text-primary">★ {rating}</span>
+                  <span className="inline-flex items-center gap-0.5 text-[#FFD60A]">
+                    <Star className="w-3 h-3" aria-hidden /> {rating}
+                  </span>
                 </>
               )}
             </>
@@ -62,7 +70,7 @@ export function AnimeCard({ id, title, cover, status, score, subtitle, badge, cl
 
 export function AnimeGridSkeleton({ count = 12 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+    <div className={animeGridClass}>
       {Array.from({ length: count }, (_, i) => (
         <div key={i} className="aspect-[2/3] bg-white/[0.03] apple-squircle animate-pulse" />
       ))}
@@ -70,4 +78,4 @@ export function AnimeGridSkeleton({ count = 12 }: { count?: number }) {
   );
 }
 
-export const animeGridClass = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6';
+export const animeGridClass = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-x-4 gap-y-6 md:gap-6';

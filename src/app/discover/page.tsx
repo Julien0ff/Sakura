@@ -56,27 +56,29 @@ export default function DiscoverPage() {
   const animes = data?.pages.flatMap((p) => p.media);
 
   const chip = (active: boolean) =>
-    `px-5 py-2 rounded-full border font-medium transition-colors whitespace-nowrap cursor-pointer ${
+    `shrink-0 px-4 md:px-5 h-10 rounded-full border text-[15px] font-medium transition-colors whitespace-nowrap cursor-pointer ${
       active ? 'bg-white text-black border-white' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
     }`;
 
   return (
     <AppLayout>
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-6 md:pl-32 pr-6 pt-10 pb-32">
-        <div className="flex items-center justify-between gap-4 mb-8 max-md:pr-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-white flex items-center gap-4" style={{ fontFamily: 'var(--font-impact)' }}>
-            <Compass className="w-8 h-8 text-primary" />
+        <div className="flex items-center justify-between gap-3 mb-6 md:mb-8 max-md:pr-14">
+          <h1 className="text-[34px] md:text-5xl font-bold text-white flex items-center gap-3 md:gap-4 min-w-0" style={{ fontFamily: 'var(--font-impact)' }}>
+            <Compass className="w-7 h-7 md:w-8 md:h-8 text-sakura shrink-0" />
             Découvrir
           </h1>
           <Link
             href="/calendar"
-            className="md:hidden flex items-center gap-2 h-11 px-4 rounded-full bg-white/10 border border-white/10 text-white text-sm font-semibold"
+            aria-label="Calendrier des sorties"
+            title="Calendrier"
+            className="md:hidden shrink-0 w-11 h-11 rounded-full bg-white/10 border border-white/10 text-white flex items-center justify-center active:scale-95 transition-transform"
           >
-            <CalendarDays className="w-4 h-4" /> Calendrier
+            <CalendarDays className="w-5 h-5" />
           </Link>
         </div>
 
-        <div className="flex gap-3 mb-4 overflow-x-auto pb-2 scrollbar-none" role="tablist" aria-label="Genres">
+        <div className="flex gap-2 md:gap-3 mb-4 overflow-x-auto pb-2 scrollbar-none -mx-6 px-6 md:mx-0 md:px-0" role="tablist" aria-label="Genres">
           {GENRES.map((g) => (
             <button key={g.value} role="tab" aria-selected={genre === g.value} onClick={() => {
                 haptic('selection');
@@ -86,7 +88,7 @@ export default function DiscoverPage() {
             </button>
           ))}
         </div>
-        <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-none text-sm" aria-label="Tri">
+        <div className="grid grid-cols-4 md:inline-grid md:w-auto gap-1 p-1 mb-6 md:mb-8 rounded-xl bg-white/[0.06] text-[13px] md:text-sm" role="group" aria-label="Tri">
           {SORTS.map((s) => (
             <button
               key={s.value}
@@ -95,8 +97,8 @@ export default function DiscoverPage() {
                 setSort(s.value);
               }}
               aria-pressed={sort === s.value}
-              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                sort === s.value ? 'bg-white/20 text-white' : 'text-[#8E8E93] hover:text-white'
+              className={`h-9 px-2 md:px-4 rounded-lg whitespace-nowrap font-semibold transition-colors cursor-pointer ${
+                sort === s.value ? 'bg-white/20 text-white shadow-sm' : 'text-[#8E8E93] hover:text-white'
               }`}
             >
               {s.label}

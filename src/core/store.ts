@@ -57,6 +57,8 @@ export const isWatched = (p?: EpisodeProgress) => !!p && p.duration > 0 && p.tim
 
 /** `auto`: list on phones, cards from the md breakpoint. */
 export type EpisodeView = 'cards' | 'list' | 'auto';
+/** Calendar language filter: both, Japanese broadcast (VOSTFR) or French dub (VF). */
+export type CalendarLang = 'all' | Lang;
 
 export type Settings = {
   defaultLang: Lang;
@@ -65,6 +67,7 @@ export type Settings = {
   haptics: boolean;
   hapticIntensity: 'soft' | 'normal' | 'strong';
   episodeView: EpisodeView;
+  calendarLang: CalendarLang;
 };
 
 /** Tombstone keys in `deleted`: a removal must reach the other devices. */

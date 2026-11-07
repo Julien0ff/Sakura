@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Lock, Pencil, Share2 } from '@/components/ui/icons';
+import { Crown, Lock, Pencil, Share2 } from '@/components/ui/icons';
 import { Avatar } from '@/components/account/avatar';
 import { ProfileBlockView } from '@/components/profile/blocks';
 import { EditSheet } from '@/components/profile/edit-sheet';
@@ -27,10 +27,10 @@ function Stats({ stats }: { stats: ProfileStats }) {
     [stats.avg_rating != null ? String(stats.avg_rating).replace('.', ',') : '–', 'Note moy.'],
   ];
   return (
-    <div className="grid grid-cols-4 gap-2 px-5 md:px-0">
+    <div className="grid grid-cols-4 gap-2 md:gap-3 px-5 md:px-0">
       {cells.map(([v, l]) => (
-        <div key={l} className="rounded-2xl bg-white/[0.06] border border-white/[0.06] py-3 text-center">
-          <div className="text-[18px] md:text-[20px] font-bold text-white tabular-nums">{v}</div>
+        <div key={l} className="rounded-2xl bg-white/[0.06] border border-white/[0.06] py-3 md:py-5 text-center">
+          <div className="text-[18px] md:text-[26px] font-bold text-white tabular-nums">{v}</div>
           <div className="text-[11px] md:text-[12px] text-[#8E8E93]">{l}</div>
         </div>
       ))}
@@ -87,19 +87,21 @@ export function ProfileView({ username, initial }: { username: string; initial: 
   };
 
   return (
-    <div className="animate-in fade-in duration-500 pb-32">
+    <div className="animate-in fade-in duration-500 pb-32 md:pl-[104px] md:pr-6 md:pt-4">
+      <div className="mx-auto max-w-[1400px]">
       {/* Banner */}
-      <div className="relative h-[200px] md:h-[300px] md:ml-[104px] md:mr-6 md:mt-4 md:rounded-[28px] overflow-hidden bg-white/5">
+      <div className="relative h-[200px] md:h-[280px] xl:h-[340px] md:rounded-[28px] overflow-hidden bg-white/5">
         <img src={bannerUrl(data)} alt="" className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/80" />
       </div>
 
-      <div className="md:pl-[136px] md:pr-10 max-w-6xl">
+      <div className="md:px-8">
         {/* Header: avatar left, name beside (validated layout) */}
-        <div className="relative -mt-12 md:-mt-14 px-5 md:px-0 flex items-end gap-4">
-          <Avatar src={data.avatar_url} alt={data.display_name ?? data.username} size={96} className="border-4 border-black" />
+        <div className="relative -mt-12 md:-mt-16 px-5 md:px-0 flex items-end gap-4 md:gap-6">
+          <Avatar src={data.avatar_url} alt={data.display_name ?? data.username} size={96} className="border-4 border-black md:hidden" />
+          <Avatar src={data.avatar_url} alt={data.display_name ?? data.username} size={128} className="border-4 border-black hidden md:block" />
           <div className="min-w-0 pb-1 flex-1">
-            <h1 className="text-[24px] md:text-[30px] font-bold text-white leading-tight truncate">{data.display_name || `@${data.username}`}</h1>
+            <h1 className="text-[24px] md:text-[34px] font-bold text-white leading-tight truncate">{data.display_name || `@${data.username}`}</h1>
             <p className="text-[14px] text-[#8E8E93] truncate">
               @{data.username} · membre depuis {memberSince}
             </p>
@@ -132,14 +134,14 @@ export function ProfileView({ username, initial }: { username: string; initial: 
         {data.trophies.length > 0 && (
           <div className="mt-4 px-5 md:px-0 flex gap-2 overflow-x-auto scrollbar-none">
             {data.trophies.map((t) => (
-              <Link key={t.anime_id} href={`/anime?id=${t.anime_id}`} className="shrink-0 text-[12px] font-semibold text-white bg-[#FFD60A]/15 border border-[#FFD60A]/30 rounded-full px-3 py-1">
-                🏆 {t.title}
+              <Link key={t.anime_id} href={`/anime?id=${t.anime_id}`} className="shrink-0 inline-flex items-center gap-1.5 text-[12px] font-semibold text-white bg-[#FFD60A]/15 border border-[#FFD60A]/30 rounded-full px-3 py-1 hover:bg-[#FFD60A]/25 transition-colors">
+                <Crown className="w-3.5 h-3.5 text-[#FFD60A]" aria-label="Trophée" /> {t.title}
               </Link>
             ))}
           </div>
         )}
 
-        <div className="mt-6 space-y-8">
+        <div className="mt-6 md:mt-8 space-y-8 md:space-y-10">
           {data.blocks.map((b) =>
             b.id === 'stats' ? (
               <div key="stats" className={owner && !b.visible ? 'opacity-50' : ''}>
@@ -151,6 +153,8 @@ export function ProfileView({ username, initial }: { username: string; initial: 
           )}
           {data.blocks.length === 0 && <p className="px-5 md:px-0 text-[#8E8E93]">Ce profil n’affiche rien pour le moment.</p>}
         </div>
+      </div>
+
       </div>
 
       {owner && editing && (

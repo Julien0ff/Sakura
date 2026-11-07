@@ -31,21 +31,21 @@ function AnimeDetailsContent() {
 /** Episode list layouts (Settings › Affichage des épisodes). `auto` = list on phones, cards from md. */
 const EPISODE_LAYOUTS = {
   cards: {
-    container: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4',
+    container: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4',
     item: 'flex flex-col gap-3 p-3',
     thumb: 'w-full',
     play: 'w-12 h-12',
     rating: 'bottom-3',
   },
   list: {
-    container: 'flex flex-col gap-2',
+    container: 'flex flex-col gap-2 xl:grid xl:grid-cols-2 xl:gap-3',
     item: 'flex flex-row items-center gap-3 p-2',
     thumb: 'w-32 md:w-40 shrink-0',
     play: 'w-8 h-8',
     rating: 'top-1/2 -translate-y-1/2',
   },
   auto: {
-    container: 'flex flex-col gap-2 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-4',
+    container: 'flex flex-col gap-2 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 md:gap-4',
     item: 'flex flex-row items-center gap-3 p-2 md:flex-col md:items-stretch md:p-3',
     thumb: 'w-32 shrink-0 md:w-full',
     play: 'w-8 h-8 md:w-12 md:h-12',
@@ -555,7 +555,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
         </div>
 
         {/* Content Tabs */}
-        <div role="tablist" className="flex items-center gap-6 border-b border-white/[0.06] mb-8 pl-6 pr-6 md:pl-32 overflow-x-auto scrollbar-none">
+        <div role="tablist" className="flex items-center gap-6 border-b border-white/[0.06] mb-8 px-6 md:pl-32 md:pr-10 overflow-x-auto scrollbar-none">
           {['episodes', 'details', 'relations'].map((tab) => (
             <button
               key={tab}
@@ -577,7 +577,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
           ))}
         </div>
 
-        <div className="pl-6 md:pl-32 pr-6 mb-16">
+        <div className="px-6 md:pl-32 md:pr-10 mb-16">
           <div className="w-full space-y-8">
             {activeTab === 'episodes' && (
               <div className="space-y-4">
@@ -624,7 +624,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                   </div>
                 </div>
                 
-                <div className={`${epLayout.container} pr-2 pb-4`}>
+                <div className={`${epLayout.container} pb-4`}>
                   {isLoadingEpisodes ? (
                     Array.from({ length: 8 }, (_, i) => (
                       <div key={i} className="aspect-video rounded-2xl bg-white/5 animate-pulse" />
@@ -695,7 +695,8 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                                 epRating ? 'bg-[#FFD60A] text-black' : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
                               }`}
                             >
-                              ★{epRating ? ` ${epRating}` : ''}
+                              <Star className="w-3.5 h-3.5" aria-hidden />
+                              {epRating ?? null}
                             </button>
                           )}
                         >

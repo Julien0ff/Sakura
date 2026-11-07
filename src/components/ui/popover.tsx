@@ -6,8 +6,10 @@ import { createPortal } from 'react-dom';
 /**
  * Minimal popover: trigger + panel rendered in a portal with fixed positioning,
  * so overflow-hidden ancestors (hero banners, cards) never clip it.
- * Closes on outside click, Escape, scroll and resize.
+ * Closes on outside click, Escape, scroll and resize, with a short exit animation.
  */
+const EXIT_MS = 140;
+
 export function Popover({
   trigger,
   children,
@@ -24,10 +26,21 @@ export function Popover({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [style, setStyle] = useState<React.CSSProperties>({ visibility: 'hidden' });
   const anchorRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const close = useCallback(() => setOpen(false), []);
+
+  // Play the exit animation, then unmount.
+  const close = useCallback(() => setClosing(true), []);
+  useEffect(() => {
+    if (!closing) return;
+    const t = setTimeout(() => {
+      setClosing(false);
+      setOpen(false);
+    }, EXIT_MS);
+    return () => clearTimeout(t);
+  }, [closing]);
 
   // Place the panel next to the trigger, flipping / clamping to stay on screen.
   useLayoutEffect(() => {
@@ -58,12 +71,12 @@ export function Popover({
     if (!open) return;
     const onDown = (e: PointerEvent) => {
       const t = e.target as Node;
-      if (!anchorRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
+      if (!anchorRef.current?.contains(t) && !panelRef.current?.contains(t)) close();
     };
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
     const onMove = (e: Event) => {
       if (panelRef.current?.contains(e.target as Node)) return;
-      setOpen(false);
+      close();
     };
     document.addEventListener('pointerdown', onDown);
     document.addEventListener('keydown', onKey);
@@ -75,15 +88,16 @@ export function Popover({
       window.removeEventListener('scroll', onMove, true);
       window.removeEventListener('resize', onMove);
     };
-  }, [open]);
+  }, [open, close]);
 
   return (
     <div ref={anchorRef} className={`relative ${className}`}>
       {trigger({
         open,
         toggle: () => {
+          if (open) return setClosing(true);
           setStyle({ visibility: 'hidden' });
-          setOpen((o) => !o);
+          setOpen(true);
         },
       })}
       {open &&
@@ -92,8 +106,10 @@ export function Popover({
             ref={panelRef}
             role="dialog"
             aria-label={label}
-            style={{ position: 'fixed', ...style }}
-            className="z-[150] tab-bar-glass rounded-2xl p-1.5 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+            style={{ position: 'fixed', animationFillMode: 'both', ...style }}
+            className={`z-[150] menu-glass rounded-2xl p-1.5 ${
+              closing ? 'animate-out fade-out-0 zoom-out-95 duration-150 pointer-events-none' : 'animate-in fade-in-0 zoom-in-95 duration-200'
+            }`}
           >
             {children(close)}
           </div>,

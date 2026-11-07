@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAniList, GET_TRENDING_ANIMES } from '@/core/api/anilist';
 import { getTMDBDetails } from '@/core/api/tmdb';
-import { Play, Info } from '@/components/ui/icons';
+import { Play, Info, Star } from '@/components/ui/icons';
 import Link from 'next/link';
 import { formatScore, statusLabel, type AnimeSummary } from '@/lib/anime';
 import { useAmbientColor } from '@/lib/use-ambient-color';
@@ -172,7 +172,7 @@ export function HeroBanner() {
                 </span>
                 {rating && (
                   <span className="font-bold text-white flex items-center gap-1 drop-shadow-md">
-                    <span style={{ color }} aria-hidden>★</span> {rating}
+                    <Star className="w-4 h-4" style={{ color }} aria-hidden /> {rating}
                   </span>
                 )}
                 {anime.genres?.slice(0, 2).map((g) => (

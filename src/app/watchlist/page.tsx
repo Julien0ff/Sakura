@@ -55,7 +55,7 @@ function Watchlist() {
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-6 md:pl-32 pr-6 pt-10 pb-32">
       <h1 className="text-4xl md:text-5xl font-bold text-white mb-6 max-md:pr-12 flex items-center gap-4" style={{ fontFamily: 'var(--font-impact)' }}>
-        <Bookmark className="w-8 h-8 text-primary" />
+        <Bookmark className="w-8 h-8 text-sakura" />
         Ma Liste
       </h1>
 
@@ -84,6 +84,7 @@ function Watchlist() {
               cover={a.cover}
               status={a.status}
               score={a.score}
+              color={a.color}
               badge={filter === 'all' ? STATUS_LABELS[a.listStatus] : undefined}
               subtitle={a.rating ? `Ma note : ${a.rating}/10` : undefined}
             />

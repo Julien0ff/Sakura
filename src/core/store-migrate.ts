@@ -2,15 +2,16 @@
 import type { SavedAnime, Settings, SyncSnapshot } from './store.ts';
 import { isListStatus } from './tracking.ts';
 
-export const STORE_VERSION = 6;
+export const STORE_VERSION = 7;
 
-export const DEFAULT_SETTINGS: Settings = { defaultLang: 'vostfr', autoSkip: false, autoNext: true, haptics: true, hapticIntensity: 'normal', episodeView: 'auto' };
+export const DEFAULT_SETTINGS: Settings = { defaultLang: 'vostfr', autoSkip: false, autoNext: true, haptics: true, hapticIntensity: 'normal', episodeView: 'auto', calendarLang: 'all' };
 
 /**
  * v0 → v1: settings gained autoSkip / autoNext, progress map added. v2–3: haptics.
  * v4: sync — watchlist updatedAt, tombstones, settingsUpdatedAt.
  * v5: tracking — every list entry gets a status (existing ones: « À voir »), episode ratings.
  * v6: settings.episodeView (defaults merged in below).
+ * v7: settings.calendarLang (same).
  */
 export function migrateStore(persisted: unknown, _fromVersion: number): SyncSnapshot {
   const state = (persisted ?? {}) as Partial<SyncSnapshot> & { watchlist?: Partial<SavedAnime>[] };

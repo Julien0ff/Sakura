@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Group, Row, ActionButton } from '@/components/settings/grouped-list';
@@ -171,7 +172,7 @@ export function AccountGroup() {
             {profile?.username ? (
               <div className="text-[15px] text-[#8E8E93] truncate">@{profile.username}</div>
             ) : (
-              <a href="/onboarding?next=/settings" className="text-[15px] text-primary">Choisir un pseudo</a>
+              <Link href="/onboarding?next=/settings" className="text-[15px] text-sakura">Choisir un pseudo</Link>
             )}
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { Sidebar, MobileNav } from './sidebar';
 import { WelcomePopup } from './welcome-popup';
+import { ChangelogPopup } from './changelog-popup';
 import { Footer } from './footer';
 import { ScrollEffectsFallback } from './scroll-effects-fallback';
 
@@ -14,6 +15,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       <Sidebar />
       <WelcomePopup />
+      <ChangelogPopup />
 
       <main id="main-scroll" className="absolute inset-0 z-[1] h-full w-full overflow-y-auto overflow-x-hidden scrollbar-none">
         <div className="min-h-full flex flex-col">

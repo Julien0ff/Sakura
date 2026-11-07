@@ -9,7 +9,7 @@ const base: SyncSnapshot = {
   progress: { '2:1:3': { time: 5, duration: 50, updatedAt: 210 } },
   episodeRatings: { '2:1:3': { rating: 8, updatedAt: 220 } },
   deleted: { 'w:9': 300, 'h:8': 310, 'r:2:1:4': 320 },
-  settings: { defaultLang: 'vf', autoSkip: false, autoNext: true, haptics: true, hapticIntensity: 'normal', episodeView: 'auto' },
+  settings: { defaultLang: 'vf', autoSkip: false, autoNext: true, haptics: true, hapticIntensity: 'normal', episodeView: 'auto', calendarLang: 'all' },
   settingsUpdatedAt: 0,
 };
 

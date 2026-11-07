@@ -56,7 +56,7 @@ export function WelcomePopup() {
     >
       <div className="relative flex flex-col max-h-[min(100dvh-2rem,44rem)] overflow-hidden rounded-[28px] border border-white/10 bg-[#141416] shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)]">
         {/* Art: the banner fades into the card instead of ending on a hard edge */}
-        <div className="relative shrink-0 h-32 sm:h-48 md:h-56">
+        <div className="relative shrink-0 h-32 sm:h-48 md:h-56 [@media(max-height:820px)]:md:h-36">
           <img src="/banner.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#141416]/40 to-[#141416]" />
           <img src="/icon.png" alt="" className="absolute left-6 md:left-8 -bottom-6 w-14 h-14 rounded-2xl shadow-xl ring-1 ring-white/15" />
@@ -70,7 +70,7 @@ export function WelcomePopup() {
           <X className="w-5 h-5" />
         </button>
 
-        <div className="min-h-0 flex-1 px-6 md:px-8 pt-10 pb-6 md:pb-8 overflow-y-auto overscroll-contain scrollbar-none">
+        <div className="min-h-0 flex-1 px-6 md:px-8 pt-10 pb-6 md:pb-8 overflow-y-auto overscroll-contain thin-scroll">
           <h2 id="welcome-title" className="text-[34px] md:text-[44px] leading-none font-bold" style={{ fontFamily: 'var(--font-impact)' }}>
             Bienvenue sur {siteConfig.name}
           </h2>

@@ -28,6 +28,7 @@ export function AnimeResults({ animes, isLoading, error, emptyMessage }: AnimeRe
           cover={coverUrl(anime)}
           status={anime.status}
           score={anime.averageScore}
+          color={anime.coverImage.color}
         />
       ))}
     </div>

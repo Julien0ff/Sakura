@@ -5,6 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* SAKURA brand pink (logo, page-title icons). */
+  --color-sakura: #FF7AA8;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
@@ -70,7 +72,7 @@
 
   --border: rgba(255, 255, 255, 0.15);
   --input: rgba(255, 255, 255, 0.1);
-  --ring: #0A84FF;
+  --ring: #FF7AA8;
   --radius: 12px;
 
   --sidebar: rgba(28, 28, 30, 0.5);
@@ -81,7 +83,7 @@
   --sidebar-accent: rgba(255, 255, 255, 0.1);
   --sidebar-accent-foreground: #FFFFFF;
   --sidebar-border: rgba(255, 255, 255, 0.1);
-  --sidebar-ring: #0A84FF;
+  --sidebar-ring: #FF7AA8;
 }
 
 .dark {
@@ -104,7 +106,7 @@
   --destructive-foreground: #FFFFFF;
   --border: rgba(255, 255, 255, 0.15);
   --input: rgba(255, 255, 255, 0.1);
-  --ring: #0A84FF;
+  --ring: #FF7AA8;
 
   --sidebar: rgba(28, 28, 30, 0.6);
   --sidebar-foreground: #FFFFFF;
@@ -113,7 +115,7 @@
   --sidebar-accent: rgba(255, 255, 255, 0.1);
   --sidebar-accent-foreground: #FFFFFF;
   --sidebar-border: rgba(255, 255, 255, 0.15);
-  --sidebar-ring: #0A84FF;
+  --sidebar-ring: #FF7AA8;
 }
 
 @layer base {
@@ -426,4 +428,110 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .egg-dialog[open] { animation-duration: 0.01s; }
+}
+
+/* Cartes anime : halo + contour à la couleur de la série au survol (et au focus clavier). */
+.anime-card:hover .anime-card-cover,
+.anime-card:focus-visible .anime-card-cover {
+  border-color: color-mix(in oklab, var(--card-color) 70%, transparent);
+  box-shadow: 0 18px 44px -14px color-mix(in oklab, var(--card-color) 75%, transparent);
+}
+.anime-card:focus-visible .anime-card-cover {
+  outline: 2px solid var(--card-color);
+  outline-offset: 3px;
+}
+
+/* Menus / popovers : matériau dense (lisible au-dessus des bannières et des affiches). */
+.menu-glass {
+  background: rgba(30, 30, 32, 0.94);
+  backdrop-filter: blur(40px) saturate(160%);
+  -webkit-backdrop-filter: blur(40px) saturate(160%);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.85), inset 0 0.5px 0 rgba(255, 255, 255, 0.1);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .menu-glass { background: rgb(30, 30, 32); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+/* Barres de défilement : fines et sombres partout (fini les barres système épaisses). */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  scrollbar-gutter: auto;
+}
+
+/* ───────── Feuilles modales (<Sheet>) ─────────
+   Mobile : feuille du bas, pleine largeur, au-dessus de la barre d'onglets (top layer).
+   ≥ md : carte centrée, large, sans barre de défilement inutile. */
+.sheet-dialog {
+  margin: auto auto 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: 92dvh;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  overflow: visible;
+  outline: none;
+}
+.sheet-body {
+  max-height: 92dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #141416;
+  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 0;
+  border-radius: 28px 28px 0 0;
+  padding: 16px 16px max(env(safe-area-inset-bottom), 20px);
+  box-shadow: 0 -20px 60px -20px rgba(0, 0, 0, 0.9);
+}
+.sheet-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: welcome-backdrop 0.25s ease both;
+}
+.sheet-dialog[open] { animation: sheet-up 0.38s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.sheet-dialog.sheet-out { animation: sheet-down 0.22s ease-in both; }
+.sheet-dialog.sheet-out::backdrop { animation: welcome-backdrop 0.22s ease-in reverse both; }
+@keyframes sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes sheet-down { to { transform: translateY(100%); } }
+
+@media (min-width: 768px) {
+  .sheet-dialog {
+    margin: auto;
+    width: min(100vw - 4rem, 40rem);
+    max-height: min(100dvh - 4rem, 52rem);
+  }
+  .sheet-dialog.sheet-lg { width: min(100vw - 4rem, 54rem); }
+  .sheet-body {
+    max-height: min(100dvh - 4rem, 52rem);
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
+    border-radius: 28px;
+    padding: 24px 28px 28px;
+    box-shadow: 0 40px 120px -20px rgba(0, 0, 0, 0.9);
+  }
+  .sheet-dialog[open] { animation: welcome-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .sheet-dialog.sheet-out { animation: welcome-out 0.2s ease-in both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet-dialog[open], .sheet-dialog.sheet-out, .sheet-dialog::backdrop { animation-duration: 0.01s; }
+}
+
+/* Rangées de l'accueil : flou progressif sous la barre latérale (desktop). */
+.row-edge-blur {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 112px;
+  pointer-events: none;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.55), transparent);
+  mask-image: linear-gradient(to right, #000 55%, transparent);
 }

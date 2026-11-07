@@ -8,10 +8,26 @@ import { supabase } from '@/lib/supabase';
 import { desktop, isApp, isDesktop, isLiteRendering, isMobileApp, RELEASES_URL, type AuthLink, type UpdateInfo } from '@/lib/desktop';
 import { useAppStore, useHydrated } from '@/core/store';
 import { notifyTargets } from '@/lib/notify-targets';
+import { syncScheduledReleases } from '@/lib/mobile-notify';
+import { checkAndroidUpdate, type MobileUpdate } from '@/lib/mobile-update';
 import { buildBrowsingPresence } from '@/lib/presence';
 import { configurePresence, SESSION_START, setPagePresence } from './presence-manager';
 
 const safeNext = (n: string | null) => (n && n.startsWith('/') && !n.startsWith('//') ? n : '/');
+
+/** Android: offers the new .apk (the phone's browser downloads it, Android asks to install it). */
+export function announceAndroidUpdate(u: MobileUpdate) {
+  toast(`SAKURA ${u.version} est disponible`, {
+    action: {
+      label: 'Télécharger',
+      onClick: () =>
+        void desktop
+          .openExternal(u.url)
+          .then(() => toast('Ouvrez le fichier téléchargé pour installer la mise à jour.'))
+          .catch(() => toast('Téléchargement impossible pour le moment')),
+    },
+  });
+}
 
 /** Offers an update found by the app (startup + every 6 h, or « Rechercher » in Settings). */
 export function announceUpdate(info: UpdateInfo) {
@@ -39,6 +55,18 @@ export function DesktopBridge() {
   useEffect(() => {
     if (!isApp()) return;
     if (isLiteRendering()) document.documentElement.classList.add('app-lite');
+    if (isMobileApp()) {
+      const html = document.documentElement;
+      html.classList.add('app-mobile');
+      // Some Android WebViews report a 0 safe area while drawing under the status bar.
+      if (/Android/i.test(navigator.userAgent)) {
+        const probe = document.createElement('div');
+        probe.style.cssText = 'position:fixed;top:0;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none';
+        document.body.appendChild(probe);
+        if (probe.getBoundingClientRect().height === 0) html.style.setProperty('--android-status', '28px');
+        probe.remove();
+      }
+    }
 
     // Mobile apps have no second window: target="_blank" links open in the phone's browser.
     const onClick = (e: MouseEvent) => {
@@ -84,8 +112,11 @@ export function DesktopBridge() {
     ];
     // Cold start: the link arrived before this page was listening.
     void desktop.takePendingAuth().then((link) => link && finish(link));
+    // Android: a newer .apk on GitHub? (iPhone: AltStore / SideStore handle updates.)
+    const updateCheck = setTimeout(() => void checkAndroidUpdate().then((u) => u && announceAndroidUpdate(u)).catch(() => {}), 5000);
 
     return () => {
+      clearTimeout(updateCheck);
       document.removeEventListener('click', onClick, true);
       unlisteners.forEach((u) => void u.then((f) => f()));
     };
@@ -93,6 +124,7 @@ export function DesktopBridge() {
 
   return (
     <>
+      <div className="status-edge" aria-hidden />
       <NotifyTargetsSync />
       <PagePresence />
     </>
@@ -107,14 +139,17 @@ function PagePresence() {
 
   useEffect(() => configurePresence({ enabled, browsing }), [enabled, browsing]);
   useEffect(() => {
-    if (!isDesktop() || pathname === '/anime') return;
+    if (!isApp() || pathname === '/anime') return;
     setPagePresence(buildBrowsingPresence({ path: pathname, since: SESSION_START, origin: window.location.origin }));
   }, [pathname]);
 
   return null;
 }
 
-/** Keeps the app's release-notification list in sync with « Ma liste » and the settings. */
+/**
+ * Keeps release notifications in sync with « Ma liste » and the settings: the PC app gets the
+ * list to watch, the mobile apps schedule the coming week.
+ */
 function NotifyTargetsSync() {
   const hydrated = useHydrated();
   const watchlist = useAppStore((s) => s.watchlist);
@@ -123,10 +158,28 @@ function NotifyTargetsSync() {
   const defaultLang = useAppStore((s) => s.settings.defaultLang);
 
   useEffect(() => {
-    if (!hydrated || !isDesktop()) return;
+    if (!hydrated || !isApp()) return;
+    const targets = notifyTargets(watchlist, { enabled, lang, defaultLang });
+    // PC: the app checks every 15 min itself. Phones: the coming week is scheduled in advance.
+    const sync = isDesktop()
+      ? () => void desktop.setNotifyTargets(targets)
+      : () => void syncScheduledReleases(targets).catch(() => {});
     // Debounced: list edits come in bursts (sync pulls, status changes).
-    const t = setTimeout(() => void desktop.setNotifyTargets(notifyTargets(watchlist, { enabled, lang, defaultLang })), 1000);
-    return () => clearTimeout(t);
+    const t = setTimeout(sync, 1500);
+    if (isDesktop()) return () => clearTimeout(t);
+
+    // Back to the app after a while (phones keep it suspended): refresh the week ahead.
+    let last = Date.now();
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - last < 3_600_000) return;
+      last = Date.now();
+      sync();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [hydrated, watchlist, enabled, lang, defaultLang]);
 
   return null;

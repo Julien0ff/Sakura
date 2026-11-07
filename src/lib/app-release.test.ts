@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { detectPlatform, readRelease, releaseAssetNames } from './app-release.ts';
+import { altstoreSource, detectPlatform, isNewerVersion, readRelease, releaseAssetNames } from './app-release.ts';
 
 test('detectPlatform from the user agent', () => {
   assert.equal(detectPlatform('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140'), 'windows');
@@ -66,4 +66,36 @@ test('releaseAssetNames: the installers CI publishes for a version', () => {
   assert.equal(r.downloads.linux?.length, 3);
   assert.equal(r.downloads.android?.length, 1);
   assert.equal(r.downloads.ios?.length, 1);
+});
+
+test('isNewerVersion compares dotted versions, prereleases below their release', () => {
+  assert.equal(isNewerVersion('0.5.0', '0.4.0'), true);
+  assert.equal(isNewerVersion('0.10.0', '0.9.3'), true);
+  assert.equal(isNewerVersion('0.4.0', '0.4.0'), false);
+  assert.equal(isNewerVersion('0.4.0', '0.5.0'), false);
+  assert.equal(isNewerVersion('1.0.0', '1.0.0-beta.2'), true);
+  assert.equal(isNewerVersion('1.0.0-beta.1', '1.0.0'), false);
+  assert.equal(isNewerVersion('garbage', '0.1.0'), false);
+});
+
+test('altstoreSource: AltStore / SideStore source with the latest .ipa', () => {
+  const release = readRelease([
+    {
+      tag_name: 'app-v0.5.0', draft: false, prerelease: false, published_at: '2026-11-08T10:00:00Z', html_url: 'h', body: 'Notes',
+      assets: [{ name: 'SAKURA_0.5.0_ios.ipa', browser_download_url: 'https://dl/ipa', size: 5_000_000 }],
+    },
+  ]);
+  const src = altstoreSource(release, 'https://sakura.thefoxy.me');
+  assert.equal(src.name, 'SAKURA');
+  assert.equal(src.iconURL, 'https://sakura.thefoxy.me/icon.png');
+  const app = src.apps[0];
+  assert.equal(app.bundleIdentifier, 'app.sakura.desktop');
+  assert.deepEqual(app.versions, [
+    { version: '0.5.0', buildVersion: '0.5.0', date: '2026-11-08T10:00:00Z', localizedDescription: 'Notes', downloadURL: 'https://dl/ipa', size: 5_000_000, minOSVersion: '15.0' },
+  ]);
+  assert.deepEqual(app.appPermissions, { entitlements: [], privacy: {} });
+});
+
+test('altstoreSource without an .ipa: the app is listed with no version', () => {
+  assert.deepEqual(altstoreSource(null, 'https://x').apps[0].versions, []);
 });

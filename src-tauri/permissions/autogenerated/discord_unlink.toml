@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-discord-unlink"
+description = "Enables the discord_unlink command without any pre-configured scope."
+commands.allow = ["discord_unlink"]
+
+[[permission]]
+identifier = "deny-discord-unlink"
+description = "Denies the discord_unlink command without any pre-configured scope."
+commands.deny = ["discord_unlink"]

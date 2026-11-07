@@ -29,8 +29,27 @@ jobs:
   android:
     if: startsWith(github.event.release.tag_name || inputs.tag || github.ref_name, 'app-v')
     runs-on: ubuntu-latest
+    env:
+      HAS_SOCIAL_SDK: ${{ secrets.SOCIAL_SDK_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
+
+      # Discord Social SDK (mobile Discord status): private repo, never in this public one.
+      # Without the SOCIAL_SDK_TOKEN secret the app builds without it (status « indisponible »).
+      - name: Discord Social SDK
+        if: env.HAS_SOCIAL_SDK == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: Julien0ff/sakura-sdk
+          token: ${{ secrets.SOCIAL_SDK_TOKEN }}
+          path: .social-sdk
+      - name: Discord Social SDK path
+        run: |
+          if [ "$HAS_SOCIAL_SDK" = "true" ]; then
+            echo "DISCORD_SOCIAL_SDK=$GITHUB_WORKSPACE/.social-sdk" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Secret SOCIAL_SDK_TOKEN absent : app compilée sans statut Discord."
+          fi
 
       - uses: actions/setup-java@v4
         with:
@@ -65,6 +84,15 @@ jobs:
         run: |
           npx tauri android init --ci
           npx tauri icon public/icon.png
+          # Launcher icon: our adaptive set (tauri icon puts a small logo on white).
+          cp -R src-tauri/icons/android/res/. src-tauri/gen/android/app/src/main/res/
+
+      - name: Add the Discord Social SDK
+        if: env.HAS_SOCIAL_SDK == 'true'
+        run: |
+          # Rust links against the .so of each ABI (build.rs); the .aar ships them in the app.
+          unzip -q -o "$DISCORD_SOCIAL_SDK/android/discord_partner_sdk.aar" 'jni/*' -d "$DISCORD_SOCIAL_SDK/android"
+          python3 scripts/mobile/android-social-sdk.py src-tauri/gen/android "$DISCORD_SOCIAL_SDK" 1568341036894523432
 
       - name: Build
         run: npx tauri android build --apk
@@ -101,8 +129,27 @@ jobs:
   ios:
     if: startsWith(github.event.release.tag_name || inputs.tag || github.ref_name, 'app-v')
     runs-on: macos-latest
+    env:
+      HAS_SOCIAL_SDK: ${{ secrets.SOCIAL_SDK_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
+
+      # Discord Social SDK (mobile Discord status): private repo, never in this public one.
+      # Without the SOCIAL_SDK_TOKEN secret the app builds without it (status « indisponible »).
+      - name: Discord Social SDK
+        if: env.HAS_SOCIAL_SDK == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: Julien0ff/sakura-sdk
+          token: ${{ secrets.SOCIAL_SDK_TOKEN }}
+          path: .social-sdk
+      - name: Discord Social SDK path
+        run: |
+          if [ "$HAS_SOCIAL_SDK" = "true" ]; then
+            echo "DISCORD_SOCIAL_SDK=$GITHUB_WORKSPACE/.social-sdk" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Secret SOCIAL_SDK_TOKEN absent : app compilée sans statut Discord."
+          fi
 
       - uses: actions/setup-node@v4
         with:
@@ -127,6 +174,16 @@ jobs:
           # Home screen icon: light + dark variants (src-tauri/icons/ios), single 1024 size.
           rm -rf src-tauri/gen/apple/Assets.xcassets/AppIcon.appiconset
           cp -R src-tauri/icons/ios/AppIcon.appiconset src-tauri/gen/apple/Assets.xcassets/
+
+      - name: Add the Discord Social SDK
+        if: env.HAS_SOCIAL_SDK == 'true'
+        run: |
+          node scripts/mobile/ios-social-sdk.mjs src-tauri/gen/apple "$DISCORD_SOCIAL_SDK"
+          (cd src-tauri/gen/apple && xcodegen generate --spec project.yml)
+          # Lets the SDK open the Discord app for « Authorize » when it is installed.
+          PLIST=$(find src-tauri/gen/apple -maxdepth 2 -path '*_iOS/Info.plist' | head -1)
+          /usr/libexec/PlistBuddy -c 'Add :LSApplicationQueriesSchemes array' "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c 'Add :LSApplicationQueriesSchemes: string discord' "$PLIST"
 
       # Xcode's « Build Rust Code » phase only works while `tauri ios build` runs, and that command
       # requires signing. Build the Rust library here and turn that phase into a no-op.

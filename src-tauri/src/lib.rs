@@ -1,5 +1,11 @@
 mod commands;
+#[cfg(social_sdk)]
+mod discord_sdk;
+// Mobile Discord status; also compiled by tests (and the Linux SDK tests) to be checked on a PC.
+#[cfg(any(mobile, test, social_sdk))]
+mod discord_mobile;
 mod links;
+mod presence_model;
 mod shell;
 
 // Desktop only (Windows, Linux, macOS): tray, autostart, Discord IPC, release checks, self-update.
@@ -72,11 +78,15 @@ pub fn run() {
 
   #[cfg(mobile)]
   {
-    builder = builder.invoke_handler(tauri::generate_handler![
+    builder = builder.plugin(tauri_plugin_haptics::init()).invoke_handler(tauri::generate_handler![
       commands::take_pending_auth,
       commands::open_external,
       commands::app_version,
       commands::retry_connection,
+      commands::set_presence,
+      commands::discord_link,
+      commands::discord_unlink,
+      commands::discord_status,
     ]);
   }
 
@@ -108,6 +118,12 @@ pub fn run() {
       });
 
       shell::create_main_window(app.handle())?;
+
+      #[cfg(mobile)]
+      {
+        use tauri::Manager;
+        app.manage(discord_mobile::DiscordMobile::spawn(app.handle().clone()));
+      }
 
       #[cfg(desktop)]
       {

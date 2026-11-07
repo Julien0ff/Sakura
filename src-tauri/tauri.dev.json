@@ -9,6 +9,7 @@
       "capabilities": [
         "sakura-site",
         "sakura-site-desktop",
+        "sakura-site-mobile",
         "sakura-dev-server",
         "offline-page"
       ]

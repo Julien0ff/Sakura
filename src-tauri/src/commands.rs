@@ -79,6 +79,32 @@ pub fn set_presence(state: State<'_, crate::presence::Presence>, activity: Optio
   state.set(activity);
 }
 
+/// Mobile: same Discord activity as on PC, sent through the Social SDK once the account is linked.
+#[cfg(mobile)]
+#[tauri::command]
+pub fn set_presence(state: State<'_, crate::discord_mobile::DiscordMobile>, activity: Option<crate::presence_model::PresencePayload>) {
+  state.set(activity);
+}
+
+/// Mobile: opens Discord's « Authorize SAKURA » screen to link the account (Settings › Application).
+#[cfg(mobile)]
+#[tauri::command]
+pub fn discord_link(state: State<'_, crate::discord_mobile::DiscordMobile>) -> Result<(), String> {
+  state.link()
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn discord_unlink(state: State<'_, crate::discord_mobile::DiscordMobile>) {
+  state.unlink();
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn discord_status(state: State<'_, crate::discord_mobile::DiscordMobile>) -> crate::discord_mobile::DiscordStatus {
+  state.status()
+}
+
 /// Anime + languages to watch for new episodes (from « Ma liste » and the settings).
 #[cfg(desktop)]
 #[tauri::command]

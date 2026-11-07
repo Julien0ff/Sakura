@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "SAKURA",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "identifier": "app.sakura.desktop",
   "build": {
     "frontendDist": "offline",
@@ -15,6 +15,7 @@
       "capabilities": [
         "sakura-site",
         "sakura-site-desktop",
+        "sakura-site-mobile",
         "offline-page"
       ]
     }

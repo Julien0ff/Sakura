@@ -1,0 +1,27 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "sakura-site-mobile",
+  "description": "Mobile only: native haptics and the Discord status (Social SDK) for the live site.",
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "android",
+    "iOS"
+  ],
+  "remote": {
+    "urls": [
+      "https://sakura.thefoxy.me/*"
+    ]
+  },
+  "permissions": [
+    "haptics:allow-impact-feedback",
+    "haptics:allow-notification-feedback",
+    "haptics:allow-selection-feedback",
+    "haptics:allow-vibrate",
+    "allow-set-presence",
+    "allow-discord-link",
+    "allow-discord-unlink",
+    "allow-discord-status"
+  ]
+}

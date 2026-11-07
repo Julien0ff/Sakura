@@ -90,3 +90,79 @@ export function releaseAssetNames(version: string): string[] {
     `SAKURA_${version}_ios.ipa`,
   ];
 }
+
+/** true when `latest` is a newer version than `current` (1.2.10 > 1.2.9; 1.0.0 > 1.0.0-beta.2). */
+export function isNewerVersion(latest: string, current: string): boolean {
+  const parse = (v: string) => {
+    const m = /^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/.exec(v.trim());
+    return m ? { nums: [+m[1], +m[2], +m[3]], pre: m[4] ?? null } : null;
+  };
+  const a = parse(latest);
+  const b = parse(current);
+  if (!a || !b) return false;
+  for (let i = 0; i < 3; i++) if (a.nums[i] !== b.nums[i]) return a.nums[i] > b.nums[i];
+  if (a.pre === b.pre) return false;
+  if (a.pre === null) return true; // release > its prerelease
+  if (b.pre === null) return false;
+  return a.pre.localeCompare(b.pre, 'en', { numeric: true }) > 0;
+}
+
+/** iPhone build (Tauri: CFBundleShortVersionString and CFBundleVersion = app version). */
+const IOS_BUNDLE_ID = 'app.sakura.desktop';
+const IOS_MIN_OS = '15.0';
+const TINT = '#FF7AA8';
+
+/**
+ * AltStore / SideStore source (format v2) served at /altstore.json: adding it once lets
+ * AltStore and SideStore offer each new .ipa as an update.
+ */
+export function altstoreSource(release: AppRelease | null, origin: string) {
+  const ipa = release?.downloads.ios?.[0];
+  const description =
+    'Catalogue et lecteur d’animes en VOSTFR et VF, sans publicité. Reprise de lecture, suivi de vos séries, calendrier des sorties et notifications des nouveaux épisodes.';
+  return {
+    name: 'SAKURA',
+    identifier: 'me.thefoxy.sakura.source',
+    subtitle: 'Vos animes, sans publicité.',
+    description,
+    iconURL: `${origin}/icon.png`,
+    website: origin,
+    tintColor: TINT,
+    apps: [
+      {
+        name: 'SAKURA',
+        bundleIdentifier: IOS_BUNDLE_ID,
+        developerName: 'SAKURA',
+        subtitle: 'Vos animes, sans publicité.',
+        localizedDescription: description,
+        iconURL: `${origin}/icon.png`,
+        tintColor: TINT,
+        category: 'entertainment',
+        screenshots: [] as string[],
+        versions:
+          release && ipa
+            ? [
+                {
+                  version: release.version,
+                  buildVersion: release.version,
+                  date: release.publishedAt ?? new Date(0).toISOString(),
+                  localizedDescription: release.notes || 'Nouvelle version de SAKURA.',
+                  downloadURL: ipa.url,
+                  size: ipa.size,
+                  minOSVersion: IOS_MIN_OS,
+                },
+              ]
+            : [],
+        appPermissions: { entitlements: [] as string[], privacy: {} as Record<string, string> },
+      },
+    ],
+    news: [] as unknown[],
+  };
+}
+
+export const ALTSTORE_SOURCE_URL = 'https://sakura.thefoxy.me/altstore.json';
+/** « Add this source » links (iPhone): once added, AltStore / SideStore offer each new version. */
+export const ADD_SOURCE_LINKS = {
+  sidestore: `sidestore://source?url=${ALTSTORE_SOURCE_URL}`,
+  altstore: `altstore://source?url=${ALTSTORE_SOURCE_URL}`,
+};

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { isDesktop } from '@/lib/desktop';
+import { isApp } from '@/lib/desktop';
 import { buildBrowsingPresence, buildPresence, type PresenceInput } from '@/lib/presence';
 import { SESSION_START, setPagePresence, setPlaybackPresence } from './presence-manager';
 
@@ -13,25 +13,25 @@ export interface Playback {
 }
 
 /**
- * Desktop app: mirrors the player into Discord (« Regarde <anime> »). `episode` null = no player
+ * SAKURA apps: mirrors the player into Discord (« Regarde <anime> »). `episode` null = no player
  * open → back to the page's status.
  */
 export function useDiscordPresence(episode: PresenceEpisode | null, playback: Playback) {
   useEffect(() => {
-    if (!isDesktop()) return;
+    if (!isApp()) return;
     setPlaybackPresence(episode ? buildPresence({ ...episode, ...playback, now: Date.now(), origin: window.location.origin }) : null);
   }, [episode, playback]);
 
   useEffect(() => () => setPlaybackPresence(null), []);
 }
 
-/** Desktop app: « Death Note · Consulte la fiche » while on an anime page (null = still loading). */
+/** SAKURA apps: « Death Note · Consulte la fiche » while on an anime page (null = still loading). */
 export function useAnimePagePresence(anime: { id: number; title: string; cover: string | null } | null) {
   const id = anime?.id;
   const title = anime?.title;
   const cover = anime?.cover ?? null;
   useEffect(() => {
-    if (!isDesktop()) return;
+    if (!isApp()) return;
     setPagePresence(
       buildBrowsingPresence({
         path: '/anime',

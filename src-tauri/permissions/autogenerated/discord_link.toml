@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-discord-link"
+description = "Enables the discord_link command without any pre-configured scope."
+commands.allow = ["discord_link"]
+
+[[permission]]
+identifier = "deny-discord-link"
+description = "Denies the discord_link command without any pre-configured scope."
+commands.deny = ["discord_link"]

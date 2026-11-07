@@ -23,6 +23,12 @@ export interface UpdateInfo {
 
 export type PresenceStatus = 'idle' | 'connected' | 'discord_not_found' | 'rejected';
 
+/** Mobile apps: Discord account link (Social SDK). */
+export interface DiscordLinkStatus {
+  state: 'unavailable' | 'not_linked' | 'linking' | 'connecting' | 'connected' | 'error';
+  error: string | null;
+}
+
 export const RELEASES_URL = 'https://github.com/Julien0ff/Sakura/releases/latest';
 
 /** Which app runs this page (null on the website). */
@@ -91,4 +97,8 @@ export const desktop = {
   /** Anime + languages the app checks for new episodes (persisted by the app). */
   setNotifyTargets: (targets: NotifyTargets) => call<void>('set_notify_targets', { targets }),
   onUpdateAvailable: (cb: (info: UpdateInfo) => void) => on<UpdateInfo>('update-available', cb),
+  /** Mobile: opens Discord's « Authorize SAKURA » screen. */
+  discordLink: () => callOrThrow<void>('discord_link'),
+  discordUnlink: () => call<void>('discord_unlink'),
+  discordStatus: () => call<DiscordLinkStatus>('discord_status'),
 };

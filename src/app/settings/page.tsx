@@ -176,6 +176,7 @@ function useTouchDevice() {
 const HAPTIC_MESSAGES = {
   'vibration-ok': 'Vibration envoyée. Si vous ne sentez rien, désactivez le mode économie d’énergie et vérifiez que les vibrations au toucher sont activées dans les réglages Android.',
   'vibration-refused': 'Le navigateur a refusé la vibration. Elle est peut-être bloquée pour ce site (paramètres du site dans Chrome).',
+  native: 'Retour haptique envoyé par l’application. Si vous ne sentez rien, vérifiez que les vibrations du système sont activées (Réglages › Sons et vibrations).',
   'ios-switch': 'Retour haptique déclenché. Il nécessite iOS 18 ou plus récent, dans Safari ou depuis l’écran d’accueil.',
   none: 'Ce navigateur ne permet pas les vibrations (Firefox, ordinateur, ancien iOS…). Sur Android, utilisez Chrome, Edge ou Samsung Internet.',
 } as const;

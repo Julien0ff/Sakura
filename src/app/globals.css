@@ -571,6 +571,30 @@ html.app-lite .anime-card-cover { transition-property: transform; }
   .pt-page, .pt-page-lg { padding-top: 40px; }
 }
 
+/* Apps mobiles : flou progressif sous la barre d'état (heure, notifications), comme l'effet de
+   bord de défilement d'iOS. Hauteur = zone sûre du haut ; Android WebView qui la renvoie à 0 :
+   valeur mesurée par DesktopBridge (--android-status). */
+.status-edge { display: none; }
+html.app-mobile .status-edge {
+  --status-h: max(env(safe-area-inset-top, 0px), var(--android-status, 0px));
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: calc(var(--status-h) + 16px);
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0));
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
+}
+@media (prefers-reduced-transparency: reduce) {
+  html.app-mobile .status-edge { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgb(0 0 0 / 0.85); }
+}
+
 /* ───────── Liquid Glass (option iPhone, Paramètres › Apparence) ─────────
    Selon Apple (Materials, Color, Layout) : le verre ne va que sur la couche fonctionnelle (barre
    d'onglets, boutons flottants, menus, feuilles), jamais sur le contenu. Variante « Regular » pour

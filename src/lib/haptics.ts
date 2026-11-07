@@ -5,9 +5,14 @@
  * - Android (Chrome, Firefox…): Vibration API with short patterns.
  * - iOS 18+ Safari: no Vibration API, but toggling a native `<input type="checkbox" switch>`
  *   plays the system "selection" haptic. We keep one hidden switch and click its label.
- * Both only work inside a user gesture (tap/click handler). Silently no-op elsewhere
+ * - SAKURA mobile apps: the native haptics plugin (the app's WebView has neither: no vibrate
+ *   permission on Android, no Vibration API in WKWebView).
+ * Web paths only work inside a user gesture (tap/click handler). Silently no-op elsewhere
  * (desktop, older iOS) and when the user turned haptics off in Settings.
  */
+import { invoke } from '@tauri-apps/api/core';
+import { isMobileApp } from '@/lib/desktop';
+
 export type HapticKind = 'selection' | 'light' | 'medium' | 'success' | 'warning';
 
 // The Vibration API has no amplitude control: perceived strength comes from duration only.
@@ -67,11 +72,29 @@ const isIOS = () =>
   typeof navigator !== 'undefined' &&
   (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
 
-export type HapticSupport = 'vibration' | 'ios-switch' | 'none';
+type Impact = 'light' | 'medium' | 'heavy' | 'soft' | 'rigid';
+const IMPACT: Record<'light' | 'medium', Record<HapticIntensity, Impact>> = {
+  light: { soft: 'soft', normal: 'light', strong: 'medium' },
+  medium: { soft: 'light', normal: 'medium', strong: 'heavy' },
+};
+
+/** Native feedback in the mobile apps (Core Haptics / Android Vibrator). */
+function nativeHaptic(kind: HapticKind) {
+  const call =
+    kind === 'selection'
+      ? invoke('plugin:haptics|selection_feedback')
+      : kind === 'success' || kind === 'warning'
+        ? invoke('plugin:haptics|notification_feedback', { type: kind })
+        : invoke('plugin:haptics|impact_feedback', { style: IMPACT[kind][intensity] });
+  call.catch(() => {});
+}
+
+export type HapticSupport = 'native' | 'vibration' | 'ios-switch' | 'none';
 
 /** What this device/browser can do — used by the Settings "Tester" button. */
 export function hapticSupport(): HapticSupport {
   if (typeof window === 'undefined') return 'none';
+  if (isMobileApp()) return 'native';
   if (isIOS()) return 'ios-switch';
   if (typeof navigator.vibrate === 'function') return 'vibration';
   return 'none';
@@ -83,6 +106,10 @@ export function hapticSupport(): HapticSupport {
  */
 export function testHaptic(): { support: HapticSupport; accepted: boolean } {
   const support = hapticSupport();
+  if (support === 'native') {
+    nativeHaptic('success');
+    return { support, accepted: true };
+  }
   if (support === 'vibration') return { support, accepted: navigator.vibrate(scaled([60, 90, 60])) };
   if (support === 'ios-switch') {
     getIosSwitch().click();
@@ -94,6 +121,10 @@ export function testHaptic(): { support: HapticSupport; accepted: boolean } {
 export function haptic(kind: HapticKind = 'selection') {
   if (!enabled || typeof window === 'undefined') return;
   try {
+    if (isMobileApp()) {
+      nativeHaptic(kind);
+      return;
+    }
     if (typeof navigator.vibrate === 'function' && !isIOS()) {
       navigator.vibrate(scaled(PATTERNS[kind]));
       return;

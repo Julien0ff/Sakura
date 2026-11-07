@@ -4,7 +4,7 @@
 import { useSyncExternalStore } from 'react';
 import { AppIcon, Apple, ArrowDown, Bell, Beta, CodeIcon, Phone, Sparkles, Check } from '@/components/ui/icons';
 import { DiscordIcon } from '@/components/account/provider-icons';
-import { detectPlatform, type AppRelease, type Download, type Platform } from '@/lib/app-release';
+import { ADD_SOURCE_LINKS, detectPlatform, type AppRelease, type Download, type Platform } from '@/lib/app-release';
 import { isApp } from '@/lib/desktop';
 import { haptic } from '@/lib/haptics';
 
@@ -114,9 +114,19 @@ function ForYou({ platform, release }: { platform: Platform; release: AppRelease
     return ipa ? (
       <div className="flex flex-col gap-3">
         <DownloadButton d={ipa} primary platform="iPhone" />
-        <p className="text-[13px] text-[#8E8E93] flex flex-wrap items-center gap-2 max-w-md">
-          <BetaBadge /> Installez le fichier avec AltStore ou SideStore (compte Apple gratuit). Ils renouvellent l’app tous les 7 jours.
+        <p className="text-[13px] text-[#8E8E93] flex flex-wrap items-center gap-2 max-w-xl">
+          <BetaBadge /> Installez le fichier avec SideStore (gratuit) : un ordinateur est nécessaire une seule fois pour installer SideStore, ensuite tout se fait
+          depuis l’iPhone, renouvellement tous les 7 jours compris. AltStore fonctionne aussi.
         </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[13px] text-[#8E8E93]">Mises à jour automatiques :</span>
+          <a href={ADD_SOURCE_LINKS.sidestore} className="h-9 px-4 inline-flex items-center rounded-full bg-white/[0.08] hover:bg-white/[0.12] text-[14px] font-semibold text-white">
+            Ajouter à SideStore
+          </a>
+          <a href={ADD_SOURCE_LINKS.altstore} className="h-9 px-4 inline-flex items-center rounded-full bg-white/[0.08] hover:bg-white/[0.12] text-[14px] font-semibold text-white">
+            Ajouter à AltStore
+          </a>
+        </div>
       </div>
     ) : (
       <ComingSoon name="iPhone" pwa />

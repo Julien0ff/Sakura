@@ -39,7 +39,14 @@ pub fn starts_hidden(args: &[String]) -> bool {
 
 /// Only `https:` URLs with a host may be opened in the system browser.
 pub fn is_allowed_external(raw: &str) -> bool {
-    Url::parse(raw).map(|u| u.scheme() == "https" && u.host_str().is_some_and(|h| !h.is_empty())).unwrap_or(false)
+    Url::parse(raw)
+        .map(|u| match u.scheme() {
+            "https" => u.host_str().is_some_and(|h| !h.is_empty()),
+            // iPhone: « add this source » in AltStore / SideStore (updates of the .ipa).
+            "altstore" | "sidestore" => u.host_str() == Some("source"),
+            _ => false,
+        })
+        .unwrap_or(false)
 }
 
 #[cfg(test)]
@@ -84,5 +91,13 @@ mod tests {
         assert!(!is_allowed_external("javascript:alert(1)"));
         assert!(!is_allowed_external("file:///etc/passwd"));
         assert!(!is_allowed_external("https://"));
+    }
+
+    #[test]
+    fn altstore_and_sidestore_add_source_links_are_external() {
+        assert!(is_allowed_external("altstore://source?url=https://sakura.thefoxy.me/altstore.json"));
+        assert!(is_allowed_external("sidestore://source?url=https://sakura.thefoxy.me/altstore.json"));
+        assert!(!is_allowed_external("altstore://install?url=https://evil.example/app.ipa"));
+        assert!(!is_allowed_external("sidestore://"));
     }
 }

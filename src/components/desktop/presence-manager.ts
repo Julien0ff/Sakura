@@ -1,10 +1,10 @@
 'use client';
 
-import { desktop, isDesktop } from '@/lib/desktop';
+import { desktop, isApp } from '@/lib/desktop';
 import { pickPresence, samePresence, type PresencePayload } from '@/lib/presence';
 
 /**
- * Single source of the Discord activity (desktop app): the player (when something plays) wins over
+ * Single source of the Discord activity (PC: Discord IPC; phones: Social SDK once linked): the player (when something plays) wins over
  * the page being browsed. Each part reports its own payload; one deduplicated update goes to the app.
  */
 let page: PresencePayload | null = null;
@@ -17,7 +17,7 @@ let last: PresencePayload | null = null;
 export const SESSION_START = Date.now();
 
 function flush() {
-  if (!isDesktop()) return;
+  if (!isApp()) return;
   const next = enabled ? pickPresence(browsing ? page : null, playback) : null;
   if (samePresence(last, next)) return;
   last = next;

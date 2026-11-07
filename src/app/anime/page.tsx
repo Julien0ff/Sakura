@@ -7,7 +7,7 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { Play, ArrowLeft, Star, Calendar, MonitorPlay, Tags, Bookmark, BookmarkCheck, Check } from '@/components/ui/icons';
 import Link from 'next/link';
 import { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
-import { useDiscordPresence, type Playback, type PresenceEpisode } from '@/components/desktop/use-discord-presence';
+import { useAnimePagePresence, useDiscordPresence, type Playback, type PresenceEpisode } from '@/components/desktop/use-discord-presence';
 import { formatScore, statusLabel } from '@/lib/anime';
 import { useAppStore, progressKey, isWatched, type Lang } from '@/core/store';
 import { StatusPicker } from '@/components/anime/status-picker';
@@ -320,12 +320,18 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
             multiSeason: (anime.tmdbSeasons?.length ?? 0) > 1,
             episode: playingEpisode.episode_number,
             lang: activeLang,
+            // Minutes → seconds: TMDB episode runtime, else AniList's per-episode duration.
+            estimatedLength: ((playingEpisode.runtime as number | undefined) || (anime.duration as number | undefined) || 0) * 60,
+            openedAt: Date.now(),
           }
         : null,
     [anime, playingEpisode, videoData, activeSeason, activeLang]
   );
   const presencePlayback = useMemo(() => playback, [playback.playing, playback.time, playback.duration]); // eslint-disable-line react-hooks/exhaustive-deps
   useDiscordPresence(presenceEpisode, presencePlayback);
+  useAnimePagePresence(
+    anime ? { id: anime.id, title: anime.tmdbTitle || anime.title.english || anime.title.romaji, cover: anime.coverImage?.extraLarge || anime.coverImage?.large || null } : null
+  );
 
   // AniSkip is keyed by MyAnimeList id + episode number of *this* AniList entry. TMDB seasons > 1
   // usually map to another AniList entry, so only look it up for season 1 / single-season shows.

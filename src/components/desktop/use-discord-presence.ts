@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { useAppStore } from '@/core/store';
-import { desktop, isDesktop } from '@/lib/desktop';
-import { buildPresence, type PresenceInput, type PresencePayload } from '@/lib/presence';
+import { useEffect } from 'react';
+import { isDesktop } from '@/lib/desktop';
+import { buildBrowsingPresence, buildPresence, type PresenceInput } from '@/lib/presence';
+import { SESSION_START, setPagePresence, setPlaybackPresence } from './presence-manager';
 
 export type PresenceEpisode = Omit<PresenceInput, 'playing' | 'time' | 'duration' | 'now' | 'origin'>;
 export interface Playback {
@@ -12,48 +12,33 @@ export interface Playback {
   duration: number;
 }
 
-/** A new time bar is only sent when it moved by more than this (seek), not on every progress tick. */
-const DRIFT_S = 10;
-
 /**
  * Desktop app: mirrors the player into Discord (« Regarde <anime> »). `episode` null = no player
- * open → activity cleared. Respects Settings › Application › Statut Discord.
+ * open → back to the page's status.
  */
 export function useDiscordPresence(episode: PresenceEpisode | null, playback: Playback) {
-  const enabled = useAppStore((s) => s.settings.discordPresence ?? true);
-  const last = useRef<PresencePayload | null>(null);
-
   useEffect(() => {
     if (!isDesktop()) return;
-    if (!enabled || !episode) {
-      if (last.current) {
-        last.current = null;
-        void desktop.setPresence(null);
-      }
-      return;
-    }
-    const next = buildPresence({ ...episode, ...playback, now: Date.now(), origin: window.location.origin });
-    const prev = last.current;
-    const same =
-      prev &&
-      prev.details === next.details &&
-      prev.state === next.state &&
-      prev.large_image === next.large_image &&
-      (prev.start === undefined) === (next.start === undefined) &&
-      Math.abs((prev.start ?? 0) - (next.start ?? 0)) <= DRIFT_S;
-    if (same) return;
-    last.current = next;
-    void desktop.setPresence(next);
-  }, [enabled, episode, playback]);
+    setPlaybackPresence(episode ? buildPresence({ ...episode, ...playback, now: Date.now(), origin: window.location.origin }) : null);
+  }, [episode, playback]);
 
-  // Leaving the page (or the app reloading it) clears the status.
-  useEffect(
-    () => () => {
-      if (last.current) {
-        last.current = null;
-        void desktop.setPresence(null);
-      }
-    },
-    []
-  );
+  useEffect(() => () => setPlaybackPresence(null), []);
+}
+
+/** Desktop app: « Death Note · Consulte la fiche » while on an anime page (null = still loading). */
+export function useAnimePagePresence(anime: { id: number; title: string; cover: string | null } | null) {
+  const id = anime?.id;
+  const title = anime?.title;
+  const cover = anime?.cover ?? null;
+  useEffect(() => {
+    if (!isDesktop()) return;
+    setPagePresence(
+      buildBrowsingPresence({
+        path: '/anime',
+        since: SESSION_START,
+        origin: window.location.origin,
+        anime: id && title ? { id, title, cover } : undefined,
+      })
+    );
+  }, [id, title, cover]);
 }

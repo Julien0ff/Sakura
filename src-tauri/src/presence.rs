@@ -28,6 +28,9 @@ pub struct PresencePayload {
     pub end: Option<i64>,
     pub button_label: String,
     pub button_url: String,
+    /// `"name"` while browsing (« Regarde SAKURA »); otherwise the anime shows in the status line.
+    #[serde(default)]
+    pub display: Option<String>,
 }
 
 /// Payload checked against Discord's rules (and our own: https only).
@@ -43,6 +46,7 @@ pub struct CleanPresence {
     pub end: Option<i64>,
     pub button_label: String,
     pub button_url: Option<String>,
+    pub show_app_name: bool,
 }
 
 /// Discord rejects text fields outside 2–128 characters.
@@ -72,6 +76,7 @@ pub fn sanitize(p: PresencePayload) -> CleanPresence {
         end,
         button_label: fit(&p.button_label, 32),
         button_url: https(Some(p.button_url)),
+        show_app_name: p.display.as_deref() == Some("name"),
     }
 }
 
@@ -85,8 +90,8 @@ fn to_activity(p: &CleanPresence) -> Activity<'_> {
     }
     let mut activity = Activity::new()
         .activity_type(ActivityType::Watching)
-        // Member list shows « Regarde <anime> » instead of « Regarde SAKURA ».
-        .status_display_type(StatusDisplayType::Details)
+        // Watching: member list shows « Regarde <anime> »; browsing: « Regarde SAKURA ».
+        .status_display_type(if p.show_app_name { StatusDisplayType::Name } else { StatusDisplayType::Details })
         .details(p.details.as_str())
         .state(p.state.as_str())
         .assets(assets);
@@ -220,7 +225,27 @@ mod tests {
             end: Some(20),
             button_label: "Regarder sur SAKURA".into(),
             button_url: "https://sakura.thefoxy.me/anime?id=1".into(),
+            display: None,
         }
+    }
+
+    #[test]
+    fn status_line_shows_the_anime_unless_browsing() {
+        assert!(!sanitize(payload()).show_app_name);
+        assert!(sanitize(PresencePayload { display: Some("name".into()), ..payload() }).show_app_name);
+    }
+
+    /// Real Discord round trip (sets « Test SAKURA » for ~3 s): `cargo test live_discord -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn live_discord() {
+        let p = spawn();
+        p.set(Some(PresencePayload { details: "Test SAKURA".into(), ..payload() }));
+        std::thread::sleep(Duration::from_secs(3));
+        println!("status after set: {:?}", p.status());
+        p.set(None);
+        std::thread::sleep(Duration::from_secs(1));
+        println!("status after clear: {:?}", p.status());
     }
 
     #[test]

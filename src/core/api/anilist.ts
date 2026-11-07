@@ -101,6 +101,7 @@ query ($id: Int) {
     bannerImage
     description
     episodes
+    duration
     status
     format
     seasonYear

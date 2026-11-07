@@ -63,16 +63,17 @@ export default function DiscoverPage() {
   return (
     <AppLayout>
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-6 md:pl-32 pr-6 pt-10 pb-32">
-        <div className="flex items-center justify-between gap-3 mb-6 md:mb-8 max-md:pr-14">
+        <div className="flex items-center justify-between gap-3 mb-6 md:mb-8 max-md:pr-28">
           <h1 className="text-[34px] md:text-5xl font-bold text-white flex items-center gap-3 md:gap-4 min-w-0" style={{ fontFamily: 'var(--font-impact)' }}>
             <Compass className="w-7 h-7 md:w-8 md:h-8 text-sakura shrink-0" />
             Découvrir
           </h1>
+          {/* Phones: same row, size and material as the floating account button (right-4), just left of it. */}
           <Link
             href="/calendar"
             aria-label="Calendrier des sorties"
             title="Calendrier"
-            className="md:hidden shrink-0 w-11 h-11 rounded-full bg-white/10 border border-white/10 text-white flex items-center justify-center active:scale-95 transition-transform"
+            className="md:hidden fixed z-40 right-[68px] top-[max(env(safe-area-inset-top),16px)] w-11 h-11 rounded-full tab-bar-glass text-white/90 flex items-center justify-center active:scale-95 transition-transform"
           >
             <CalendarDays className="w-5 h-5" />
           </Link>

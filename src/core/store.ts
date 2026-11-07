@@ -71,6 +71,8 @@ export type Settings = {
   calendarLang: CalendarLang;
   /** Desktop app: show « Regarde <anime> » on Discord while playing. */
   discordPresence: boolean;
+  /** Also show the page being browsed (« Parcourt le catalogue »), not only playback. */
+  discordBrowsing: boolean;
   /** Desktop app: system notification when a followed anime gets a new episode. */
   releaseNotifications: boolean;
   /** Which releases to notify: 'auto' = the default language. */

@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { toast } from '@/components/ui/toast';
 import { routeAfterSignIn } from '@/core/auth';
 import { supabase } from '@/lib/supabase';
 import { desktop, isDesktop, isLiteRendering, RELEASES_URL, type AuthLink, type UpdateInfo } from '@/lib/desktop';
 import { useAppStore, useHydrated } from '@/core/store';
 import { notifyTargets } from '@/lib/notify-targets';
+import { buildBrowsingPresence } from '@/lib/presence';
+import { configurePresence, SESSION_START, setPagePresence } from './presence-manager';
 
 const safeNext = (n: string | null) => (n && n.startsWith('/') && !n.startsWith('//') ? n : '/');
 
@@ -76,7 +78,27 @@ export function DesktopBridge() {
     return () => unlisteners.forEach((u) => void u.then((f) => f()));
   }, [router]);
 
-  return <NotifyTargetsSync />;
+  return (
+    <>
+      <NotifyTargetsSync />
+      <PagePresence />
+    </>
+  );
+}
+
+/** Discord « Regarde SAKURA · Parcourt le catalogue » for the current page (anime pages set their own). */
+function PagePresence() {
+  const pathname = usePathname();
+  const enabled = useAppStore((s) => s.settings.discordPresence ?? true);
+  const browsing = useAppStore((s) => s.settings.discordBrowsing ?? true);
+
+  useEffect(() => configurePresence({ enabled, browsing }), [enabled, browsing]);
+  useEffect(() => {
+    if (!isDesktop() || pathname === '/anime') return;
+    setPagePresence(buildBrowsingPresence({ path: pathname, since: SESSION_START, origin: window.location.origin }));
+  }, [pathname]);
+
+  return null;
 }
 
 /** Keeps the app's release-notification list in sync with « Ma liste » and the settings. */

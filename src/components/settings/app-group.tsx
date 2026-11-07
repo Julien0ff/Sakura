@@ -25,6 +25,7 @@ export function AppGroup() {
   const queryClient = useQueryClient();
   const [checking, setChecking] = useState(false);
   const discordPresence = useAppStore((s) => s.settings.discordPresence ?? true);
+  const discordBrowsing = useAppStore((s) => s.settings.discordBrowsing ?? true);
   const releaseNotifications = useAppStore((s) => s.settings.releaseNotifications ?? true);
   const notifyLang = useAppStore((s) => s.settings.notifyLang ?? 'auto');
   const updateSettings = useAppStore((s) => s.updateSettings);
@@ -90,6 +91,14 @@ export function AppGroup() {
         checked={discordPresence}
         onChange={(v) => updateSettings({ discordPresence: v })}
       />
+      {discordPresence && (
+        <Toggle
+          label="Afficher la navigation"
+          hint="Hors lecture : la page en cours (« Parcourt le catalogue », « Consulte la fiche »…)."
+          checked={discordBrowsing}
+          onChange={(v) => updateSettings({ discordBrowsing: v })}
+        />
+      )}
       <Toggle
         label="Lancer au démarrage"
         hint="Ouvre SAKURA en arrière-plan quand vous allumez l’ordinateur."

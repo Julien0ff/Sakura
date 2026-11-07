@@ -99,6 +99,8 @@ pub fn run() {
       if let Err(e) = app.deep_link().register_all() {
         log::warn!("deep link registration failed: {e}");
       }
+      #[cfg(all(target_os = "linux", not(debug_assertions)))]
+      linux_icon::rename_handler();
 
       let handle = app.handle().clone();
       app.deep_link().on_open_url(move |event| {

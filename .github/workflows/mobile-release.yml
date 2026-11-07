@@ -124,6 +124,23 @@ jobs:
         run: |
           npx tauri ios init --ci
           npx tauri icon public/icon.png
+          # Home screen icon: light + dark variants (src-tauri/icons/ios), single 1024 size.
+          rm -rf src-tauri/gen/apple/Assets.xcassets/AppIcon.appiconset
+          cp -R src-tauri/icons/ios/AppIcon.appiconset src-tauri/gen/apple/Assets.xcassets/
+
+      # Xcode's « Build Rust Code » phase only works while `tauri ios build` runs, and that command
+      # requires signing. Build the Rust library here and turn that phase into a no-op.
+      - name: Build the Rust library
+        working-directory: src-tauri
+        run: |
+          export SDKROOT=$(xcrun --sdk iphoneos --show-sdk-path)
+          export IPHONEOS_DEPLOYMENT_TARGET=15.0
+          cargo build --release --lib --target aarch64-apple-ios --features tauri/custom-protocol
+          mkdir -p gen/apple/Externals/arm64/release
+          cp target/aarch64-apple-ios/release/libapp_lib.a gen/apple/Externals/arm64/release/libapp.a
+          PBX=$(find gen/apple -maxdepth 2 -name project.pbxproj | head -1)
+          perl -0pi -e 's/shellScript = "(?:[^"\\]|\\.)*xcode-script(?:[^"\\]|\\.)*";/shellScript = "exit 0";/' "$PBX"
+          if grep -q 'xcode-script' "$PBX"; then echo "::error::Phase « Build Rust Code » non neutralisée"; grep -n 'shellScript' "$PBX"; exit 1; fi
 
       - name: Build (unsigned)
         run: |

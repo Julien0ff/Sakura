@@ -12,16 +12,50 @@ pub fn desktop_entry(exe: &str) -> String {
     )
 }
 
+/// The `sakura://` handler written by the deep-link plugin is also named « SAKURA »: AppImageLauncher
+/// then names its own menu entry « SAKURA (1) ». Returns the entry with a distinct name, or None if
+/// it already has one.
+pub fn rename_handler_entry(src: &str) -> Option<String> {
+    let mut changed = false;
+    let out: Vec<&str> = src
+        .split('\n')
+        .map(|line| {
+            if line == "Name=SAKURA" {
+                changed = true;
+                "Name=SAKURA (liens)"
+            } else {
+                line
+            }
+        })
+        .collect();
+    changed.then(|| out.join("\n"))
+}
+
+/// Renames the `sakura://` handler entry (after `register_all`, release builds, Linux).
+#[cfg(target_os = "linux")]
+pub fn rename_handler() {
+    let Some(data) = data_dir() else { return };
+    let path = data.join("applications/sakura-handler.desktop");
+    let Ok(src) = std::fs::read_to_string(&path) else { return };
+    if let Some(out) = rename_handler_entry(&src) {
+        if let Err(e) = std::fs::write(&path, out) {
+            log::warn!("could not write {}: {e}", path.display());
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn data_dir() -> Option<std::path::PathBuf> {
+    std::env::var_os("XDG_DATA_HOME")
+        .map(std::path::PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".local/share")))
+}
+
 /// Writes the icon and the hidden entry if they're missing or outdated (release builds, Linux).
 #[cfg(target_os = "linux")]
 pub fn ensure() {
     const ICON: &[u8] = include_bytes!("../icons/128x128@2x.png");
-    let Some(data) = std::env::var_os("XDG_DATA_HOME")
-        .map(std::path::PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".local/share")))
-    else {
-        return;
-    };
+    let Some(data) = data_dir() else { return };
     // AppImages run from a temporary mount: point at the .AppImage file itself.
     let exe = std::env::var("APPIMAGE")
         .ok()
@@ -55,6 +89,17 @@ mod tests {
         assert!(e.contains("\nIcon=sakura\n"));
         assert!(e.contains("\nStartupWMClass=sakura\n"));
         assert!(e.contains("\nExec=\"/home/me/Applications/SAKURA 0.2.AppImage\"\n"));
+    }
+
+    #[test]
+    fn link_handler_gets_its_own_name() {
+        let src = "[Desktop Entry]\nType=Application\nName=SAKURA\nExec=\"/a\" %u\nNoDisplay=true\n";
+        let out = rename_handler_entry(src).expect("renamed");
+        assert!(out.contains("\nName=SAKURA (liens)\n"));
+        assert!(!out.contains("\nName=SAKURA\n"));
+        assert!(out.contains("\nExec=\"/a\" %u\n"));
+        // Already renamed: nothing to write.
+        assert_eq!(rename_handler_entry(&out), None);
     }
 
     #[test]

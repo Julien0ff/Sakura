@@ -1,0 +1,16 @@
+{
+  "identifier": "app.sakura.desktop.dev",
+  "productName": "SAKURA Dev",
+  "build": {
+    "beforeDevCommand": ""
+  },
+  "app": {
+    "security": {
+      "capabilities": [
+        "sakura-site",
+        "sakura-dev-server",
+        "offline-page"
+      ]
+    }
+  }
+}

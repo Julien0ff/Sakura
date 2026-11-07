@@ -535,3 +535,30 @@ html {
   -webkit-backdrop-filter: blur(8px);
   mask-image: linear-gradient(to right, #000 50%, transparent);
 }
+
+/* ───────── App desktop sous Linux (WebKitGTK) ─────────
+   WebKitGTK rend les flous (backdrop-filter) et les effets liés au défilement bien plus lentement
+   que Chromium : on les coupe et on remplace le verre par des fonds opaques. */
+html.app-lite *,
+html.app-lite *::before,
+html.app-lite *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html.app-lite .glass-sidebar,
+html.app-lite .liquid-glass,
+html.app-lite .tab-bar-glass,
+html.app-lite .menu-glass {
+  background: rgb(26, 26, 28);
+}
+html.app-lite .liquid-glass-card { background: rgb(36, 36, 38); }
+html.app-lite .row-edge-blur,
+html.app-lite .scroll-edge-bottom { display: none; }
+html.app-lite [data-sd] {
+  animation: none !important;
+  will-change: auto;
+}
+html.app-lite .ambient > div { transition: none; }
+/* Cartes : seulement la mise à l'échelle de la carte, pas le zoom de l'image dedans. */
+html.app-lite .anime-card img { transition: none; transform: none !important; }
+html.app-lite .anime-card-cover { transition-property: transform; }

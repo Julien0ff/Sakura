@@ -21,6 +21,23 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: '2026-11-07-app',
+    date: '7 novembre 2026',
+    title: 'L’application SAKURA',
+    banner: '/banner-news.png',
+    features: [
+      { text: 'Application pour Windows et Linux : à télécharger depuis le menu de votre profil › Application.' },
+      { text: 'Statut Discord « Regarde <anime> · Épisode 12 » pendant la lecture.' },
+      { text: 'Notifications de sortie des animes « En cours » et « À voir » de votre liste, même fenêtre fermée.' },
+      { text: 'Mises à jour automatiques, lancement au démarrage, icône dans la barre des tâches.' },
+      { text: 'Versions mobiles (Android, iPhone) en préparation.', beta: true },
+    ],
+    fixes: [
+      { text: 'Calendrier VF plus rapide (titres reliés côté serveur).' },
+      { text: 'Le filtre choisi dans « Ma liste » reste visible sur mobile.' },
+    ],
+  },
+  {
     id: '2026-11-07',
     date: '7 novembre 2026',
     title: 'Comptes, profils et calendrier VF',

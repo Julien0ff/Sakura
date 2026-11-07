@@ -40,8 +40,10 @@ function Watchlist() {
       type="button"
       role="tab"
       aria-selected={filter === value}
-      onClick={() => {
+      onClick={(e) => {
         haptic('selection');
+        // Keep the chosen chip visible in the horizontally scrolling row (phones).
+        e.currentTarget.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
         router.replace(value === 'all' ? '/watchlist' : `/watchlist?status=${value}`, { scroll: false });
       }}
       className={`shrink-0 h-10 px-4 rounded-full text-sm font-semibold border transition-colors cursor-pointer ${

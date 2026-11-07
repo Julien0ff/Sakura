@@ -120,8 +120,10 @@ Prérequis : [Rust](https://rustup.rs) et les dépendances système de Tauri (so
 
 ```bash
 npm run dev                                                     # le site (localhost:3000)
-npx tauri dev --config '{"build":{"beforeDevCommand":""}}'     # l'app, branchée sur le site local
+npm run tauri:dev                                               # « SAKURA Dev », branchée sur le site local
 ```
+
+L'app de dev a son propre identifiant : elle ne se mélange pas avec l'app installée et ne prend pas le lien `sakura://` (la connexion se teste donc avec l'app compilée).
 
 **Connexion dans l'app** : le fournisseur s'ouvre dans le navigateur, revient sur `/auth/app`, qui renvoie vers `sakura://auth/callback` ; l'app termine la connexion. Ajoutez dans Supabase › Authentication › URL Configuration › Redirect URLs :
 `https://sakura.thefoxy.me/auth/app**` et `http://localhost:3000/auth/app**` (le `**` laisse passer le `?next=`).

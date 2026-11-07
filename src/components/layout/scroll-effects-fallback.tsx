@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { isLiteRendering } from '@/lib/desktop';
 
 /**
  * Fallback for browsers without CSS scroll-driven animations (Firefox for now).
@@ -11,6 +12,8 @@ export function ScrollEffectsFallback() {
   useEffect(() => {
     if (typeof CSS !== 'undefined' && CSS.supports('animation-timeline: scroll()')) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // Desktop app on Linux (WebKitGTK): per-frame style writes on scroll are what makes it lag.
+    if (isLiteRendering()) return;
     const scroller = document.getElementById('main-scroll');
     if (!scroller) return;
 

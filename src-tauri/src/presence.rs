@@ -103,18 +103,40 @@ fn to_activity(p: &CleanPresence) -> Activity<'_> {
     activity
 }
 
+/// What Settings › Application shows.
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PresenceStatus {
+    /// Nothing to show yet (no video played since launch).
+    Idle,
+    Connected,
+    /// Discord isn't running (or its IPC socket can't be reached).
+    DiscordNotFound,
+    /// Discord answered with an error to the last activity.
+    Rejected,
+}
+
 /// Handle to the presence thread (managed state).
-pub struct Presence(Mutex<Sender<Option<CleanPresence>>>);
+pub struct Presence {
+    tx: Mutex<Sender<Option<CleanPresence>>>,
+    status: std::sync::Arc<Mutex<PresenceStatus>>,
+}
 
 impl Presence {
     pub fn set(&self, activity: Option<PresencePayload>) {
-        let _ = self.0.lock().unwrap().send(activity.map(sanitize));
+        let _ = self.tx.lock().unwrap().send(activity.map(sanitize));
+    }
+    pub fn status(&self) -> PresenceStatus {
+        *self.status.lock().unwrap()
     }
 }
 
 /// Starts the thread. `None` clears the activity; the last wish is re-applied after a reconnect.
 pub fn spawn() -> Presence {
     let (tx, rx) = channel::<Option<CleanPresence>>();
+    let status = std::sync::Arc::new(Mutex::new(PresenceStatus::Idle));
+    let shared = status.clone();
+    let set_status = move |s: PresenceStatus| *shared.lock().unwrap() = s;
     std::thread::Builder::new()
         .name("discord-presence".into())
         .spawn(move || {
@@ -137,22 +159,40 @@ pub fn spawn() -> Presence {
                     continue;
                 }
                 if !connected {
-                    connected = client.connect().is_ok();
-                    if !connected {
-                        continue; // Discord closed: retry on the next tick.
+                    match client.connect() {
+                        Ok(()) => {
+                            connected = true;
+                            set_status(PresenceStatus::Connected);
+                            log::info!("connected to Discord");
+                            dirty = true;
+                        }
+                        Err(e) => {
+                            set_status(PresenceStatus::DiscordNotFound);
+                            log::info!("Discord not reachable ({e}), retrying in {}s", RETRY.as_secs());
+                            continue; // Discord closed: retry on the next tick.
+                        }
                     }
-                    log::info!("connected to Discord");
-                    dirty = true;
                 }
                 if dirty {
                     let res = match &wanted {
                         Some(p) => client.set_activity(to_activity(p)),
                         None => client.clear_activity(),
                     };
+                    // Discord answers every command; an ERROR event means the activity was refused.
+                    let res = res.and_then(|()| client.recv()).map(|(_, reply)| {
+                        if reply["evt"] == "ERROR" {
+                            log::warn!("Discord refused the activity: {}", reply["data"]);
+                            set_status(PresenceStatus::Rejected);
+                        } else {
+                            set_status(PresenceStatus::Connected);
+                            log::info!("Discord activity {}", if wanted.is_some() { "set" } else { "cleared" });
+                        }
+                    });
                     if let Err(e) = res {
                         log::warn!("Discord presence failed, reconnecting: {e}");
                         let _ = client.close();
                         connected = false;
+                        set_status(PresenceStatus::DiscordNotFound);
                         continue;
                     }
                     dirty = false;
@@ -161,7 +201,7 @@ pub fn spawn() -> Presence {
             let _ = client.close();
         })
         .expect("spawn presence thread");
-    Presence(Mutex::new(tx))
+    Presence { tx: Mutex::new(tx), status }
 }
 
 #[cfg(test)]

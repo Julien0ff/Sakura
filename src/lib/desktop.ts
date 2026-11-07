@@ -20,10 +20,20 @@ export interface UpdateInfo {
   installable: boolean;
 }
 
+export type PresenceStatus = 'idle' | 'connected' | 'discord_not_found' | 'rejected';
+
 export const RELEASES_URL = 'https://github.com/Julien0ff/Sakura/releases/latest';
 
 export function isDesktop(): boolean {
   return typeof window !== 'undefined' && isTauri();
+}
+
+/**
+ * Desktop app on Linux = WebKitGTK, much slower than Chromium on blur / scroll effects:
+ * `html.app-lite` turns them off (see globals.css).
+ */
+export function isLiteRendering(): boolean {
+  return isDesktop() && /Linux/i.test(navigator.userAgent) && !/Android/i.test(navigator.userAgent);
 }
 
 async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T | null> {
@@ -54,7 +64,9 @@ export const desktop = {
   getAutostart: () => call<boolean>('get_autostart'),
   setAutostart: (enabled: boolean) => call<void>('set_autostart', { enabled }),
   version: () => call<string>('app_version'),
-  checkUpdate: () => call<UpdateInfo>('check_update'),
+  /** Resolves null when up to date; rejects when the check failed. */
+  checkUpdate: () => callOrThrow<UpdateInfo | null>('check_update'),
+  presenceStatus: () => call<PresenceStatus>('presence_status'),
   installUpdate: () => callOrThrow<void>('install_update'),
   /** Discord « Regarde … »; null clears it. */
   setPresence: (activity: PresencePayload | null) => call<void>('set_presence', { activity }),

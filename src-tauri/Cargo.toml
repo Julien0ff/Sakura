@@ -1,6 +1,6 @@
 [package]
 name = "sakura"
-version = "0.2.0"
+version = "0.3.0"
 description = "SAKURA — catalogue et lecteur d'animes"
 authors = ["you"]
 license = "GPL-3.0-or-later"
@@ -28,7 +28,6 @@ tauri-plugin-deep-link = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-notification = "2"
-tauri-plugin-process = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-updater = "2"
 discord-rich-presence = "1.1"

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LogOut, Settings, Share2, UserRound, CircleUserRound } from '@/components/ui/icons';
+import { AppIcon, LogOut, Settings, Share2, UserRound, CircleUserRound } from '@/components/ui/icons';
 import { Popover } from '@/components/ui/popover';
 import { Avatar } from '@/components/account/avatar';
 import { DiscordIcon, GoogleIcon } from '@/components/account/provider-icons';
@@ -110,6 +110,9 @@ export function AccountMenu({ placement }: { placement: 'mobile' | 'sidebar' }) 
                   <Share2 className="w-4 h-4" /> Partager mon profil
                 </button>
               )}
+              <Link href="/app" onClick={close} className={item}>
+                <AppIcon className="w-4 h-4" /> Application
+              </Link>
               <Link href="/settings" onClick={close} className={item}>
                 <Settings className="w-4 h-4" /> Paramètres
               </Link>
@@ -142,6 +145,9 @@ export function AccountMenu({ placement }: { placement: 'mobile' | 'sidebar' }) 
                 </button>
               ))}
               <div className="h-px bg-white/10 my-1 mx-2" />
+              <Link href="/app" onClick={close} className={item}>
+                <AppIcon className="w-4 h-4" /> Application
+              </Link>
               <Link href="/settings" onClick={close} className={item}>
                 <Settings className="w-4 h-4" /> Paramètres
               </Link>

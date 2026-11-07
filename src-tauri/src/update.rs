@@ -32,17 +32,22 @@ fn installable_here() -> bool {
   is_installable(std::env::consts::OS, std::env::var_os("APPIMAGE").is_some())
 }
 
-/// `None` when up to date or when the check fails (offline, no release yet).
-pub async fn check(app: &AppHandle) -> Option<UpdateInfo> {
-  let updater = app.updater().map_err(|e| log::warn!("updater unavailable: {e}")).ok()?;
+/// `Ok(None)` when up to date; `Err` when the check itself failed (offline, no release yet).
+pub async fn try_check(app: &AppHandle) -> Result<Option<UpdateInfo>, String> {
+  let updater = app.updater().map_err(|e| e.to_string())?;
   match updater.check().await {
-    Ok(Some(u)) => Some(UpdateInfo { version: u.version.clone(), notes: u.body.clone(), installable: installable_here() }),
-    Ok(None) => None,
+    Ok(Some(u)) => Ok(Some(UpdateInfo { version: u.version.clone(), notes: u.body.clone(), installable: installable_here() })),
+    Ok(None) => Ok(None),
     Err(e) => {
       log::warn!("update check failed: {e}");
-      None
+      Err(e.to_string())
     }
   }
+}
+
+/// Background variant: failures are just logged.
+pub async fn check(app: &AppHandle) -> Option<UpdateInfo> {
+  try_check(app).await.ok().flatten()
 }
 
 pub async fn install(app: &AppHandle) -> Result<(), String> {

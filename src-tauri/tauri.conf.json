@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "SAKURA",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "identifier": "app.sakura.desktop",
   "build": {
     "frontendDist": "offline",
@@ -11,7 +11,11 @@
   "app": {
     "windows": [],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": [
+        "sakura-site",
+        "offline-page"
+      ]
     }
   },
   "bundle": {

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from '@/components/ui/toast';
 import { routeAfterSignIn } from '@/core/auth';
 import { supabase } from '@/lib/supabase';
-import { desktop, isDesktop, RELEASES_URL, type AuthLink, type UpdateInfo } from '@/lib/desktop';
+import { desktop, isDesktop, isLiteRendering, RELEASES_URL, type AuthLink, type UpdateInfo } from '@/lib/desktop';
 import { useAppStore, useHydrated } from '@/core/store';
 import { notifyTargets } from '@/lib/notify-targets';
 
@@ -35,12 +35,16 @@ export function DesktopBridge() {
 
   useEffect(() => {
     if (!isDesktop()) return;
+    if (isLiteRendering()) document.documentElement.classList.add('app-lite');
     let busy = false;
+    // The same link can arrive twice (live event + pending slot): a code is only redeemed once.
+    let lastCode: string | null = null;
 
     const finish = async (link: AuthLink) => {
-      if (busy) return;
+      if (busy || (link.code && link.code === lastCode)) return;
+      lastCode = link.code;
       if (link.error || !link.code) {
-        toast(`Connexion impossible : ${link.error ?? 'lien invalide'}`);
+        toast(`Connexion impossible : ${link.error ?? 'lien invalide'}`, { action: { label: 'OK', onClick: () => {} } });
         return;
       }
       if (!supabase) return;
@@ -52,7 +56,7 @@ export function DesktopBridge() {
         await routeAfterSignIn((p) => router.replace(p), safeNext(link.next));
         toast('Connecté');
       } catch (e) {
-        toast(`Connexion impossible : ${(e as Error).message}`);
+        toast(`Connexion impossible : ${(e as Error).message}`, { action: { label: 'OK', onClick: () => {} } });
       } finally {
         busy = false;
       }

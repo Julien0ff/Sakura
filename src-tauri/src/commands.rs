@@ -55,8 +55,8 @@ pub async fn retry_connection(app: AppHandle) -> bool {
 }
 
 #[tauri::command]
-pub async fn check_update(app: AppHandle) -> Option<crate::update::UpdateInfo> {
-  crate::update::check(&app).await
+pub async fn check_update(app: AppHandle) -> Result<Option<crate::update::UpdateInfo>, String> {
+  crate::update::try_check(&app).await
 }
 
 /// Downloads, installs and restarts (Windows, AppImage).
@@ -75,4 +75,10 @@ pub fn set_presence(state: State<'_, crate::presence::Presence>, activity: Optio
 #[tauri::command]
 pub fn set_notify_targets(app: AppHandle, state: State<'_, crate::notify::NotifyState>, targets: crate::notify::Targets) {
   state.set(&app, targets);
+}
+
+/// Discord connection state, shown in Settings › Application.
+#[tauri::command]
+pub fn presence_status(state: State<'_, crate::presence::Presence>) -> crate::presence::PresenceStatus {
+  state.status()
 }

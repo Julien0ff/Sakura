@@ -4,6 +4,7 @@ export const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 export const RESERVED_USERNAMES: readonly string[] = [
   'settings', 'api', 'auth', 'anime', 'profile', 'profiles', 'discover', 'search', 'history', 'watchlist',
   'calendar', 'legal', 'onboarding', 'u', 'user', 'users', 'admin', 'sakura', 'login', 'logout', 'me', 'help', 'about',
+  'app', 'apps', 'download', 'telecharger',
 ];
 
 /** Lowercase, accents folded, spaces/dashes → `_`, other characters dropped, max 20. */

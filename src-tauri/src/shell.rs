@@ -93,9 +93,10 @@ pub fn handle_deep_links(app: &AppHandle, urls: impl IntoIterator<Item = String>
 pub fn build_tray(app: &AppHandle) -> tauri::Result<()> {
   let autostart_on = app.autolaunch().is_enabled().unwrap_or(false);
   let open = MenuItem::with_id(app, "open", "Ouvrir SAKURA", true, None::<&str>)?;
+  let reload = MenuItem::with_id(app, "reload", "Recharger", true, None::<&str>)?;
   let autostart = CheckMenuItem::with_id(app, "autostart", "Lancer au démarrage", true, autostart_on, None::<&str>)?;
   let quit = MenuItem::with_id(app, "quit", "Quitter", true, None::<&str>)?;
-  let menu: Menu<Wry> = Menu::with_items(app, &[&open, &autostart, &PredefinedMenuItem::separator(app)?, &quit])?;
+  let menu: Menu<Wry> = Menu::with_items(app, &[&open, &reload, &autostart, &PredefinedMenuItem::separator(app)?, &quit])?;
   let autostart_item = autostart.clone();
   app.manage(TrayAutostart(autostart));
 
@@ -105,6 +106,13 @@ pub fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     .show_menu_on_left_click(false)
     .on_menu_event(move |app, event| match event.id.as_ref() {
       "open" => show_main(app),
+      // Way back when the site failed after launch (engine error page has no retry).
+      "reload" => {
+        if let Some(w) = app.get_webview_window(MAIN) {
+          let _ = w.navigate(site_url());
+        }
+        show_main(app);
+      }
       "autostart" => {
         let mgr = app.autolaunch();
         let enable = !mgr.is_enabled().unwrap_or(false);

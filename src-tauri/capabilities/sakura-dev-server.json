@@ -1,0 +1,27 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "sakura-dev-server",
+  "description": "Dev only (tauri.dev.json): the local Next.js server gets the same commands.",
+  "windows": [
+    "main"
+  ],
+  "remote": {
+    "urls": [
+      "http://localhost:3000/*"
+    ]
+  },
+  "permissions": [
+    "core:event:default",
+    "notification:default",
+    "allow-take-pending-auth",
+    "allow-open-external",
+    "allow-get-autostart",
+    "allow-set-autostart",
+    "allow-app-version",
+    "allow-check-update",
+    "allow-install-update",
+    "allow-set-presence",
+    "allow-set-notify-targets",
+    "allow-presence-status"
+  ]
+}

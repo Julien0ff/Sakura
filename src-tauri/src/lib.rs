@@ -1,5 +1,6 @@
 mod commands;
 mod links;
+mod linux_icon;
 mod notify;
 mod presence;
 mod shell;
@@ -31,7 +32,6 @@ pub fn run() {
     )
     .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec![links::AUTOSTART_FLAG])))
     .plugin(tauri_plugin_notification::init())
-    .plugin(tauri_plugin_process::init())
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_updater::Builder::new().build())
     .manage(shell::PendingAuth::default())
@@ -47,14 +47,23 @@ pub fn run() {
       commands::install_update,
       commands::set_presence,
       commands::set_notify_targets,
+      commands::presence_status,
     ])
     .setup(|app| {
-      if cfg!(debug_assertions) {
-        app.handle().plugin(tauri_plugin_log::Builder::default().level(log::LevelFilter::Info).build())?;
-      }
+      // Log file in every build (~/.local/share/app.sakura.desktop/logs, %APPDATA% on Windows):
+      // the only way to diagnose Discord / updates / notifications on a user's machine.
+      app.handle().plugin(
+        tauri_plugin_log::Builder::default()
+          .level(log::LevelFilter::Info)
+          .max_file_size(512 * 1024)
+          .build(),
+      )?;
+      #[cfg(all(target_os = "linux", not(debug_assertions)))]
+      linux_icon::ensure();
 
-      // AppImage and dev builds aren't registered by an installer: register sakura:// at runtime.
-      #[cfg(any(windows, target_os = "linux"))]
+      // AppImages aren't registered by an installer: register sakura:// at runtime. Not in dev
+      // builds, which would steal the scheme from the installed app.
+      #[cfg(all(any(windows, target_os = "linux"), not(debug_assertions)))]
       if let Err(e) = app.deep_link().register_all() {
         log::warn!("deep link registration failed: {e}");
       }

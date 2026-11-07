@@ -6,10 +6,17 @@ import { ActionButton, Group, Row, Segmented, Toggle } from '@/components/settin
 import type { NotifyLang } from '@/lib/notify-targets';
 import { announceUpdate } from '@/components/desktop/desktop-bridge';
 import { toast } from '@/components/ui/toast';
-import { desktop, isDesktop } from '@/lib/desktop';
+import { desktop, isDesktop, type PresenceStatus } from '@/lib/desktop';
 import { useAppStore } from '@/core/store';
 
 const noop = () => () => {};
+
+const PRESENCE_LABELS: Record<PresenceStatus, string> = {
+  idle: 'en attente d’une lecture',
+  connected: 'connecté à Discord',
+  discord_not_found: 'Discord introuvable (ouvert ?)',
+  rejected: 'refusé par Discord',
+};
 
 /** Settings › Application: only inside the desktop app. */
 export function AppGroup() {
@@ -23,6 +30,12 @@ export function AppGroup() {
   const updateSettings = useAppStore((s) => s.updateSettings);
 
   const { data: version } = useQuery({ queryKey: ['app-version'], enabled: inApp, queryFn: desktop.version, staleTime: Infinity });
+  const { data: presence } = useQuery({
+    queryKey: ['app-presence-status'],
+    enabled: inApp && discordPresence,
+    queryFn: desktop.presenceStatus,
+    refetchInterval: 5000,
+  });
   const { data: autostart = false } = useQuery({ queryKey: ['app-autostart'], enabled: inApp, queryFn: desktop.getAutostart });
 
   if (!inApp) return null;
@@ -34,10 +47,15 @@ export function AppGroup() {
           disabled={checking}
           onClick={async () => {
             setChecking(true);
-            const info = await desktop.checkUpdate();
-            setChecking(false);
-            if (info) announceUpdate(info);
-            else toast('SAKURA est à jour');
+            try {
+              const info = await desktop.checkUpdate();
+              if (info) announceUpdate(info);
+              else toast('SAKURA est à jour');
+            } catch {
+              toast('Impossible de vérifier les mises à jour pour le moment');
+            } finally {
+              setChecking(false);
+            }
           }}
         >
           {checking ? 'Recherche…' : 'Rechercher une mise à jour'}
@@ -66,7 +84,9 @@ export function AppGroup() {
       )}
       <Toggle
         label="Statut Discord"
-        hint="Affiche « Regarde <anime> · Épisode » sur votre profil Discord pendant la lecture."
+        hint={`Affiche « Regarde <anime> · Épisode » sur votre profil Discord pendant la lecture.${
+          discordPresence && presence ? ` État : ${PRESENCE_LABELS[presence]}.` : ''
+        }`}
         checked={discordPresence}
         onChange={(v) => updateSettings({ discordPresence: v })}
       />

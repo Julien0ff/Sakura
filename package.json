@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --test 'src/**/*.test.ts'",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev --config src-tauri/tauri.dev.json"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

@@ -114,14 +114,23 @@ Avant la mise en ligne publique, complétez les informations légales dans [`src
 
 ## Version desktop (Tauri)
 
-Prérequis : [Rust](https://rustup.rs) et les dépendances système de Tauri (sous Linux : `webkit2gtk-4.1`, `base-devel`…).
+L'app desktop (Windows, Linux) affiche le site en ligne (`https://sakura.thefoxy.me`) dans une fenêtre native et ajoute : connexion Discord / Google via le navigateur, icône dans la barre des tâches (fermer = réduire), lancement au démarrage, mises à jour automatiques. Hors connexion, elle affiche une page « Pas de connexion ».
+
+Prérequis : [Rust](https://rustup.rs) et les dépendances système de Tauri (sous Linux : `webkit2gtk-4.1`, `libappindicator-gtk3`).
 
 ```bash
-npx tauri dev     # développement
-npx tauri build   # .deb / .AppImage (Linux), .msi / .exe (Windows), .dmg / .app (macOS)
+npm run dev                                                     # le site (localhost:3000)
+npx tauri dev --config '{"build":{"beforeDevCommand":""}}'     # l'app, branchée sur le site local
 ```
 
-> ⚠️ Le build desktop n'est pas encore fonctionnel. Voir [Limites connues](#limites-connues).
+**Connexion dans l'app** : le fournisseur s'ouvre dans le navigateur, revient sur `/auth/app`, qui renvoie vers `sakura://auth/callback` ; l'app termine la connexion. Ajoutez dans Supabase › Authentication › URL Configuration › Redirect URLs :
+`https://sakura.thefoxy.me/auth/app**` et `http://localhost:3000/auth/app**` (le `**` laisse passer le `?next=`).
+
+**Publier une version** :
+
+1. Une seule fois : `npx tauri signer generate -w ~/.tauri/sakura.key`, mettez la clé publique dans `src-tauri/tauri.conf.json` (`plugins.updater.pubkey`) et ajoutez aux secrets du dépôt GitHub `TAURI_SIGNING_PRIVATE_KEY` (contenu de `~/.tauri/sakura.key`) et `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+2. Montez la version dans `src-tauri/tauri.conf.json` et `src-tauri/Cargo.toml`.
+3. `git tag app-v0.1.0 && git push origin app-v0.1.0` : GitHub Actions compile Windows (`.exe`, `.msi`) et Linux (AppImage, `.deb`, `.rpm`) dans une Release brouillon. Publiez-la : les apps installées la proposent au prochain contrôle (au démarrage puis toutes les 6 h). Les installations `.deb` / `.rpm` sont renvoyées vers la page de la Release.
 
 ## Structure
 
@@ -164,7 +173,7 @@ Couleur principale : rose sakura `#FF7AA8`.
 
 ## Limites connues
 
-- **Build desktop** : `tauri.conf.json` attend un export statique (`out/`), ce qui est incompatible avec les routes API (`/api/tmdb`, `/api/scraper`). Il faut soit embarquer un serveur Next.js dans l'app, soit remplacer ces routes par des commandes Rust.
+- **App desktop** : non signée pour l'instant (Windows SmartScreen affiche « éditeur inconnu ») ; pas de version macOS.
 - **Sources vidéo** : leur disponibilité dépend de services tiers et peut varier.
 - **AniSkip** n'est utilisé que pour la saison 1 et les séries à saison unique, car la numérotation des saisons de TMDB ne correspond pas toujours aux entrées AniList/MyAnimeList.
 

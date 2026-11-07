@@ -1,0 +1,19 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "sakura-site",
+  "description": "The live SAKURA site (and the dev server) may call the app's own commands — no other origin.",
+  "windows": ["main"],
+  "remote": {
+    "urls": ["https://sakura.thefoxy.me/*", "http://localhost:3000/*"]
+  },
+  "permissions": [
+    "core:event:default",
+    "allow-take-pending-auth",
+    "allow-open-external",
+    "allow-get-autostart",
+    "allow-set-autostart",
+    "allow-app-version",
+    "allow-check-update",
+    "allow-install-update"
+  ]
+}

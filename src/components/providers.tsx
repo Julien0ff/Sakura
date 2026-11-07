@@ -8,6 +8,7 @@ import { setHapticsEnabled, setHapticIntensity } from '@/lib/haptics';
 import { AuthBootstrap } from '@/core/auth';
 import { SyncBootstrap } from '@/core/sync/engine';
 import { Toaster } from '@/components/ui/toast';
+import { DesktopBridge } from '@/components/desktop/desktop-bridge';
 
 function HapticsSync() {
   const on = useAppStore((s) => s.settings.haptics);
@@ -33,6 +34,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <HapticsSync />
         <AuthBootstrap />
         <SyncBootstrap />
+        <DesktopBridge />
         {children}
         <Toaster />
       </NextThemesProvider>

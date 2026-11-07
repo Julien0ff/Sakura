@@ -4,28 +4,25 @@
   "version": "0.1.0",
   "identifier": "app.sakura.desktop",
   "build": {
-    "frontendDist": "../out",
+    "frontendDist": "offline",
     "devUrl": "http://localhost:3000",
-    "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "beforeDevCommand": "npm run dev"
   },
   "app": {
-    "windows": [
-      {
-        "title": "SAKURA",
-        "width": 800,
-        "height": 600,
-        "resizable": true,
-        "fullscreen": false
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
     }
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "nsis",
+      "msi",
+      "appimage",
+      "deb",
+      "rpm"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -35,6 +32,25 @@
     ],
     "android": {
       "debugApplicationIdSuffix": ".debug"
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "sakura"
+        ]
+      }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEMzODA4Q0I4QTNDMTY0QUYKUldTdlpNR2p1SXlBdzR1K3pGWkpnTi9qRFRYY3BYeWFPdzVBK2lhSWJHbUZ6ZVZvcmw2U2ZBUVcK",
+      "endpoints": [
+        "https://github.com/Julien0ff/Sakura/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

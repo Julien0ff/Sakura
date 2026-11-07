@@ -8,6 +8,7 @@ import { haptic, testHaptic, setHapticIntensity, type HapticIntensity } from '@/
 import { useState, useSyncExternalStore } from 'react';
 import { Group, Row, Segmented, ActionButton, Toggle } from '@/components/settings/grouped-list';
 import { openChangelog } from '@/components/layout/changelog-popup';
+import { AppGroup } from '@/components/settings/app-group';
 import { AccountGroup } from '@/components/settings/account-group';
 
 export default function SettingsPage() {
@@ -31,6 +32,7 @@ export default function SettingsPage() {
 
         <div className="max-w-2xl space-y-7">
           <AccountGroup />
+          <AppGroup />
 
           <Group title="Lecture">
             <Row label="Langue par défaut" stackOnMobile>

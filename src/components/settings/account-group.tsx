@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Group, Row, ActionButton } from '@/components/settings/grouped-list';
 import { Avatar } from '@/components/account/avatar';
 import { DiscordIcon, GoogleIcon } from '@/components/account/provider-icons';
-import { callbackUrl, signIn, signOut, useAuth, type Provider } from '@/core/auth';
+import { linkProvider, signIn, signOut, useAuth, type Provider } from '@/core/auth';
 import { accountsEnabled, supabase } from '@/lib/supabase';
 import { prepareAvatar } from '@/lib/avatar';
 import { haptic } from '@/lib/haptics';
@@ -213,8 +213,7 @@ export function AccountGroup() {
                     disabled={off || busy !== null}
                     onClick={() =>
                       run(`link-${id}`, async () => {
-                        const { error: e } = await supabase!.auth.linkIdentity({ provider: id, options: { redirectTo: callbackUrl('/settings') } });
-                        if (e) throw e;
+                        await linkProvider(id);
                       })
                     }
                   >

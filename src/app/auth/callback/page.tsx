@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AppLayout } from '@/components/layout/app-layout';
 import { supabase } from '@/lib/supabase';
-import { refreshProfile } from '@/core/auth';
+import { routeAfterSignIn } from '@/core/auth';
 
 function safeNext(raw: string | null) {
   return raw && raw.startsWith('/') && !raw.startsWith('//') ? raw : '/';
@@ -26,9 +26,7 @@ function Callback() {
         setError(e?.message ?? 'La connexion a échoué.');
         return;
       }
-      const { data: profile } = await supabase.from('profiles').select('username').eq('id', data.session.user.id).maybeSingle();
-      await refreshProfile();
-      router.replace(profile?.username ? next : `/onboarding?next=${encodeURIComponent(next)}`);
+      await routeAfterSignIn((p) => router.replace(p), next);
     })();
   }, [error, params, router]);
 

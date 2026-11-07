@@ -530,8 +530,8 @@ html {
   left: 0;
   width: 112px;
   pointer-events: none;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.55), transparent);
-  mask-image: linear-gradient(to right, #000 55%, transparent);
+  /* Blur only, no tint: invisible over the page, it only softens cards sliding under the sidebar. */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  mask-image: linear-gradient(to right, #000 50%, transparent);
 }

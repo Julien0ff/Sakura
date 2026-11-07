@@ -8,6 +8,7 @@
   },
   "permissions": [
     "core:event:default",
+    "notification:default",
     "allow-take-pending-auth",
     "allow-open-external",
     "allow-get-autostart",

@@ -5,12 +5,27 @@ name: Desktop release
 on:
   push:
     tags: ['app-v*']
+  # A release created from the GitHub UI (tag app-v…): attach the builds to it.
+  release:
+    types: [published]
+  # Manual run: Actions › Desktop release › Run workflow.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag de la release (ex. app-v0.1.0)'
+        required: true
+
+concurrency:
+  group: desktop-release-${{ github.event.release.tag_name || inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
 
 jobs:
   build:
+    # Releases of the website (tags not starting with app-v) are ignored.
+    if: startsWith(github.event.release.tag_name || inputs.tag || github.ref_name, 'app-v')
     strategy:
       fail-fast: false
       matrix:
@@ -44,8 +59,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'SAKURA ${{ github.ref_name }}'
+          tagName: ${{ github.event.release.tag_name || inputs.tag || github.ref_name }}
+          releaseName: 'SAKURA ${{ github.event.release.tag_name || inputs.tag || github.ref_name }}'
           releaseBody: 'Installez SAKURA pour Windows (.exe) ou Linux (AppImage, .deb, .rpm).'
           releaseDraft: true
           includeUpdaterJson: true

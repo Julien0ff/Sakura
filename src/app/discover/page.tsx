@@ -62,7 +62,7 @@ export default function DiscoverPage() {
 
   return (
     <AppLayout>
-      <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-6 md:pl-32 pr-6 pt-10 pb-32">
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-6 md:pl-32 pr-6 pt-page pb-32">
         <div className="flex items-center justify-between gap-3 mb-6 md:mb-8 max-md:pr-28">
           <h1 className="text-[34px] md:text-5xl font-bold text-white flex items-center gap-3 md:gap-4 min-w-0" style={{ fontFamily: 'var(--font-impact)' }}>
             <Compass className="w-7 h-7 md:w-8 md:h-8 text-sakura shrink-0" />

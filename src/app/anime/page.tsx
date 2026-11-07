@@ -76,7 +76,10 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
   const [isLoadingVideo, setIsLoadingVideo] = useState(false);
   const [videoError, setVideoError] = useState<string | null>(null);
 
+  // When the current episode was started (Discord progress bar for embedded players).
+  const [playerOpenedAt, setPlayerOpenedAt] = useState(0);
   const playEpisode = async (ep: any, currentAnime: any, lang: Lang = activeLang) => {
+    setPlayerOpenedAt(Date.now());
     // Ignore results from a previous click if the user picked another episode meanwhile.
     const requestId = ++requestIdRef.current;
     const isStale = () => requestId !== requestIdRef.current;
@@ -322,10 +325,10 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
             lang: activeLang,
             // Minutes → seconds: TMDB episode runtime, else AniList's per-episode duration.
             estimatedLength: ((playingEpisode.runtime as number | undefined) || (anime.duration as number | undefined) || 0) * 60,
-            openedAt: Date.now(),
+            openedAt: playerOpenedAt,
           }
         : null,
-    [anime, playingEpisode, videoData, activeSeason, activeLang]
+    [anime, playingEpisode, videoData, activeSeason, activeLang, playerOpenedAt]
   );
   const presencePlayback = useMemo(() => playback, [playback.playing, playback.time, playback.duration]); // eslint-disable-line react-hooks/exhaustive-deps
   useDiscordPresence(presenceEpisode, presencePlayback);
@@ -385,6 +388,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
               playingEpisode.name && playingEpisode.name !== `Épisode ${playingEpisode.episode_number}` ? ` — ${playingEpisode.name}` : ''
             }`}
             color={animeColor}
+            artwork={anime.coverImage?.extraLarge}
             poster={playingEpisode.still_path ? `https://image.tmdb.org/t/p/w1280${playingEpisode.still_path}` : anime.bannerImage}
             isLoading={isLoadingVideo}
             error={videoError}

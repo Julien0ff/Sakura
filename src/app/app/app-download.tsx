@@ -138,7 +138,7 @@ export function AppDownload({ release }: { release: AppRelease | null }) {
   const showVersion = !!own?.length || platform === 'unknown' || platform === 'mac';
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-6 md:pl-32 md:pr-10 pt-20 md:pt-10 pb-24">
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-6 md:pl-32 md:pr-10 pt-page-lg pb-24">
       <div className="max-w-5xl">
         {/* Hero */}
         <section className="relative overflow-hidden rounded-[32px] border border-white/[0.08] bg-gradient-to-br from-[#FF7AA8]/20 via-[#141416] to-[#141416] p-6 md:p-10">

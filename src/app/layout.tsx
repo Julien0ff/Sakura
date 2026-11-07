@@ -15,6 +15,8 @@ export const metadata: Metadata = {
   title: { default: "SAKURA", template: "%s · SAKURA" },
   description: "SAKURA — catalogue d'animes, suivi de visionnage et lecteur sans publicité.",
   applicationName: "SAKURA",
+  // Home-screen web app on iOS: full screen, content under a translucent status bar (safe areas in CSS).
+  appleWebApp: { capable: true, title: "SAKURA", statusBarStyle: "black-translucent" },
   openGraph: {
     title: "SAKURA",
     description: "Catalogue d'animes, suivi de visionnage et lecteur sans publicité.",

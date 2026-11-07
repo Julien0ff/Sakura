@@ -34,6 +34,8 @@ interface PlayerOverlayProps {
   autoSkip: boolean;
   startAt: number;
   onProgress: (time: number, duration: number) => void;
+  /** Cover art for the system media controls (lock screen, Android notification). */
+  artwork?: string | null;
   /** Play / pause from the video element (not reported by embedded iframe players). */
   onPlayingChange?: (playing: boolean) => void;
   /** The user's rating for this episode (1–10). */
@@ -81,6 +83,7 @@ function PlayerOverlayInner({
   startAt,
   onProgress,
   onPlayingChange,
+  artwork,
   episodeRating = null,
   onRateEpisode,
 }: PlayerOverlayProps) {
@@ -102,6 +105,36 @@ function PlayerOverlayInner({
   const [idle, setIdle] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
+
+  // System media controls (Android notification, lock screen, media keys): episode, anime, artwork,
+  // « next ». Embedded iframe players keep their own (cross-origin), only direct videos use this.
+  const nextRef = useRef(next);
+  useEffect(() => {
+    nextRef.current = next;
+  }, [next]);
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
+    const art = [artwork, poster].filter((u): u is string => !!u);
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: episodeLabel,
+      artist: animeTitle,
+      album: 'SAKURA',
+      artwork: art.map((src) => ({ src, sizes: '512x512' })),
+    });
+    try {
+      navigator.mediaSession.setActionHandler('nexttrack', () => nextRef.current?.onPlay());
+    } catch {
+      /* unsupported action */
+    }
+    return () => {
+      navigator.mediaSession.metadata = null;
+      try {
+        navigator.mediaSession.setActionHandler('nexttrack', null);
+      } catch {
+        /* unsupported action */
+      }
+    };
+  }, [episodeLabel, animeTitle, artwork, poster]);
   const idleTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const onCloseRef = useRef(onClose);
   useEffect(() => {

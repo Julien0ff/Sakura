@@ -1,26 +1,71 @@
 import type { Metadata } from 'next';
 import { AppLayout } from '@/components/layout/app-layout';
-import { readRelease, type GhRelease } from '@/lib/app-release';
+import { readRelease, releaseAssetNames, type GhRelease } from '@/lib/app-release';
 import { AppDownload } from './app-download';
 
 export const metadata: Metadata = {
   title: 'Application SAKURA',
-  description: 'Téléchargez l’application SAKURA pour Windows et Linux : statut Discord, notifications de sortie, mises à jour automatiques.',
+  description: 'Téléchargez l’application SAKURA pour Windows, Linux, Android et iPhone : statut Discord, notifications de sortie, mises à jour automatiques.',
 };
 
-const RELEASES_API = 'https://api.github.com/repos/Julien0ff/Sakura/releases?per_page=10';
+const REPO = 'Julien0ff/Sakura';
+const RELEASES_API = `https://api.github.com/repos/${REPO}/releases?per_page=10`;
+const CACHE = { next: { revalidate: 900 } };
+
+/** GitHub API: 60 anonymous requests per hour per IP, often used up on Vercel's shared IPs. */
+async function fromApi() {
+  const token = process.env.GITHUB_TOKEN;
+  const res = await fetch(RELEASES_API, {
+    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'SAKURA', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    ...CACHE,
+  });
+  if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+  return readRelease((await res.json()) as GhRelease[]);
+}
+
+/**
+ * Fallback without the API (no rate limit): the updater's latest.json gives the version, then each
+ * expected installer is checked (HEAD), which also gives its size.
+ */
+async function fromDownloads() {
+  const res = await fetch(`https://github.com/${REPO}/releases/latest/download/latest.json`, CACHE);
+  if (!res.ok) return null;
+  const latest = (await res.json()) as { version?: string; pub_date?: string };
+  if (!latest.version) return null;
+  const tag = `app-v${latest.version}`;
+  const assets = await Promise.all(
+    releaseAssetNames(latest.version).map(async (name) => {
+      const url = `https://github.com/${REPO}/releases/download/${tag}/${name}`;
+      try {
+        const head = await fetch(url, { method: 'HEAD', ...CACHE });
+        return head.ok ? { name, browser_download_url: url, size: Number(head.headers.get('content-length')) || 0 } : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return readRelease([
+    {
+      tag_name: tag,
+      draft: false,
+      prerelease: false,
+      published_at: latest.pub_date ?? null,
+      html_url: `https://github.com/${REPO}/releases/tag/${tag}`,
+      body: null,
+      assets: assets.filter((a) => a !== null),
+    },
+  ]);
+}
 
 async function latestRelease() {
   try {
-    // Cached 15 min: GitHub allows 60 anonymous requests per hour from the server's IP.
-    const res = await fetch(RELEASES_API, {
-      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'SAKURA' },
-      next: { revalidate: 900 },
-    });
-    if (!res.ok) return null;
-    return readRelease((await res.json()) as GhRelease[]);
+    return await fromApi();
   } catch {
-    return null;
+    try {
+      return await fromDownloads();
+    } catch {
+      return null;
+    }
   }
 }
 

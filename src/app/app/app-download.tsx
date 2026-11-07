@@ -59,7 +59,7 @@ function DownloadButton({ d, primary = false, platform }: { d: Download; primary
       onClick={() => haptic('success')}
       className={
         primary
-          ? 'inline-flex items-center justify-center gap-2.5 h-14 px-7 rounded-2xl bg-white text-black font-bold text-[17px] hover:bg-white/90 active:scale-[0.98] transition-all'
+          ? 'self-start inline-flex items-center justify-center gap-2.5 h-14 px-7 rounded-2xl bg-white text-black font-bold text-[17px] hover:bg-white/90 active:scale-[0.98] transition-all'
           : 'flex items-center justify-between gap-3 px-4 h-12 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.06] text-[15px] text-white transition-colors'
       }
     >
@@ -71,7 +71,7 @@ function DownloadButton({ d, primary = false, platform }: { d: Download; primary
         <>
           <span>{d.label}</span>
           <span className="flex items-center gap-2 text-[13px] text-[#8E8E93]">
-            {sizeMb(d.size)} <ArrowDown className="w-4 h-4" />
+            {d.size > 0 && sizeMb(d.size)} <ArrowDown className="w-4 h-4" />
           </span>
         </>
       )}
@@ -88,7 +88,8 @@ function ForYou({ platform, release }: { platform: Platform; release: AppRelease
       <div className="flex flex-col gap-3">
         <DownloadButton d={list[0]} primary platform={NAMES[platform]} />
         <p className="text-[13px] text-[#8E8E93]">
-          {list[0].label} · {sizeMb(list[0].size)}
+          {list[0].label}
+          {list[0].size > 0 && ` · ${sizeMb(list[0].size)}`}
           {platform === 'windows' && ' · Windows peut afficher « éditeur inconnu » : cliquez sur « Informations complémentaires », puis « Exécuter quand même ».'}
           {platform === 'linux' && ' · Rendez le fichier exécutable, puis lancez-le. Mises à jour automatiques.'}
         </p>
@@ -150,8 +151,8 @@ export function AppDownload({ release }: { release: AppRelease | null }) {
   const showVersion = !!own?.length || platform === 'unknown' || platform === 'mac';
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-6 md:pl-32 md:pr-10 pt-page-lg pb-24">
-      <div className="max-w-5xl">
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-6 md:pl-[120px] md:pr-8 pt-page-lg pb-24">
+      <div className="mx-auto max-w-[1400px]">
         {/* Hero */}
         <section className="relative overflow-hidden rounded-[32px] border border-white/[0.08] bg-gradient-to-br from-[#FF7AA8]/20 via-[#141416] to-[#141416] p-6 md:p-10">
           <div className="absolute -right-24 -top-24 w-80 h-80 rounded-full bg-[#FF7AA8]/20 blur-3xl pointer-events-none" aria-hidden />
@@ -200,7 +201,7 @@ export function AppDownload({ release }: { release: AppRelease | null }) {
         {/* Every platform */}
         <section className="mt-10">
           <h2 className="text-[22px] font-bold text-white mb-4">Toutes les plateformes</h2>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
             {(['windows', 'linux', 'android', 'ios'] as const).map((p) => {
               const Icon = PLATFORM_ICON[p];
               const list = release?.downloads[p] ?? [];

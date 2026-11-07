@@ -74,3 +74,19 @@ export function readRelease(releases: GhRelease[]): AppRelease | null {
     downloads,
   };
 }
+
+/**
+ * File names the release workflows attach for a version (desktop: tauri-action, mobile:
+ * mobile-release.yml). Used when GitHub's API is rate-limited: the files are then checked one by one.
+ */
+export function releaseAssetNames(version: string): string[] {
+  return [
+    `SAKURA_${version}_x64-setup.exe`,
+    `SAKURA_${version}_x64_en-US.msi`,
+    `SAKURA_${version}_amd64.AppImage`,
+    `SAKURA_${version}_amd64.deb`,
+    `SAKURA-${version}-1.x86_64.rpm`,
+    `SAKURA_${version}_android.apk`,
+    `SAKURA_${version}_ios.ipa`,
+  ];
+}

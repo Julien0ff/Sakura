@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { detectPlatform, readRelease } from './app-release.ts';
+import { detectPlatform, readRelease, releaseAssetNames } from './app-release.ts';
 
 test('detectPlatform from the user agent', () => {
   assert.equal(detectPlatform('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140'), 'windows');
@@ -47,4 +47,23 @@ test('an .ipa becomes the iPhone download (AltStore / SideStore)', () => {
   const r = readRelease([{ tag_name: 'app-v0.4.0', draft: false, prerelease: false, published_at: 'x', html_url: 'h', body: '', assets: [asset('SAKURA_0.4.0_ios.ipa'), asset('SAKURA_0.4.0_android.apk')] }])!;
   assert.equal(r.downloads.ios?.[0].label, 'IPA (AltStore / SideStore)');
   assert.equal(r.downloads.android?.[0].label, 'APK');
+});
+
+test('releaseAssetNames: the installers CI publishes for a version', () => {
+  const names = releaseAssetNames('0.4.0');
+  assert.deepEqual(names, [
+    'SAKURA_0.4.0_x64-setup.exe',
+    'SAKURA_0.4.0_x64_en-US.msi',
+    'SAKURA_0.4.0_amd64.AppImage',
+    'SAKURA_0.4.0_amd64.deb',
+    'SAKURA-0.4.0-1.x86_64.rpm',
+    'SAKURA_0.4.0_android.apk',
+    'SAKURA_0.4.0_ios.ipa',
+  ]);
+  // Every name is recognised by readRelease, one per platform kind.
+  const r = readRelease([{ tag_name: 'app-v0.4.0', draft: false, prerelease: false, published_at: null, html_url: 'h', body: '', assets: names.map(asset) }])!;
+  assert.equal(r.downloads.windows?.length, 2);
+  assert.equal(r.downloads.linux?.length, 3);
+  assert.equal(r.downloads.android?.length, 1);
+  assert.equal(r.downloads.ios?.length, 1);
 });

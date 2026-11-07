@@ -37,12 +37,14 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      # Default packages are « tools platform-tools », and « tools » no longer exists in recent
+      # cmdline-tools: name the packages explicitly.
       - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools ndk;27.2.12479018 platforms;android-35 build-tools;35.0.0'
 
-      - name: Android NDK + platform
-        run: |
-          sdkmanager "ndk;27.2.12479018" "platforms;android-35" "build-tools;35.0.0"
-          echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+      - name: NDK path
+        run: echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
 
       - uses: actions/setup-node@v4
         with:

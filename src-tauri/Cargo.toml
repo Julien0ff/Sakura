@@ -1,6 +1,6 @@
 [package]
 name = "sakura"
-version = "0.3.6"
+version = "0.4.0"
 description = "SAKURA — catalogue et lecteur d'animes"
 authors = ["you"]
 license = "GPL-3.0-or-later"
@@ -25,14 +25,15 @@ log = "0.4"
 tauri = { version = "2.12.1", features = ["tray-icon"] }
 tauri-plugin-log = "2"
 tauri-plugin-deep-link = "2"
-tauri-plugin-window-state = "2"
-tauri-plugin-autostart = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-opener = "2"
-tauri-plugin-updater = "2"
-discord-rich-presence = "1.1"
 tokio = { version = "1", features = ["time"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 
+# Desktop only (Windows, Linux, macOS): tray, autostart, window state, self-update, Discord IPC.
 [target.'cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))'.dependencies]
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+tauri-plugin-window-state = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-updater = "2"
+discord-rich-presence = "1.1"

@@ -43,13 +43,14 @@ export interface AppRelease {
 }
 
 /** Installer kinds, in the order they're offered (first = main button). */
-const KINDS: { platform: 'windows' | 'linux' | 'android'; test: RegExp; label: string }[] = [
+const KINDS: { platform: 'windows' | 'linux' | 'android' | 'ios'; test: RegExp; label: string }[] = [
   { platform: 'windows', test: /-setup\.exe$/i, label: 'Installateur (.exe)' },
   { platform: 'windows', test: /\.msi$/i, label: 'Installateur MSI' },
   { platform: 'linux', test: /\.AppImage$/i, label: 'AppImage' },
   { platform: 'linux', test: /\.deb$/i, label: 'Debian / Ubuntu (.deb)' },
   { platform: 'linux', test: /\.rpm$/i, label: 'Fedora / openSUSE (.rpm)' },
   { platform: 'android', test: /\.apk$/i, label: 'APK' },
+  { platform: 'ios', test: /\.ipa$/i, label: 'IPA (AltStore / SideStore)' },
 ];
 
 /** Newest published `app-v*` release (prereleases included, flagged beta), or null. */

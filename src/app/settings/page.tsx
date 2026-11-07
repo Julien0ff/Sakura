@@ -10,6 +10,9 @@ import { Group, Row, Segmented, ActionButton, Toggle } from '@/components/settin
 import { openChangelog } from '@/components/layout/changelog-popup';
 import { AppGroup } from '@/components/settings/app-group';
 import { AccountGroup } from '@/components/settings/account-group';
+import { detectPlatform } from '@/lib/app-release';
+
+const noopSubscribe = () => () => {};
 
 export default function SettingsPage() {
   const settings = useAppStore((s) => s.settings);
@@ -17,6 +20,11 @@ export default function SettingsPage() {
   const clearHistory = useAppStore((s) => s.clearHistory);
   const { user } = useAuth();
   const touchDevice = useTouchDevice();
+  const isIphone = useSyncExternalStore(
+    noopSubscribe,
+    () => detectPlatform(navigator.userAgent, navigator.maxTouchPoints) === 'ios',
+    () => false
+  );
 
   return (
     <AppLayout>
@@ -71,6 +79,22 @@ export default function SettingsPage() {
               onChange={(v) => updateSettings({ autoNext: v })}
             />
           </Group>
+
+          {isIphone && (
+            <Group title="Apparence" footer="Liquid Glass : le matériau translucide d’iOS 26 pour la barre d’onglets, les boutons flottants, les menus et les fenêtres. Le contenu ne change pas.">
+              <Row label="Interface" stackOnMobile>
+                <Segmented
+                  label="Interface"
+                  value={settings.uiStyle ?? 'default'}
+                  options={[
+                    ['default', 'Par défaut'],
+                    ['liquid', 'Liquid Glass'],
+                  ]}
+                  onChange={(v) => updateSettings({ uiStyle: v })}
+                />
+              </Row>
+            </Group>
+          )}
 
           {touchDevice && (
           <Group title="Retour haptique" footer="Android (Chrome, Edge, Samsung Internet) et iPhone sous iOS 18 ou plus récent.">

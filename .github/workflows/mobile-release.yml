@@ -1,0 +1,147 @@
+# Builds the SAKURA mobile apps and attaches them to the same GitHub release as the desktop app:
+#   - Android: universal .apk, signed with the project key (secrets below)
+#   - iPhone: unsigned .ipa, signed on the device by AltStore / SideStore
+# The native projects (src-tauri/gen/android, src-tauri/gen/apple) are generated here, never committed.
+name: Mobile release
+
+on:
+  push:
+    tags: ['app-v*']
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag de la release (ex. app-v0.4.0)'
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mobile-release-${{ github.event.release.tag_name || inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag || github.ref_name }}
+
+jobs:
+  android:
+    if: startsWith(github.event.release.tag_name || inputs.tag || github.ref_name, 'app-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Android NDK + platform
+        run: |
+          sdkmanager "ndk;27.2.12479018" "platforms;android-35" "build-tools;35.0.0"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - run: npm ci
+
+      - name: Generate the Android project
+        run: |
+          npx tauri android init --ci
+          npx tauri icon public/icon.png
+
+      - name: Build
+        run: npx tauri android build --apk
+
+      - name: Sign
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Secrets Android manquants (ANDROID_KEYSTORE_BASE64, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD, ANDROID_STORE_PASSWORD) : un .apk non signé ne s'installe pas."
+            exit 1
+          fi
+          VERSION="${TAG#app-v}"
+          UNSIGNED=$(find src-tauri/gen/android/app/build/outputs/apk -name '*-release-unsigned.apk' | head -1)
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/sakura.jks"
+          "$BT/zipalign" -p -f 4 "$UNSIGNED" "$RUNNER_TEMP/aligned.apk"
+          "$BT/apksigner" sign --ks "$RUNNER_TEMP/sakura.jks" --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass env:STORE_PASSWORD --key-pass env:KEY_PASSWORD \
+            --out "SAKURA_${VERSION}_android.apk" "$RUNNER_TEMP/aligned.apk"
+          "$BT/apksigner" verify "SAKURA_${VERSION}_android.apk"
+          rm -f "$RUNNER_TEMP/sakura.jks"
+
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "SAKURA $TAG"
+          gh release upload "$TAG" SAKURA_*_android.apk --clobber
+
+  ios:
+    if: startsWith(github.event.release.tag_name || inputs.tag || github.ref_name, 'app-v')
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - run: npm ci
+      - run: brew install xcodegen
+
+      - name: Generate the Xcode project
+        run: |
+          npx tauri ios init --ci
+          npx tauri icon public/icon.png
+
+      - name: Build (unsigned)
+        run: |
+          PROJECT=$(find src-tauri/gen/apple -maxdepth 1 -name '*.xcodeproj' | head -1)
+          SCHEME=$(xcodebuild -list -project "$PROJECT" | awk '/Schemes:/{f=1;next} f&&/_iOS/{gsub(/^ +/,"");print;exit}')
+          echo "project=$PROJECT scheme=$SCHEME"
+          xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+
+      - name: Package .ipa
+        run: |
+          VERSION="${TAG#app-v}"
+          APP=$(find build/Build/Products -maxdepth 2 -name '*.app' -path '*iphoneos*' | head -1)
+          mkdir -p Payload && cp -R "$APP" Payload/
+          zip -qry "SAKURA_${VERSION}_ios.ipa" Payload
+
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "SAKURA $TAG"
+          gh release upload "$TAG" SAKURA_*_ios.ipa --clobber

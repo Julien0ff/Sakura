@@ -1,11 +1,14 @@
 //! Commands invoked by the SAKURA site (granted only to its origin, see capabilities/).
 
 use tauri::{AppHandle, Manager, State};
-use tauri_plugin_autostart::ManagerExt as _;
 use tauri_plugin_opener::OpenerExt as _;
 
 use crate::links::{is_allowed_external, AuthLink};
-use crate::shell::{self, PendingAuth, TrayAutostart, MAIN};
+use crate::shell::{self, PendingAuth, MAIN};
+#[cfg(desktop)]
+use crate::shell::TrayAutostart;
+#[cfg(desktop)]
+use tauri_plugin_autostart::ManagerExt as _;
 
 /// Sign-in result received before the page could listen (cold start); cleared once read.
 #[tauri::command]
@@ -22,11 +25,13 @@ pub fn open_external(app: AppHandle, url: String) -> Result<(), String> {
   app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub fn get_autostart(app: AppHandle) -> bool {
   app.autolaunch().is_enabled().unwrap_or(false)
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub fn set_autostart(app: AppHandle, enabled: bool) -> Result<(), String> {
   let mgr = app.autolaunch();
@@ -54,30 +59,35 @@ pub async fn retry_connection(app: AppHandle) -> bool {
   true
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn check_update(app: AppHandle) -> Result<Option<crate::update::UpdateInfo>, String> {
   crate::update::try_check(&app).await
 }
 
 /// Downloads, installs and restarts (Windows, AppImage).
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn install_update(app: AppHandle) -> Result<(), String> {
   crate::update::install(&app).await
 }
 
 /// Discord activity while watching; `None` clears it.
+#[cfg(desktop)]
 #[tauri::command]
 pub fn set_presence(state: State<'_, crate::presence::Presence>, activity: Option<crate::presence::PresencePayload>) {
   state.set(activity);
 }
 
 /// Anime + languages to watch for new episodes (from « Ma liste » and the settings).
+#[cfg(desktop)]
 #[tauri::command]
 pub fn set_notify_targets(app: AppHandle, state: State<'_, crate::notify::NotifyState>, targets: crate::notify::Targets) {
   state.set(&app, targets);
 }
 
 /// Discord connection state, shown in Settings › Application.
+#[cfg(desktop)]
 #[tauri::command]
 pub fn presence_status(state: State<'_, crate::presence::Presence>) -> crate::presence::PresenceStatus {
   state.status()

@@ -1,8 +1,9 @@
 /**
- * Bridge to the SAKURA desktop app (Tauri). Every function is a no-op on the website:
- * the app's commands only exist when the page runs inside the app window.
+ * Bridge to the SAKURA apps (Tauri: desktop, Android, iPhone). Every function is a no-op on the
+ * website: the app's commands only exist when the page runs inside an app.
  */
 import { invoke, isTauri } from '@tauri-apps/api/core';
+import { appKind, type AppKind } from '@/lib/app-kind';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import type { PresencePayload } from '@/lib/presence';
 import type { NotifyTargets } from '@/lib/notify-targets';
@@ -24,8 +25,25 @@ export type PresenceStatus = 'idle' | 'connected' | 'discord_not_found' | 'rejec
 
 export const RELEASES_URL = 'https://github.com/Julien0ff/Sakura/releases/latest';
 
+/** Which app runs this page (null on the website). */
+export function currentApp(): AppKind | null {
+  if (typeof window === 'undefined') return null;
+  return appKind(isTauri(), navigator.userAgent, navigator.maxTouchPoints);
+}
+
+/** Any SAKURA app (desktop or mobile): sign-in through the system browser, shared commands. */
+export function isApp(): boolean {
+  return currentApp() !== null;
+}
+
+/** The desktop app only: tray, autostart, Discord IPC, release checks, self-update. */
 export function isDesktop(): boolean {
-  return typeof window !== 'undefined' && isTauri();
+  return currentApp() === 'desktop';
+}
+
+export function isMobileApp(): boolean {
+  const k = currentApp();
+  return k === 'android' || k === 'ios';
 }
 
 /**
@@ -37,7 +55,7 @@ export function isLiteRendering(): boolean {
 }
 
 async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T | null> {
-  if (!isDesktop()) return null;
+  if (!isApp()) return null;
   try {
     return await invoke<T>(cmd, args);
   } catch (e) {
@@ -48,12 +66,12 @@ async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T |
 
 /** Like `call`, but failures reach the caller (actions the user is waiting on). */
 async function callOrThrow<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  if (!isDesktop()) throw new Error('Disponible uniquement dans l’application SAKURA');
+  if (!isApp()) throw new Error('Disponible uniquement dans l’application SAKURA');
   return invoke<T>(cmd, args);
 }
 
 async function on<T>(event: string, cb: (payload: T) => void): Promise<UnlistenFn> {
-  if (!isDesktop()) return () => {};
+  if (!isApp()) return () => {};
   return listen<T>(event, (e) => cb(e.payload));
 }
 

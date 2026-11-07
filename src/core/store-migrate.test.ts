@@ -50,3 +50,7 @@ test('migrate v8→v9 adds release notifications (on, language auto)', () => {
 test('migrate v9→v10 shows browsing on Discord by default', () => {
   assert.equal(migrateStore({ settings: {} }, 9).settings.discordBrowsing, true);
 });
+
+test('migrate v10→v11 keeps the default interface style', () => {
+  assert.equal(migrateStore({ settings: {} }, 10).settings.uiStyle, 'default');
+});

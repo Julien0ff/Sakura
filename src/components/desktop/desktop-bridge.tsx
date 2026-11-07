@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { toast } from '@/components/ui/toast';
 import { routeAfterSignIn } from '@/core/auth';
 import { supabase } from '@/lib/supabase';
-import { desktop, isDesktop, isLiteRendering, RELEASES_URL, type AuthLink, type UpdateInfo } from '@/lib/desktop';
+import { desktop, isApp, isDesktop, isLiteRendering, isMobileApp, RELEASES_URL, type AuthLink, type UpdateInfo } from '@/lib/desktop';
 import { useAppStore, useHydrated } from '@/core/store';
 import { notifyTargets } from '@/lib/notify-targets';
 import { buildBrowsingPresence } from '@/lib/presence';
@@ -29,15 +29,25 @@ export function announceUpdate(info: UpdateInfo) {
 }
 
 /**
- * Desktop app only (renders nothing): finishes the system-browser sign-in coming back through
- * sakura://auth/callback, and relays update notices.
+ * SAKURA apps only (renders nothing on the website): finishes the system-browser sign-in coming
+ * back through sakura://auth/callback (desktop and mobile); desktop also gets update notices,
+ * release notifications and the Discord status.
  */
 export function DesktopBridge() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!isDesktop()) return;
+    if (!isApp()) return;
     if (isLiteRendering()) document.documentElement.classList.add('app-lite');
+
+    // Mobile apps have no second window: target="_blank" links open in the phone's browser.
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as Element | null)?.closest?.('a[target="_blank"]') as HTMLAnchorElement | null;
+      if (!a || !/^https:\/\//.test(a.href)) return;
+      e.preventDefault();
+      void desktop.openExternal(a.href).catch(() => {});
+    };
+    if (isMobileApp()) document.addEventListener('click', onClick, true);
     let busy = false;
     // The same link can arrive twice (live event + pending slot): a code is only redeemed once.
     let lastCode: string | null = null;
@@ -70,12 +80,15 @@ export function DesktopBridge() {
         void desktop.takePendingAuth();
         void finish(link);
       }),
-      desktop.onUpdateAvailable(announceUpdate),
+      ...(isDesktop() ? [desktop.onUpdateAvailable(announceUpdate)] : []),
     ];
     // Cold start: the link arrived before this page was listening.
     void desktop.takePendingAuth().then((link) => link && finish(link));
 
-    return () => unlisteners.forEach((u) => void u.then((f) => f()));
+    return () => {
+      document.removeEventListener('click', onClick, true);
+      unlisteners.forEach((u) => void u.then((f) => f()));
+    };
   }, [router]);
 
   return (

@@ -570,3 +570,71 @@ html.app-lite .anime-card-cover { transition-property: transform; }
 @media (min-width: 768px) {
   .pt-page, .pt-page-lg { padding-top: 40px; }
 }
+
+/* ───────── Liquid Glass (option iPhone, Paramètres › Apparence) ─────────
+   Selon Apple (Materials, Color, Layout) : le verre ne va que sur la couche fonctionnelle (barre
+   d'onglets, boutons flottants, menus, feuilles), jamais sur le contenu. Variante « Regular » pour
+   ce qui porte du texte, « Clear » pour les boutons posés sur des visuels riches, avec un voile
+   sombre de 35 %. Pas de couleur sur le verre, sauf l'onglet sélectionné. Le verre seul n'existe
+   pas en CSS : flou + saturation + remplissage translucide + reflet spéculaire, valeurs de départ
+   du guide de traduction (pas des spécifications Apple). */
+html.ui-liquid .tab-bar-glass,
+html.ui-liquid .menu-glass {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 45%, rgba(255, 255, 255, 0) 100%),
+    rgba(28, 28, 30, 0.55);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  backdrop-filter: blur(28px) saturate(1.4);
+  border: 0.5px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 40px rgba(0, 0, 0, 0.45);
+}
+/* Clear : boutons ronds au-dessus des bannières / affiches. */
+html.ui-liquid .float-glass {
+  background:
+    radial-gradient(120% 90% at 30% 15%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 60%),
+    rgba(0, 0, 0, 0.35);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  backdrop-filter: blur(12px) saturate(1.3);
+  border: 0.5px solid rgba(255, 255, 255, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+/* Grandes surfaces à texte : plus opaques (Apple : « larger elements are more opaque »). */
+html.ui-liquid .sheet-body {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 120px),
+    rgba(24, 24, 26, 0.82);
+  -webkit-backdrop-filter: blur(40px) saturate(1.4);
+  backdrop-filter: blur(40px) saturate(1.4);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 -20px 60px -20px rgba(0, 0, 0, 0.9);
+}
+/* Seul accent de couleur : l'onglet sélectionné. */
+html.ui-liquid nav[aria-label='Navigation principale'] [aria-current='page'] {
+  color: var(--color-sakura);
+}
+html.ui-liquid nav[aria-label='Navigation principale'] [aria-current='page'] > span:first-child {
+  background: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+}
+@media (prefers-reduced-transparency: reduce) {
+  html.ui-liquid .tab-bar-glass,
+  html.ui-liquid .menu-glass,
+  html.ui-liquid .float-glass,
+  html.ui-liquid .sheet-body {
+    background: rgb(28, 28, 30);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-contrast: more) {
+  html.ui-liquid .tab-bar-glass,
+  html.ui-liquid .menu-glass,
+  html.ui-liquid .float-glass,
+  html.ui-liquid .sheet-body {
+    background-color: rgba(18, 18, 20, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+  }
+}

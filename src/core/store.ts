@@ -73,6 +73,8 @@ export type Settings = {
   discordPresence: boolean;
   /** Also show the page being browsed (« Parcourt le catalogue »), not only playback. */
   discordBrowsing: boolean;
+  /** iPhone only: 'liquid' = Apple's Liquid Glass look for bars, floating buttons, menus and sheets. */
+  uiStyle: 'default' | 'liquid';
   /** Desktop app: system notification when a followed anime gets a new episode. */
   releaseNotifications: boolean;
   /** Which releases to notify: 'auto' = the default language. */

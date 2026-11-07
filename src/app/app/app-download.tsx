@@ -5,7 +5,7 @@ import { useSyncExternalStore } from 'react';
 import { AppIcon, Apple, ArrowDown, Bell, Beta, CodeIcon, Phone, Sparkles, Check } from '@/components/ui/icons';
 import { DiscordIcon } from '@/components/account/provider-icons';
 import { detectPlatform, type AppRelease, type Download, type Platform } from '@/lib/app-release';
-import { isDesktop } from '@/lib/desktop';
+import { isApp } from '@/lib/desktop';
 import { haptic } from '@/lib/haptics';
 
 const noop = () => () => {};
@@ -108,7 +108,19 @@ function ForYou({ platform, release }: { platform: Platform; release: AppRelease
       <ComingSoon name="Android" />
     );
   }
-  if (platform === 'ios') return <ComingSoon name="iPhone" pwa />;
+  if (platform === 'ios') {
+    const ipa = release?.downloads.ios?.[0];
+    return ipa ? (
+      <div className="flex flex-col gap-3">
+        <DownloadButton d={ipa} primary platform="iPhone" />
+        <p className="text-[13px] text-[#8E8E93] flex flex-wrap items-center gap-2 max-w-md">
+          <BetaBadge /> Installez le fichier avec AltStore ou SideStore (compte Apple gratuit). Ils renouvellent l’app tous les 7 jours.
+        </p>
+      </div>
+    ) : (
+      <ComingSoon name="iPhone" pwa />
+    );
+  }
   if (platform === 'mac') {
     return <p className="text-[#8E8E93]">Pas encore de version macOS. Le site fonctionne parfaitement dans Safari ou Chrome en attendant.</p>;
   }
@@ -132,7 +144,7 @@ function ComingSoon({ name, pwa = false }: { name: string; pwa?: boolean }) {
 
 export function AppDownload({ release }: { release: AppRelease | null }) {
   const platform = useSyncExternalStore(noop, clientPlatform, () => 'unknown' as Platform);
-  const inApp = useSyncExternalStore(noop, isDesktop, () => false);
+  const inApp = useSyncExternalStore(noop, isApp, () => false);
   // No « Version 0.2.0 » on a phone that has no build yet.
   const own = platform === 'windows' || platform === 'linux' || platform === 'android' || platform === 'ios' ? release?.downloads[platform] : undefined;
   const showVersion = !!own?.length || platform === 'unknown' || platform === 'mac';

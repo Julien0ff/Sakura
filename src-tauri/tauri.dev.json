@@ -8,6 +8,7 @@
     "security": {
       "capabilities": [
         "sakura-site",
+        "sakura-site-desktop",
         "sakura-dev-server",
         "offline-page"
       ]

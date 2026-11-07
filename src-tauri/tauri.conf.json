@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "SAKURA",
-  "version": "0.3.6",
+  "version": "0.4.0",
   "identifier": "app.sakura.desktop",
   "build": {
     "frontendDist": "offline",
@@ -14,6 +14,7 @@
       "csp": null,
       "capabilities": [
         "sakura-site",
+        "sakura-site-desktop",
         "offline-page"
       ]
     }
@@ -50,7 +51,16 @@
         "schemes": [
           "sakura"
         ]
-      }
+      },
+      "mobile": [
+        {
+          "scheme": [
+            "sakura"
+          ],
+          "host": "auth",
+          "appLink": false
+        }
+      ]
     },
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEMzODA4Q0I4QTNDMTY0QUYKUldTdlpNR2p1SXlBdzR1K3pGWkpnTi9qRFRYY3BYeWFPdzVBK2lhSWJHbUZ6ZVZvcmw2U2ZBUVcK",

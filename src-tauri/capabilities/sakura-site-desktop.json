@@ -1,0 +1,27 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "sakura-site-desktop",
+  "description": "Desktop only: tray/autostart, self-update, Discord status, release notifications.",
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "remote": {
+    "urls": [
+      "https://sakura.thefoxy.me/*"
+    ]
+  },
+  "permissions": [
+    "allow-get-autostart",
+    "allow-set-autostart",
+    "allow-check-update",
+    "allow-install-update",
+    "allow-set-presence",
+    "allow-set-notify-targets",
+    "allow-presence-status"
+  ]
+}

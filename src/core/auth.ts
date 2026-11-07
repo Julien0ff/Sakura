@@ -5,7 +5,7 @@ import { create } from 'zustand';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import type { Tables } from '@/lib/database.types';
-import { desktop, isDesktop } from '@/lib/desktop';
+import { desktop, isApp } from '@/lib/desktop';
 import { appRedirectUrl } from '@/lib/app-auth';
 
 export type Profile = Tables<'profiles'>;
@@ -59,7 +59,7 @@ async function openInSystemBrowser(url: string | undefined) {
 
 export async function signIn(provider: Provider, next?: string) {
   if (!supabase) throw new Error('Comptes indisponibles');
-  if (isDesktop()) {
+  if (isApp()) {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo: appRedirectUrl(window.location.origin, next), scopes: scopesFor(provider), skipBrowserRedirect: true },
@@ -77,7 +77,7 @@ export async function signIn(provider: Provider, next?: string) {
 /** Adds another provider to the signed-in account (Settings › Compte). */
 export async function linkProvider(provider: Provider, next = '/settings') {
   if (!supabase) throw new Error('Comptes indisponibles');
-  if (isDesktop()) {
+  if (isApp()) {
     const { data, error } = await supabase.auth.linkIdentity({
       provider,
       options: { redirectTo: appRedirectUrl(window.location.origin, next), scopes: scopesFor(provider), skipBrowserRedirect: true },

@@ -134,6 +134,24 @@ L'app de dev a son propre identifiant : elle ne se mélange pas avec l'app insta
 2. Montez la version dans `src-tauri/tauri.conf.json` et `src-tauri/Cargo.toml`.
 3. `git tag app-v0.1.0 && git push origin app-v0.1.0` : GitHub Actions compile Windows (`.exe`, `.msi`) et Linux (AppImage, `.deb`, `.rpm`) dans une Release brouillon. Publiez-la : les apps installées la proposent au prochain contrôle (au démarrage puis toutes les 6 h). Les installations `.deb` / `.rpm` sont renvoyées vers la page de la Release.
 
+## Apps mobiles (Android, iPhone)
+
+Même projet Tauri que l'app desktop. Les projets natifs (`src-tauri/gen/android`, `src-tauri/gen/apple`) sont générés par GitHub Actions (`.github/workflows/mobile-release.yml`) à chaque release `app-v*`, qui ajoute à la release :
+
+- `SAKURA_<version>_android.apk` (signé avec la clé du projet) ;
+- `SAKURA_<version>_ios.ipa` (non signé : à installer avec AltStore ou SideStore, qui le signent avec un compte Apple gratuit).
+
+**Clé Android (une seule fois, à conserver : sans elle aucune mise à jour n'est acceptée par Android)** :
+
+```bash
+keytool -genkeypair -v -keystore ~/sakura-android.jks -alias sakura -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 ~/sakura-android.jks   # → secret ANDROID_KEYSTORE_BASE64
+```
+
+Secrets GitHub : `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS` (`sakura`), `ANDROID_KEY_PASSWORD`, `ANDROID_STORE_PASSWORD`.
+
+Compiler Android en local demande le NDK Android et Java 17 ou 21 (`npx tauri android init`, puis `npx tauri android dev`). iPhone : uniquement sur macOS (Xcode).
+
 ## Structure
 
 ```

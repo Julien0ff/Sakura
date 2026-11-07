@@ -42,3 +42,9 @@ test('a prerelease is flagged beta; an .apk becomes the Android download', () =>
 test('no app release → null', () => {
   assert.equal(readRelease([]), null);
 });
+
+test('an .ipa becomes the iPhone download (AltStore / SideStore)', () => {
+  const r = readRelease([{ tag_name: 'app-v0.4.0', draft: false, prerelease: false, published_at: 'x', html_url: 'h', body: '', assets: [asset('SAKURA_0.4.0_ios.ipa'), asset('SAKURA_0.4.0_android.apk')] }])!;
+  assert.equal(r.downloads.ios?.[0].label, 'IPA (AltStore / SideStore)');
+  assert.equal(r.downloads.android?.[0].label, 'APK');
+});

@@ -21,6 +21,23 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: '2026-11-07-glass',
+    date: '7 novembre 2026',
+    title: 'Liquid Glass et statut Discord',
+    banner: '/banner-news.png',
+    features: [
+      { text: 'iPhone : option « Liquid Glass » dans Paramètres › Apparence, fidèle au matériau d’iOS 26.', beta: true },
+      { text: 'SAKURA s’installe comme une app : Android « Installer l’application », iPhone « Sur l’écran d’accueil », en plein écran.' },
+      { text: 'Lecture : titre de l’épisode, anime et jaquette dans les commandes du téléphone et l’écran verrouillé.' },
+      { text: 'App PC : statut Discord avec barre de progression, et la page en cours quand vous ne regardez rien.' },
+    ],
+    fixes: [
+      { text: 'Les effets de verre et de flou s’affichent enfin sur Chrome et Edge.' },
+      { text: 'Les pages ne passent plus sous l’encoche en plein écran.' },
+      { text: 'Bouton calendrier aligné sur mobile.' },
+    ],
+  },
+  {
     id: '2026-11-07-app',
     date: '7 novembre 2026',
     title: 'L’application SAKURA',

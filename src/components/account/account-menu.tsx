@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSyncExternalStore } from 'react';
-import { isDesktop } from '@/lib/desktop';
+import { isApp } from '@/lib/desktop';
 import { AppIcon, LogOut, Settings, Share2, UserRound, CircleUserRound } from '@/components/ui/icons';
 import { Popover } from '@/components/ui/popover';
 import { Avatar } from '@/components/account/avatar';
@@ -41,11 +41,11 @@ export function AccountMenu({ placement }: { placement: 'mobile' | 'sidebar' }) 
   const { user, profile, loading } = useAuth();
   const router = useRouter();
   // Inside the desktop app, « Application » (download page) is pointless.
-  const inApp = useSyncExternalStore(noopSubscribe, isDesktop, () => false);
+  const inApp = useSyncExternalStore(noopSubscribe, isApp, () => false);
 
   const mobile = placement === 'mobile';
   const triggerClass = mobile
-    ? 'w-11 h-11 rounded-full tab-bar-glass flex items-center justify-center text-white/90 active:scale-95 transition-transform cursor-pointer overflow-hidden'
+    ? 'w-11 h-11 rounded-full tab-bar-glass float-glass flex items-center justify-center text-white/90 active:scale-95 transition-transform cursor-pointer overflow-hidden'
     : 'w-12 h-12 rounded-2xl flex items-center justify-center text-[#8E8E93] hover:bg-white/10 hover:text-white transition-colors cursor-pointer';
 
   // No accounts configured: keep the plain settings link.

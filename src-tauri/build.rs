@@ -47,11 +47,15 @@ fn social_sdk() {
       println!("cargo::rustc-link-lib=dylib=discord_partner_sdk");
       println!("cargo::rustc-cfg=social_sdk");
     }
-    // Static library: Xcode links and embeds discord_partner_sdk.xcframework (project.yml).
+    // Xcode links and embeds discord_partner_sdk.xcframework into the app (project.yml); the crate's
+    // own dynamic library (cdylib) is linked here against the matching slice.
     "ios" => {
-      if std::env::var("DISCORD_SOCIAL_SDK").is_ok() {
-        println!("cargo::rustc-cfg=social_sdk");
-      }
+      let Ok(sdk) = std::env::var("DISCORD_SOCIAL_SDK") else { return };
+      let sim = std::env::var("CARGO_CFG_TARGET_ABI").is_ok_and(|a| a == "sim");
+      let slice = if sim { "ios-arm64-simulator" } else { "ios-arm64" };
+      println!("cargo::rustc-link-search=framework={sdk}/ios/discord_partner_sdk.xcframework/{slice}");
+      println!("cargo::rustc-link-lib=framework=discord_partner_sdk");
+      println!("cargo::rustc-cfg=social_sdk");
     }
     "linux" if std::env::var("CARGO_FEATURE_SOCIAL_SDK_TEST").is_ok() => {
       let lib = std::env::var("DISCORD_SOCIAL_SDK_LIB").expect("social-sdk-test needs DISCORD_SOCIAL_SDK_LIB");

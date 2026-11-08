@@ -1,5 +1,6 @@
 'use client';
 
+import { Portal } from '@/components/ui/portal';
 import { AppLayout } from '@/components/layout/app-layout';
 import { AnimeResults } from '@/components/anime/anime-results';
 import { fetchAniList, BROWSE_ANIMES } from '@/core/api/anilist';
@@ -68,15 +69,18 @@ export default function DiscoverPage() {
             <Compass className="w-7 h-7 md:w-8 md:h-8 text-sakura shrink-0" />
             Découvrir
           </h1>
-          {/* Phones: same row, size and material as the floating account button (right-4), just left of it. */}
-          <Link
-            href="/calendar"
-            aria-label="Calendrier des sorties"
-            title="Calendrier"
-            className="md:hidden fixed z-40 right-[68px] top-[max(var(--safe-top),16px)] w-11 h-11 rounded-full tab-bar-glass float-glass text-white/90 flex items-center justify-center active:scale-95 transition-transform"
-          >
-            <CalendarDays className="w-5 h-5" />
-          </Link>
+          {/* Phones: same row, size and material as the floating account button (right-4), just left of it.
+              In <body> like that button, so it stays above the status-bar blur of the apps. */}
+          <Portal>
+            <Link
+              href="/calendar"
+              aria-label="Calendrier des sorties"
+              title="Calendrier"
+              className="md:hidden fixed z-40 right-[68px] top-[max(var(--safe-top),16px)] w-11 h-11 rounded-full tab-bar-glass float-glass text-white/90 flex items-center justify-center active:scale-95 transition-transform"
+            >
+              <CalendarDays className="w-5 h-5" />
+            </Link>
+          </Portal>
         </div>
 
         <div className="flex gap-2 md:gap-3 mb-4 overflow-x-auto pb-2 scrollbar-none -mx-6 px-6 md:mx-0 md:px-0" role="tablist" aria-label="Genres">

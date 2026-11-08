@@ -493,7 +493,8 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
           />
 
           {/* Top Bar Navigation */}
-          <div className="absolute top-6 left-6 md:left-[104px] z-20">
+          {/* Phones: below the status bar (same row as the account button), not under its blur. */}
+          <div className="absolute top-[max(var(--safe-top),16px)] md:top-6 left-4 md:left-[104px] z-20">
             <Link 
               href="/"
               aria-label="Retour à l'accueil"

@@ -30,7 +30,7 @@ export function MobileNav() {
   return (
     <>
       {/* Account / settings entry lives outside the tab bar on mobile (it's not a primary section). */}
-      <div className="md:hidden fixed z-40 right-4 top-[max(var(--safe-top),16px)]">
+      <div className="md:hidden fixed z-40 right-4 top-float">
         <AccountMenu placement="mobile" />
       </div>
 

@@ -570,6 +570,9 @@ html.app-lite .anime-card-cover { transition-property: transform; }
 :root { --safe-top: max(env(safe-area-inset-top, 0px), var(--android-status, 0px)); }
 .pt-page { padding-top: max(calc(var(--safe-top) + 16px), 40px); }
 .pt-page-lg { padding-top: max(calc(var(--safe-top) + 24px), 80px); }
+/* Boutons ronds flottants (compte, calendrier) : centrés sur la ligne du titre des pages .pt-page
+   (titre de 50px → 44px de bouton : +3px). */
+.top-float { top: calc(max(calc(var(--safe-top) + 16px), 40px) + 3px); }
 @media (min-width: 768px) {
   .pt-page, .pt-page-lg { padding-top: 40px; }
 }

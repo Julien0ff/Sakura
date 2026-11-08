@@ -59,6 +59,7 @@ class SakuraMedia(private val activity: AppCompatActivity, private val webView: 
             override fun onRewind() = send("seekbackward")
             override fun onFastForward() = send("seekforward")
             override fun onSeekTo(pos: Long) = send("seekto", pos / 1000.0)
+            override fun onCustomAction(action: String, extras: android.os.Bundle?) = send(action)
         })
     }
 
@@ -131,6 +132,10 @@ class SakuraMedia(private val activity: AppCompatActivity, private val webView: 
                         PlaybackStateCompat.ACTION_SEEK_TO or PlaybackStateCompat.ACTION_REWIND or PlaybackStateCompat.ACTION_FAST_FORWARD
                 )
                 .setState(if (playing) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED, positionMs, if (playing) 1f else 0f)
+                // Android 13+ builds its media controls from the session: play/pause comes from the
+                // actions above, the side buttons from these custom actions.
+                .addCustomAction(PlaybackStateCompat.CustomAction.Builder("seekbackward", "Reculer de 10 s", android.R.drawable.ic_media_rew).build())
+                .addCustomAction(PlaybackStateCompat.CustomAction.Builder("seekforward", "Avancer de 10 s", android.R.drawable.ic_media_ff).build())
                 .build()
         )
         session.isActive = true
@@ -239,8 +244,33 @@ class SakuraMedia(private val activity: AppCompatActivity, private val webView: 
         }
     }
 
+    /**
+     * WryActivity.onPause() calls webView.onPause(), which freezes the video and the page — and an
+     * activity in picture-in-picture is a paused activity. Undo it while in picture-in-picture.
+     * Called from MainActivity.onPause() and on entering picture-in-picture (either may come first).
+     */
+    /** Play state when the activity started pausing (before the WebView froze the video). */
+    private var playingWhenLeaving = false
+
+    /** MainActivity.onPause(), before WryActivity pauses the WebView. */
+    fun rememberPlaying() {
+        playingWhenLeaving = playing
+    }
+
+    fun keepRunningInPip() {
+        if (Build.VERSION.SDK_INT >= 24 && activity.isInPictureInPictureMode) {
+            webView.onResume()
+            if (playingWhenLeaving) send("play")
+        }
+    }
+
     /** The page shows only the video while in picture-in-picture; closing the window pauses it. */
     fun onPipChanged(inPip: Boolean) {
+        if (inPip) {
+            webView.onResume()
+            // Leaving the app may have paused it (WryActivity.onPause) a moment before.
+            if (playingWhenLeaving) send("play")
+        }
         webView.evaluateJavascript("document.documentElement.classList.toggle('app-pip', $inPip)", null)
         if (!inPip) {
             webView.postDelayed({

@@ -715,3 +715,11 @@ html.app-pip .player-overlay .plyr__controls,
 html.app-pip .player-overlay .plyr__control--overlaid {
   display: none !important;
 }
+/* Same when the class could not be set in time: a picture-in-picture window is tiny. */
+@media (max-height: 300px) {
+  html.app-mobile .player-overlay > :not(:first-child),
+  html.app-mobile .player-overlay .plyr__controls,
+  html.app-mobile .player-overlay .plyr__control--overlaid {
+    display: none !important;
+  }
+}

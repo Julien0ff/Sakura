@@ -76,6 +76,12 @@ def main_activity(app: Path) -> None:
     sakuraMedia = SakuraMedia(this, webView)
   }}
 
+  override fun onPause() {{
+    sakuraMedia?.rememberPlaying()
+    super.onPause() // WryActivity: webView.onPause(), which freezes the video
+    sakuraMedia?.keepRunningInPip()
+  }}
+
   override fun onUserLeaveHint() {{
     super.onUserLeaveHint()
     sakuraMedia?.enterPipIfWatching()

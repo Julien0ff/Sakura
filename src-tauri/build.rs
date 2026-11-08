@@ -1,5 +1,9 @@
 fn main() {
   social_sdk();
+  // iPhone: AVAudioSession (shell::playback_audio_session_ios) lives in AVFoundation.
+  if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("ios") {
+    println!("cargo::rustc-link-lib=framework=AVFoundation");
+  }
   // App commands get generated permissions (`allow-<command>`) so the remote-site capability can
   // grant them explicitly.
   tauri_build::try_build(tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(&[

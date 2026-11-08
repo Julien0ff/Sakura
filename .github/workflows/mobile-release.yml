@@ -94,6 +94,10 @@ jobs:
           unzip -q -o "$DISCORD_SOCIAL_SDK/android/discord_partner_sdk.aar" 'jni/*' -d "$DISCORD_SOCIAL_SDK/android"
           python3 scripts/mobile/android-social-sdk.py src-tauri/gen/android "$DISCORD_SOCIAL_SDK" 1568341036894523432
 
+      # Media notification + picture-in-picture (after the Social SDK: both edit MainActivity).
+      - name: Add the media notification and picture-in-picture
+        run: python3 scripts/mobile/android-media.py src-tauri/gen/android
+
       - name: Build
         run: npx tauri android build --apk
 
@@ -187,7 +191,7 @@ jobs:
 
       # URL schemes, written by `tauri ios build` in a normal Tauri build (not used here):
       # sakura:// (sign-in comes back to the app) and discord-<id>:// (Discord « Authorize »).
-      - name: URL schemes
+      - name: URL schemes and background audio
         run: |
           PLIST=$(find src-tauri/gen/apple -maxdepth 2 -path '*_iOS/Info.plist' | head -1)
           PB=/usr/libexec/PlistBuddy
@@ -199,6 +203,10 @@ jobs:
           $PB -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string sakura' "$PLIST"
           $PB -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes:1 string discord-1568341036894523432' "$PLIST"
           $PB -c 'Print :CFBundleURLTypes' "$PLIST"
+          # Background audio: the episode keeps playing in picture-in-picture / on the lock screen.
+          $PB -c 'Delete :UIBackgroundModes' "$PLIST" 2>/dev/null || true
+          $PB -c 'Add :UIBackgroundModes array' "$PLIST"
+          $PB -c 'Add :UIBackgroundModes:0 string audio' "$PLIST"
 
       # Xcode's « Build Rust Code » phase only works while `tauri ios build` runs, and that command
       # requires signing. Build the Rust library here and turn that phase into a no-op.

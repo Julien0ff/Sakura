@@ -7,6 +7,7 @@ import { ArrowLeft, SkipForward, X } from '@/components/ui/icons';
 import type { SkipInterval } from '@/core/api/aniskip';
 import { RatingPicker } from '@/components/anime/rating-picker';
 import { haptic } from '@/lib/haptics';
+import { setNowPlayingMeta, setPlayerOpen } from '@/lib/native-media';
 
 const VideoPlayer = dynamic(() => import('./video-player').then((m) => m.VideoPlayer), { ssr: false });
 
@@ -112,6 +113,15 @@ function PlayerOverlayInner({
   useEffect(() => {
     nextRef.current = next;
   }, [next]);
+  // Android app: notification + picture-in-picture when leaving the app (native-media.ts).
+  useEffect(() => {
+    setPlayerOpen(true);
+    return () => setPlayerOpen(false);
+  }, []);
+  useEffect(() => {
+    setNowPlayingMeta({ title: episodeLabel, artist: animeTitle, artwork: artwork || poster || undefined });
+    return () => setNowPlayingMeta(null);
+  }, [episodeLabel, animeTitle, artwork, poster]);
   useEffect(() => {
     if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
     const art = [artwork, poster].filter((u): u is string => !!u);
@@ -186,7 +196,7 @@ function PlayerOverlayInner({
       role="dialog"
       aria-modal="true"
       aria-label={`${animeTitle} — ${episodeLabel}`}
-      className={`fixed inset-0 z-[100] bg-black animate-in fade-in duration-300 ${chromeHidden ? 'cursor-none' : ''}`}
+      className={`player-overlay fixed inset-0 z-[100] bg-black animate-in fade-in duration-300 ${chromeHidden ? 'cursor-none' : ''}`}
       onMouseMove={wake}
       onTouchStart={wake}
       onKeyDown={wake}

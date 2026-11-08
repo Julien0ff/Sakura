@@ -7,6 +7,7 @@ import Hls from 'hls.js';
 import { FastForward } from '@/components/ui/icons';
 import type { SkipInterval } from '@/core/api/aniskip';
 import { haptic } from '@/lib/haptics';
+import { onNativeMediaAction, setNowPlayingState } from '@/lib/native-media';
 
 interface VideoPlayerProps {
   src: string;
@@ -133,12 +134,57 @@ export function VideoPlayer({
         setActiveSkip((prev) => (prev?.type === current?.type && prev?.start === current?.start ? prev : current));
       }
       report();
+      if (Date.now() - lastPosition > 5000) {
+        lastPosition = Date.now();
+        syncPosition();
+      }
     };
+    // System media controls (notification, lock screen, headset): state, position, actions.
+    // The metadata (episode, anime, artwork) is set by <PlayerOverlay/>.
+    const session = typeof navigator !== 'undefined' && 'mediaSession' in navigator ? navigator.mediaSession : null;
+    const syncPosition = () => {
+      if (!video?.duration || !isFinite(video.duration)) return;
+      setNowPlayingState({ playing: !video.paused, position: video.currentTime, duration: video.duration });
+      if (!session) return;
+      try {
+        session.setPositionState({ duration: video.duration, position: Math.min(video.currentTime, video.duration), playbackRate: video.playbackRate || 1 });
+      } catch {
+        /* invalid state while seeking */
+      }
+    };
+    let lastPosition = 0;
     const onPause = () => {
       report(true);
       latest.current.onPlayingChange?.(false);
+      if (session) session.playbackState = 'paused';
+      syncPosition();
     };
-    const onPlay = () => latest.current.onPlayingChange?.(true);
+    const onPlay = () => {
+      latest.current.onPlayingChange?.(true);
+      if (session) session.playbackState = 'playing';
+      syncPosition();
+    };
+    const actions: [MediaSessionAction, MediaSessionActionHandler][] = [
+      ['play', () => void video?.play()],
+      ['pause', () => video?.pause()],
+      ['seekbackward', (d) => video && (video.currentTime = Math.max(0, video.currentTime - (d.seekOffset ?? 10)))],
+      ['seekforward', (d) => video && (video.currentTime = Math.min(video.duration || Infinity, video.currentTime + (d.seekOffset ?? 10)))],
+      ['seekto', (d) => video && d.seekTime != null && (video.currentTime = d.seekTime)],
+    ];
+    // Same actions from the Android app's notification.
+    const offNative = onNativeMediaAction(({ action, time }) => {
+      const handler = actions.find(([a]) => a === action)?.[1];
+      handler?.({ action, seekTime: time } as MediaSessionActionDetails);
+    });
+    const setActions = (on: boolean) => {
+      for (const [action, handler] of actions) {
+        try {
+          session?.setActionHandler(action, on ? handler : null);
+        } catch {
+          /* action not supported by this browser */
+        }
+      }
+    };
     const onEnd = () => {
       report(true);
       latest.current.onEnded?.();
@@ -162,6 +208,12 @@ export function VideoPlayer({
       video.addEventListener('pause', onPause);
       video.addEventListener('play', onPlay);
       video.addEventListener('ended', onEnd);
+      video.addEventListener('seeked', syncPosition);
+      video.addEventListener('ratechange', syncPosition);
+      video.addEventListener('durationchange', syncPosition);
+      // iPhone / iPad: leaving Safari (or the app) while it plays continues in picture-in-picture.
+      video.setAttribute('autopictureinpicture', '');
+      setActions(true);
       if (video.readyState >= 1) onLoaded();
     };
 
@@ -175,6 +227,13 @@ export function VideoPlayer({
       video?.removeEventListener('pause', onPause);
       video?.removeEventListener('play', onPlay);
       video?.removeEventListener('ended', onEnd);
+      video?.removeEventListener('seeked', syncPosition);
+      video?.removeEventListener('ratechange', syncPosition);
+      video?.removeEventListener('durationchange', syncPosition);
+      setActions(false);
+      offNative();
+      setNowPlayingState(null);
+      if (session) session.playbackState = 'none';
       hlsRef.current?.destroy();
       hlsRef.current = null;
       setActiveSkip(null);

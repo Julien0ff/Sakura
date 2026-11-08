@@ -708,3 +708,10 @@ html.ui-liquid nav[aria-label='Navigation principale'] [aria-current='page'] > s
     border: 1px solid rgba(255, 255, 255, 0.55);
   }
 }
+
+/* Android app in picture-in-picture (SakuraMedia.kt toggles the class): the video only. */
+html.app-pip .player-overlay > :not(:first-child),
+html.app-pip .player-overlay .plyr__controls,
+html.app-pip .player-overlay .plyr__control--overlaid {
+  display: none !important;
+}

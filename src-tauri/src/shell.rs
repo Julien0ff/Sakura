@@ -61,6 +61,8 @@ pub fn create_main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
   let window = builder.build()?;
   #[cfg(target_os = "ios")]
   edge_to_edge_ios(&window);
+  #[cfg(target_os = "ios")]
+  playback_audio_session_ios();
   Ok(window)
 }
 
@@ -86,6 +88,33 @@ fn edge_to_edge_ios(window: &WebviewWindow) {
       }
     }
   });
+}
+
+/// iPhone: the default audio session (« ambient ») stops the episode when the app goes to the
+/// background and refuses picture-in-picture. « Playback » keeps it playing (picture-in-picture,
+/// lock screen « Now Playing ») and ignores the silent switch, like any video app. Needs the
+/// `audio` background mode in Info.plist (CI). Only declared here: WebKit activates the session
+/// when a video starts, so other apps' audio is not interrupted at launch.
+#[cfg(target_os = "ios")]
+fn playback_audio_session_ios() {
+  use objc2::msg_send;
+  use objc2::runtime::{AnyClass, AnyObject, Bool};
+  let (Some(session_class), Some(string_class)) = (AnyClass::get(c"AVAudioSession"), AnyClass::get(c"NSString")) else {
+    log::warn!("AVAudioSession unavailable");
+    return;
+  };
+  // SAFETY: class methods of AVFoundation / Foundation; null results are checked before use.
+  unsafe {
+    let session: *mut AnyObject = msg_send![session_class, sharedInstance];
+    let category: *mut AnyObject = msg_send![string_class, stringWithUTF8String: c"AVAudioSessionCategoryPlayback".as_ptr()];
+    if session.is_null() || category.is_null() {
+      return;
+    }
+    let ok: Bool = msg_send![&*session, setCategory: &*category, error: std::ptr::null_mut::<*mut AnyObject>()];
+    if !ok.as_bool() {
+      log::warn!("AVAudioSession: playback category refused");
+    }
+  }
 }
 
 pub fn show_main(app: &AppHandle) {

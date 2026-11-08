@@ -21,6 +21,30 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: '2026-11-08',
+    date: '8 novembre 2026',
+    title: 'SAKURA sur Android et iPhone',
+    banner: '/banner-news.png',
+    features: [
+      { text: 'Applications Android et iPhone (via SideStore / AltStore) : à télécharger depuis la page Application.' },
+      { text: 'Apps mobiles : notifications de sortie programmées, retours haptiques et mises à jour proposées automatiquement sur Android.' },
+      { text: 'Statut Discord dans les apps mobiles : reliez votre compte dans Paramètres › Application.', beta: true },
+      { text: 'Lecture dans l’app Android : notification avec commandes et image dans l’image en quittant l’app.', beta: true },
+      { text: 'Recherche plus tolérante : mots partiels et titres français (« attaque des titans »).' },
+      { text: 'Le bouton retour d’une fiche ramène à votre recherche, avec ses résultats.' },
+      { text: 'Paramètres › Apparence sur téléphone : barre d’onglets avec ou sans les noms, avec aperçu.' },
+      { text: 'Connexion Discord ou Google directement depuis le message de bienvenue.' },
+    ],
+    fixes: [
+      { text: 'Les saisons d’un anime ne réapparaissent plus en double dans « Saisons & Relations », et la fiche d’une saison 2 s’ouvre sur la bonne saison.' },
+      { text: 'Certains animes (L’Attaque des Titans…) affichaient les épisodes d’un spin-off.' },
+      { text: 'Cartes d’épisodes de même hauteur, note alignée avec le titre.' },
+      { text: 'Liquid Glass plus clair et plus fidèle, flou plus discret sous la barre d’état et la barre d’onglets.' },
+      { text: 'Boutons flottants (profil, calendrier, retour) bien placés sous la barre d’état.' },
+      { text: 'Titres des pages en rose, pied de page masqué dans les apps.' },
+    ],
+  },
+  {
     id: '2026-11-07-glass',
     date: '7 novembre 2026',
     title: 'Liquid Glass et statut Discord',

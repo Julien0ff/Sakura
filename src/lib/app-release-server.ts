@@ -11,10 +11,17 @@ import { readRelease, releaseAssetNames } from '@/lib/app-release';
 
 const REPO = 'Julien0ff/Sakura';
 const CACHE = { next: { revalidate: 120 } };
+/**
+ * GitHub can hang (seen on Vercel's build machines, where /app is pre-rendered and Next gives up
+ * after 60 s): every request gets a deadline; past it the page shows no release until the next
+ * refresh (2 min) instead of failing the build.
+ */
+const TIMEOUT_MS = 8000;
+const deadline = () => ({ signal: AbortSignal.timeout(TIMEOUT_MS) });
 
 export async function latestRelease() {
   try {
-    const res = await fetch(`https://github.com/${REPO}/releases/latest/download/latest.json`, CACHE);
+    const res = await fetch(`https://github.com/${REPO}/releases/latest/download/latest.json`, { ...CACHE, ...deadline() });
     if (!res.ok) return null;
     const latest = (await res.json()) as { version?: string; pub_date?: string; notes?: string };
     if (!latest.version) return null;
@@ -23,7 +30,7 @@ export async function latestRelease() {
       releaseAssetNames(latest.version).map(async (name) => {
         const url = `https://github.com/${REPO}/releases/download/${tag}/${name}`;
         try {
-          const head = await fetch(url, { method: 'HEAD', ...CACHE });
+          const head = await fetch(url, { method: 'HEAD', ...CACHE, ...deadline() });
           return head.ok ? { name, browser_download_url: url, size: Number(head.headers.get('content-length')) || 0 } : null;
         } catch {
           return null;

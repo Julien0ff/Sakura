@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { latestRelease } from '@/lib/app-release-server';
 
+// Refreshed every 2 min even when GitHub didn't answer at build time (latestRelease has a deadline).
+export const revalidate = 120;
+
 // Update check of the mobile apps (Android: offers the new .apk). Same data as the « Application » page.
 export async function GET() {
   const release = await latestRelease();

@@ -155,7 +155,12 @@ mod sdk_thread {
                     .map_err(|e| (None, e.to_string()))?;
                 let code = res.status();
                 if !code.is_success() {
-                    return Err((Some(code.as_u16()), format!("échange refusé ({code})")));
+                    let msg = match code.as_u16() {
+                        503 => "le site n’est pas encore configuré pour Discord".to_string(),
+                        400 | 401 => "Discord a refusé l’autorisation".to_string(),
+                        _ => format!("échange refusé ({code})"),
+                    };
+                    return Err((Some(code.as_u16()), msg));
                 }
                 res.json::<Tokens>().await.map_err(|e| (None, e.to_string()))
             }

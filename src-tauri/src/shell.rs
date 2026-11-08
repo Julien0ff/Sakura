@@ -58,7 +58,34 @@ pub fn create_main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
   };
   // Mobile: one full-screen webview; external links are routed to the browser by the site.
 
-  builder.build()
+  let window = builder.build()?;
+  #[cfg(target_os = "ios")]
+  edge_to_edge_ios(&window);
+  Ok(window)
+}
+
+/// iPhone: by default WKWebView pads its scroll view with the safe areas (status bar, home
+/// indicator), so the page stops above the home indicator and CSS `env(safe-area-inset-*)` reads 0.
+/// `Never` lets the page draw edge to edge; the site handles the safe areas itself (viewport-fit=cover).
+#[cfg(target_os = "ios")]
+fn edge_to_edge_ios(window: &WebviewWindow) {
+  let _ = window.with_webview(|w| {
+    use objc2::msg_send;
+    use objc2::runtime::AnyObject;
+    let ptr = w.inner() as *const AnyObject;
+    if ptr.is_null() {
+      return;
+    }
+    // SAFETY: `inner()` is the live WKWebView, used on the main thread (with_webview).
+    unsafe {
+      let webview: &AnyObject = &*ptr;
+      let scroll: *mut AnyObject = msg_send![webview, scrollView];
+      if !scroll.is_null() {
+        // UIScrollViewContentInsetAdjustmentNever
+        let _: () = msg_send![&*scroll, setContentInsetAdjustmentBehavior: 2isize];
+      }
+    }
+  });
 }
 
 pub fn show_main(app: &AppHandle) {

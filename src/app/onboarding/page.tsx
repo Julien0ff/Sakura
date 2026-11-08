@@ -90,7 +90,7 @@ function Onboarding() {
   const displayName = profile?.display_name ?? (user.user_metadata?.full_name as string | undefined) ?? '';
 
   return (
-    <div className="px-6 md:pl-32 pr-6 pt-[max(env(safe-area-inset-top),40px)] pb-32 flex justify-center">
+    <div className="px-6 md:pl-32 pr-6 pt-[max(var(--safe-top),40px)] pb-32 flex justify-center">
       <form onSubmit={submit} className="w-full max-w-md flex flex-col items-center text-center gap-6">
         <Avatar src={profile?.avatar_url ?? (user.user_metadata?.avatar_url as string | undefined)} alt={displayName} size={88} />
         <div>

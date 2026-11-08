@@ -73,7 +73,7 @@ export default function DiscoverPage() {
             href="/calendar"
             aria-label="Calendrier des sorties"
             title="Calendrier"
-            className="md:hidden fixed z-40 right-[68px] top-[max(env(safe-area-inset-top),16px)] w-11 h-11 rounded-full tab-bar-glass float-glass text-white/90 flex items-center justify-center active:scale-95 transition-transform"
+            className="md:hidden fixed z-40 right-[68px] top-[max(var(--safe-top),16px)] w-11 h-11 rounded-full tab-bar-glass float-glass text-white/90 flex items-center justify-center active:scale-95 transition-transform"
           >
             <CalendarDays className="w-5 h-5" />
           </Link>

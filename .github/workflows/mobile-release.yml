@@ -185,6 +185,21 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Add :LSApplicationQueriesSchemes array' "$PLIST" 2>/dev/null || true
           /usr/libexec/PlistBuddy -c 'Add :LSApplicationQueriesSchemes: string discord' "$PLIST"
 
+      # URL schemes, written by `tauri ios build` in a normal Tauri build (not used here):
+      # sakura:// (sign-in comes back to the app) and discord-<id>:// (Discord « Authorize »).
+      - name: URL schemes
+        run: |
+          PLIST=$(find src-tauri/gen/apple -maxdepth 2 -path '*_iOS/Info.plist' | head -1)
+          PB=/usr/libexec/PlistBuddy
+          $PB -c 'Delete :CFBundleURLTypes' "$PLIST" 2>/dev/null || true
+          $PB -c 'Add :CFBundleURLTypes array' "$PLIST"
+          $PB -c 'Add :CFBundleURLTypes:0 dict' "$PLIST"
+          $PB -c 'Add :CFBundleURLTypes:0:CFBundleURLName string app.sakura.desktop' "$PLIST"
+          $PB -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes array' "$PLIST"
+          $PB -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string sakura' "$PLIST"
+          $PB -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes:1 string discord-1568341036894523432' "$PLIST"
+          $PB -c 'Print :CFBundleURLTypes' "$PLIST"
+
       # Xcode's « Build Rust Code » phase only works while `tauri ios build` runs, and that command
       # requires signing. Build the Rust library here and turn that phase into a no-op.
       - name: Build the Rust library

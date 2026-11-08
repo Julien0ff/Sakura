@@ -19,7 +19,7 @@ export function toast(text: string, opts: { action?: ToastAction } = {}) {
 export function Toaster() {
   const items = useToasts((s) => s.items);
   return (
-    <div aria-live="polite" className="fixed z-[200] top-[max(env(safe-area-inset-top),16px)] inset-x-0 flex flex-col items-center gap-2 pointer-events-none px-4">
+    <div aria-live="polite" className="fixed z-[200] top-[max(var(--safe-top),16px)] inset-x-0 flex flex-col items-center gap-2 pointer-events-none px-4">
       {items.map((t) => (
         <div
           key={t.id}

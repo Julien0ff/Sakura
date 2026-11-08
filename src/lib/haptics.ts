@@ -11,7 +11,7 @@
  * (desktop, older iOS) and when the user turned haptics off in Settings.
  */
 import { invoke } from '@tauri-apps/api/core';
-import { isMobileApp } from '@/lib/desktop';
+import { currentApp, isMobileApp } from '@/lib/desktop';
 
 export type HapticKind = 'selection' | 'light' | 'medium' | 'success' | 'warning';
 
@@ -73,20 +73,39 @@ const isIOS = () =>
   (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
 
 type Impact = 'light' | 'medium' | 'heavy' | 'soft' | 'rigid';
-const IMPACT: Record<'light' | 'medium', Record<HapticIntensity, Impact>> = {
-  light: { soft: 'soft', normal: 'light', strong: 'medium' },
-  medium: { soft: 'light', normal: 'medium', strong: 'heavy' },
+// iPhone: one step stronger than Apple's usual mapping (the selection « tick » is barely felt).
+const IMPACT: Record<'selection' | 'light' | 'medium', Record<HapticIntensity, Impact>> = {
+  selection: { soft: 'light', normal: 'medium', strong: 'heavy' },
+  light: { soft: 'light', normal: 'medium', strong: 'heavy' },
+  medium: { soft: 'medium', normal: 'heavy', strong: 'heavy' },
 };
+// Android: the system's predefined effects are faint on many phones; timed vibrations instead,
+// a bit longer than on the website.
+const ANDROID_BOOST = 1.4;
 
 /** Native feedback in the mobile apps (Core Haptics / Android Vibrator). */
 function nativeHaptic(kind: HapticKind) {
-  const call =
-    kind === 'selection'
-      ? invoke('plugin:haptics|selection_feedback')
-      : kind === 'success' || kind === 'warning'
-        ? invoke('plugin:haptics|notification_feedback', { type: kind })
-        : invoke('plugin:haptics|impact_feedback', { style: IMPACT[kind][intensity] });
-  call.catch(() => {});
+  const ignore = () => {};
+  if (currentApp() === 'android') {
+    const pattern = scaled(PATTERNS[kind]);
+    let at = 0;
+    pattern.forEach((ms, i) => {
+      if (i % 2 === 0) {
+        const duration = Math.round(ms * ANDROID_BOOST);
+        if (at === 0) invoke('plugin:haptics|vibrate', { duration }).catch(ignore);
+        else setTimeout(() => invoke('plugin:haptics|vibrate', { duration }).catch(ignore), at);
+      }
+      at += ms;
+    });
+    return;
+  }
+  if (kind === 'success' || kind === 'warning') {
+    invoke('plugin:haptics|notification_feedback', { type: kind }).catch(ignore);
+    // Followed by a firm impact: the notification pattern alone is light on recent iPhones.
+    setTimeout(() => invoke('plugin:haptics|impact_feedback', { style: IMPACT.medium[intensity] }).catch(ignore), 90);
+    return;
+  }
+  invoke('plugin:haptics|impact_feedback', { style: IMPACT[kind][intensity] }).catch(ignore);
 }
 
 export type HapticSupport = 'native' | 'vibration' | 'ios-switch' | 'none';

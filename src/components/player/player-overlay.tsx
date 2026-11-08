@@ -240,7 +240,7 @@ function PlayerOverlayInner({
         className={`absolute inset-x-0 top-0 z-[110] pointer-events-none transition-opacity duration-500 ${chromeHidden ? 'opacity-0' : 'opacity-100'}`}
       >
         <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/85 via-black/40 to-transparent" />
-        <div className="relative flex items-start gap-3 px-4 md:px-6 pt-[max(env(safe-area-inset-top),16px)]">
+        <div className="relative flex items-start gap-3 px-4 md:px-6 pt-[max(var(--safe-top),16px)]">
           <button
             onClick={onClose}
             aria-label="Fermer le lecteur"

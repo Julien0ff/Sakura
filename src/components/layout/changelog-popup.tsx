@@ -4,7 +4,8 @@
 import { useEffect, useState } from 'react';
 import { Beta, Sparkles, Tasks, X } from '@/components/ui/icons';
 import { Sheet } from '@/components/ui/sheet';
-import { CHANGELOG_SEEN_KEY, LATEST_CHANGELOG, type ChangelogLine } from '@/lib/changelog';
+import { CHANGELOG_APP_VERSION_KEY, CHANGELOG_SEEN_KEY, LATEST_CHANGELOG, changelogDue, type ChangelogLine } from '@/lib/changelog';
+import { desktop, isMobileApp } from '@/lib/desktop';
 import { haptic } from '@/lib/haptics';
 
 /** Event that reopens the popup (Settings › Nouveautés). */
@@ -48,23 +49,34 @@ function Section({ icon: Icon, title, tint, lines }: { icon: typeof Sparkles; ti
 
 /**
  * « Quoi de neuf » : shown once per release to returning visitors (first-time visitors get the
- * welcome popup instead), and on demand from the settings.
+ * welcome popup instead), after each update of the mobile apps, and on demand from the settings.
  */
 export function ChangelogPopup() {
   const [open, setOpen] = useState(false);
 
+  // Mobile apps: the installed version, to announce an update on the first launch after it.
+  const [appVersion, setAppVersion] = useState<string | null>(null);
   useEffect(() => {
-    const seen = localStorage.getItem(CHANGELOG_SEEN_KEY);
     let t: ReturnType<typeof setTimeout> | undefined;
-    if (!localStorage.getItem('hasSeenWelcome')) {
-      // New visitor: the welcome popup already presents everything.
-      localStorage.setItem(CHANGELOG_SEEN_KEY, LATEST_CHANGELOG.id);
-    } else if (seen !== LATEST_CHANGELOG.id) {
-      t = setTimeout(() => setOpen(true), 900);
-    }
+    let cancelled = false;
+    void (async () => {
+      const version = isMobileApp() ? await desktop.version().catch(() => null) : null;
+      if (cancelled) return;
+      setAppVersion(version);
+      const welcomed = !!localStorage.getItem('hasSeenWelcome');
+      const app = version ? { version, seen: localStorage.getItem(CHANGELOG_APP_VERSION_KEY) } : undefined;
+      if (!welcomed) {
+        // New visitor / fresh install: the welcome popup already presents everything.
+        localStorage.setItem(CHANGELOG_SEEN_KEY, LATEST_CHANGELOG.id);
+        if (version) localStorage.setItem(CHANGELOG_APP_VERSION_KEY, version);
+      } else if (changelogDue({ welcomed, seenId: localStorage.getItem(CHANGELOG_SEEN_KEY), latestId: LATEST_CHANGELOG.id, app })) {
+        t = setTimeout(() => setOpen(true), 900);
+      }
+    })();
     const reopen = () => setOpen(true);
     window.addEventListener(OPEN_CHANGELOG_EVENT, reopen);
     return () => {
+      cancelled = true;
       clearTimeout(t);
       window.removeEventListener(OPEN_CHANGELOG_EVENT, reopen);
     };
@@ -79,6 +91,7 @@ export function ChangelogPopup() {
       label={`Nouveautés : ${c.title}`}
       onClose={() => {
         localStorage.setItem(CHANGELOG_SEEN_KEY, c.id);
+        if (appVersion) localStorage.setItem(CHANGELOG_APP_VERSION_KEY, appVersion);
         setOpen(false);
       }}
     >

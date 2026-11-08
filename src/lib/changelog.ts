@@ -104,3 +104,19 @@ export const CHANGELOG: ChangelogEntry[] = [
 
 export const LATEST_CHANGELOG = CHANGELOG[0];
 export const CHANGELOG_SEEN_KEY = 'sakura-changelog-seen';
+/** Mobile apps: version whose update was already announced. */
+export const CHANGELOG_APP_VERSION_KEY = 'sakura-changelog-app-version';
+
+/**
+ * Show « Quoi de neuf » ? New notes since the last visit, or (mobile apps) a new app version since
+ * the last launch. Never to first-time visitors: the welcome popup presents everything.
+ */
+export function changelogDue(s: {
+  welcomed: boolean;
+  seenId: string | null;
+  latestId: string;
+  app?: { version: string; seen: string | null };
+}): boolean {
+  if (!s.welcomed) return false;
+  return s.seenId !== s.latestId || (!!s.app && s.app.seen !== s.app.version);
+}

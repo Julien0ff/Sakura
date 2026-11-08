@@ -166,3 +166,16 @@ export const ADD_SOURCE_LINKS = {
   sidestore: `sidestore://source?url=${ALTSTORE_SOURCE_URL}`,
   altstore: `altstore://source?url=${ALTSTORE_SOURCE_URL}`,
 };
+
+/**
+ * While a release is being built, GitHub already lists it as « latest » but its latest.json (the
+ * last file the desktop build uploads) is missing: fall back to the newest published release that
+ * has one. `releases` is the GitHub API list (newest first).
+ */
+export function lastCompleteTag(releases: unknown): string | null {
+  if (!Array.isArray(releases)) return null;
+  const done = (releases as { tag_name?: string; draft?: boolean; prerelease?: boolean; assets?: { name?: string }[] }[]).find(
+    (r) => !r.draft && !r.prerelease && typeof r.tag_name === 'string' && r.assets?.some((a) => a.name === 'latest.json'),
+  );
+  return done?.tag_name ?? null;
+}

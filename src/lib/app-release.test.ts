@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { altstoreSource, detectPlatform, isNewerVersion, readRelease, releaseAssetNames } from './app-release.ts';
+import { lastCompleteTag } from './app-release.ts';
 
 test('detectPlatform from the user agent', () => {
   assert.equal(detectPlatform('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140'), 'windows');
@@ -98,4 +99,16 @@ test('altstoreSource: AltStore / SideStore source with the latest .ipa', () => {
 
 test('altstoreSource without an .ipa: the app is listed with no version', () => {
   assert.deepEqual(altstoreSource(null, 'https://x').apps[0].versions, []);
+});
+
+test('lastCompleteTag: newest published release that already has its latest.json', () => {
+  const releases = [
+    { tag_name: 'app-v0.5.2', draft: false, prerelease: false, assets: [{ name: 'SAKURA_0.5.2_android.apk' }] }, // still building
+    { tag_name: 'app-v0.6.0', draft: true, prerelease: false, assets: [{ name: 'latest.json' }] },
+    { tag_name: 'app-v0.5.1', draft: false, prerelease: false, assets: [{ name: 'latest.json' }, { name: 'SAKURA_0.5.1_android.apk' }] },
+    { tag_name: 'app-v0.5.0', draft: false, prerelease: false, assets: [{ name: 'latest.json' }] },
+  ];
+  assert.equal(lastCompleteTag(releases), 'app-v0.5.1');
+  assert.equal(lastCompleteTag(releases.slice(0, 2)), null);
+  assert.equal(lastCompleteTag('not a list'), null);
 });

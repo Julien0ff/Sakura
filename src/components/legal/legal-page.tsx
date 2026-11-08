@@ -28,7 +28,7 @@ export function LegalPage({ title, current, children }: LegalPageProps) {
         </nav>
 
         <article className="legal-prose max-w-3xl">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2" style={{ fontFamily: 'var(--font-impact)' }}>
+          <h1 className="text-4xl md:text-5xl font-bold text-sakura mb-2" style={{ fontFamily: 'var(--font-impact)' }}>
             {title}
           </h1>
           <p className="text-sm text-[#8E8E93] mb-10">Dernière mise à jour : {siteConfig.updatedAt}</p>

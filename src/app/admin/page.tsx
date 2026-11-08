@@ -62,7 +62,7 @@ export default function AdminPage() {
   return (
     <AppLayout>
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-4 sm:px-6 md:pl-32 md:pr-10 pt-page md:pt-10 pb-10">
-        <h1 className="text-[34px] md:text-5xl font-bold text-white mb-6 md:mb-8 flex items-center gap-3 md:gap-4 pr-14 md:pr-0" style={{ fontFamily: 'var(--font-impact)' }}>
+        <h1 className="text-[34px] md:text-5xl font-bold text-sakura mb-6 md:mb-8 flex items-center gap-3 md:gap-4 pr-14 md:pr-0" style={{ fontFamily: 'var(--font-impact)' }}>
           <Crown className="w-7 h-7 md:w-8 md:h-8 text-[#FFD60A] shrink-0" />
           Administration
         </h1>

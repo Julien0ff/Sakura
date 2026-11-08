@@ -105,6 +105,11 @@ query ($id: Int) {
     status
     format
     seasonYear
+    startDate {
+      year
+      month
+      day
+    }
     genres
     averageScore
     popularity
@@ -127,6 +132,12 @@ query ($id: Int) {
             extraLarge
           }
           type
+          format
+          startDate {
+            year
+            month
+            day
+          }
         }
       }
     }

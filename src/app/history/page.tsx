@@ -18,7 +18,7 @@ export default function HistoryPage() {
     <AppLayout>
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-6 md:pl-32 pr-6 pt-page pb-32">
         <div className="flex items-center justify-between gap-4 mb-8 max-md:pr-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-white flex items-center gap-4" style={{ fontFamily: 'var(--font-impact)' }}>
+          <h1 className="text-4xl md:text-5xl font-bold text-sakura flex items-center gap-4" style={{ fontFamily: 'var(--font-impact)' }}>
             <Clock className="w-8 h-8 text-sakura" />
             Historique
           </h1>

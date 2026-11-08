@@ -55,13 +55,13 @@ export function WelcomePopup() {
       onClick={(e) => {
         if (e.target === dialogRef.current) close(); // backdrop click
       }}
-      className={`welcome-dialog m-auto w-[min(100vw-2rem,30rem)] md:w-[min(100vw-4rem,46rem)] max-h-[min(100dvh-2rem,44rem)] p-0 rounded-[28px] bg-transparent text-white overflow-visible ${
+      className={`welcome-dialog m-auto w-[min(100vw-2rem,30rem)] md:w-[min(100vw-4rem,46rem)] max-h-[min(100dvh-2rem,52rem)] p-0 rounded-[28px] bg-transparent text-white overflow-visible ${
         closing ? 'welcome-out' : ''
       }`}
     >
-      <div className="relative flex flex-col max-h-[min(100dvh-2rem,44rem)] overflow-hidden rounded-[28px] border border-white/10 bg-[#141416] shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)]">
+      <div className="relative flex flex-col max-h-[min(100dvh-2rem,52rem)] overflow-hidden rounded-[28px] border border-white/10 bg-[#141416] shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)]">
         {/* Art: the banner fades into the card instead of ending on a hard edge */}
-        <div className="relative shrink-0 h-24 sm:h-48 md:h-56 [@media(max-height:820px)]:md:h-36">
+        <div className="relative shrink-0 h-24 sm:h-44 [@media(max-height:820px)]:md:h-36">
           <img src="/banner.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#141416]/40 to-[#141416]" />
           <img src="/icon.png" alt="" className="absolute left-6 md:left-8 -bottom-6 w-14 h-14 rounded-2xl shadow-xl ring-1 ring-white/15" />

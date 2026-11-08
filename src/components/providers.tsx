@@ -2,13 +2,14 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useAppStore } from '@/core/store';
 import { setHapticsEnabled, setHapticIntensity } from '@/lib/haptics';
 import { AuthBootstrap } from '@/core/auth';
 import { SyncBootstrap } from '@/core/sync/engine';
 import { Toaster } from '@/components/ui/toast';
 import { DesktopBridge } from '@/components/desktop/desktop-bridge';
+import { NavTracker } from '@/lib/nav-history';
 import { detectPlatform } from '@/lib/app-release';
 
 function HapticsSync() {
@@ -47,6 +48,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <AuthBootstrap />
         <SyncBootstrap />
         <DesktopBridge />
+        <Suspense>
+          <NavTracker />
+        </Suspense>
         {children}
         <Toaster />
       </NextThemesProvider>

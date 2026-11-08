@@ -1,5 +1,7 @@
 // All TMDB calls go through our server proxy (src/app/api/tmdb), which adds the token
 // from TMDB_READ_TOKEN. No key is shipped to the browser.
+import { pickShow, showTitle, type TmdbShow } from '@/lib/seasons';
+
 const TMDB_BASE_URL = '/api/tmdb';
 
 interface TMDBResult {
@@ -12,6 +14,7 @@ interface TMDBSeason {
   season_number: number;
   name: string;
   episode_count?: number;
+  air_date?: string | null;
 }
 
 export interface TMDBDetails {
@@ -42,20 +45,20 @@ export function getTMDBDetails(title: string, year?: number | null): Promise<TMD
 async function fetchTMDBDetails(title: string, year?: number): Promise<TMDBDetails | null> {
   try {
     const searchQuery = encodeURIComponent(title);
-    
-    // First search for TV show
-    const tvRes = await fetch(`${TMDB_BASE_URL}/search/tv?query=${searchQuery}&language=fr-FR`);
-    const tvData = await tvRes.json();
-    
-    if (tvData.results && tvData.results.length > 0) {
-      // Find the first result that is actually Japanese (Anime) to avoid Live Actions (like One Piece US)
-      let bestResult: TMDBResult = (tvData.results as TMDBResult[]).find(isJapanese) ?? tvData.results[0];
-      
-      // If none found, fallback to the first result
-      if (!bestResult) {
-        bestResult = tvData.results[0];
-      }
 
+    // First search for TV show: the full title, then without AniList's season marker
+    // (« … Second Season » is season 2 of the TMDB show).
+    let tvData: { results?: TmdbShow[] } = {};
+    let matched = title;
+    for (const q of new Set([title, showTitle(title)])) {
+      const tvRes = await fetch(`${TMDB_BASE_URL}/search/tv?query=${encodeURIComponent(q)}&language=fr-FR`);
+      tvData = await tvRes.json();
+      matched = q;
+      if (tvData.results?.length) break;
+    }
+
+    const bestResult = pickShow(tvData.results ?? [], matched);
+    if (bestResult) {
       const tvId = bestResult.id;
       // Fetch full TV details to get seasons and IMDB ID
       const fullTvRes = await fetch(`${TMDB_BASE_URL}/tv/${tvId}?language=fr-FR&append_to_response=external_ids`);

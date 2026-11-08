@@ -16,6 +16,8 @@ import { Popover } from '@/components/ui/popover';
 import { onEpisodeWatched } from '@/core/auto-track';
 import { PlayerOverlay, type PlayerSource } from '@/components/player/player-overlay';
 import { getSkipTimes } from '@/core/api/aniskip';
+import { useBack } from '@/lib/nav-history';
+import { isListedSeason, openingSeason } from '@/lib/seasons';
 import { useAmbientColor } from '@/lib/use-ambient-color';
 import { readableOn } from '@/lib/color';
 import { haptic } from '@/lib/haptics';
@@ -36,13 +38,15 @@ const EPISODE_LAYOUTS = {
     item: 'flex flex-col gap-3 p-3',
     thumb: 'w-full',
     play: 'w-12 h-12',
-    rating: 'bottom-3',
+    title: 'min-h-10',
+    rating: 'bottom-[26px]',
   },
   list: {
     container: 'flex flex-col gap-2 xl:grid xl:grid-cols-2 xl:gap-3',
     item: 'flex flex-row items-center gap-3 p-2',
     thumb: 'w-32 md:w-40 shrink-0',
     play: 'w-8 h-8',
+    title: '',
     rating: 'top-1/2 -translate-y-1/2',
   },
   auto: {
@@ -50,7 +54,8 @@ const EPISODE_LAYOUTS = {
     item: 'flex flex-row items-center gap-3 p-2 md:flex-col md:items-stretch md:p-3',
     thumb: 'w-32 shrink-0 md:w-full',
     play: 'w-8 h-8 md:w-12 md:h-12',
-    rating: 'top-1/2 -translate-y-1/2 md:top-auto md:translate-y-0 md:bottom-3',
+    title: 'md:min-h-10',
+    rating: 'top-1/2 -translate-y-1/2 md:top-auto md:translate-y-0 md:bottom-[26px]',
   },
 } as const;
 
@@ -65,6 +70,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
   const progress = useAppStore((s) => s.progress);
   const saveProgress = useAppStore((s) => s.saveProgress);
   const settings = useAppStore((s) => s.settings);
+  const goBack = useBack();
   const requestIdRef = useRef(0);
   const autoPlayedRef = useRef(false);
   const [activeTab, setActiveTab] = useState<'episodes' | 'details' | 'relations'>('episodes');
@@ -252,6 +258,15 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
     },
     enabled: !!id,
   });
+
+  // Opening an anime (or a related one): the season it matches on TMDB — « Second Season » on
+  // AniList is season 2 of the TMDB show — unless this anime was being watched in another season.
+  const [seasonFor, setSeasonFor] = useState<number | null>(null);
+  if (anime && seasonFor !== anime.id) {
+    setSeasonFor(anime.id);
+    const watching = history.find((h) => h.id === anime.id)?.season;
+    setActiveSeason(watching ?? openingSeason(anime.tmdbSeasons ?? [], anime.startDate));
+  }
 
   const { data: tmdbEpisodes, isLoading: isLoadingEpisodes } = useQuery({
     queryKey: ['tmdbEpisodes', anime?.tmdbId, activeSeason],
@@ -495,13 +510,17 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
           {/* Top Bar Navigation */}
           {/* Phones: below the status bar (same row as the account button), not under its blur. */}
           <div className="absolute top-float md:top-6 left-4 md:left-[104px] z-20">
-            <Link 
-              href="/"
-              aria-label="Retour à l'accueil"
-              className="flex items-center justify-center w-10 h-10 rounded-full liquid-glass text-white hover:bg-white/10 transition-colors"
+            <button
+              type="button"
+              onClick={() => {
+                haptic('selection');
+                goBack();
+              }}
+              aria-label="Retour"
+              className="flex items-center justify-center w-10 h-10 rounded-full liquid-glass text-white hover:bg-white/10 transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-5 h-5" />
-            </Link>
+            </button>
           </div>
 
           <div
@@ -677,13 +696,13 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                       const pct = epProgress?.duration ? Math.min(100, (epProgress.time / epProgress.duration) * 100) : 0;
                       const epRating = episodeRatings[progressKey(anime.id, activeSeason, ep.episode_number)]?.rating ?? null;
                       return (
-                        <div key={ep.episode_number} className="relative">
+                        <div key={ep.episode_number} className="relative h-full">
                         <button
                           onClick={() => {
                             haptic('medium');
                             playEpisode(ep, anime);
                           }}
-                          className={`w-full ${epLayout.item} rounded-2xl bg-white/5 hover:bg-white/10 transition-all duration-300 group border text-left cursor-pointer ${
+                          className={`w-full h-full ${epLayout.item} rounded-2xl bg-white/5 hover:bg-white/10 transition-all duration-300 group border text-left cursor-pointer ${
                             isLast ? 'border-white/15' : 'border-transparent hover:border-white/10'
                           } ${watched ? 'opacity-70 hover:opacity-100' : ''}`}
                         >
@@ -711,8 +730,12 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                               </div>
                             </div>
                           </div>
-                          <div className="min-w-0 font-semibold text-white text-[14px] line-clamp-2 px-1 pr-12">
-                            {ep.episode_number}. {ep.name}
+                          {/* Two lines reserved on cards: every card in a row has the same height and the
+                              rating sits centred beside the title. */}
+                          <div className={`min-w-0 font-semibold text-white text-[14px] leading-5 line-clamp-2 px-1 pr-12 ${epLayout.title}`}>
+                            <span className="text-white/45 tabular-nums">{ep.episode_number}</span>
+                            <span className="text-white/25 mx-1.5">·</span>
+                            {ep.name}
                           </div>
                         </button>
                         {/* Rating sits outside the play button (no nested buttons). */}
@@ -845,7 +868,10 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
               <div>
                 <h2 className="text-xl font-bold text-white mb-4">Saisons et Médias Liés</h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {anime.relations?.edges?.filter((e: any) => e.node.type === 'ANIME').map((edge: any) => (
+                  {anime.relations?.edges
+                    // Seasons already listed under « Épisodes » (same TMDB show) don't get a card.
+                    ?.filter((e: any) => e.node.type === 'ANIME' && !isListedSeason(e, anime.tmdbSeasons ?? []))
+                    .map((edge: any) => (
                     <Link 
                       href={`/anime?id=${edge.node.id}`} 
                       key={edge.node.id}

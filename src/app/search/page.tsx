@@ -2,27 +2,40 @@
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { AnimeResults } from '@/components/anime/anime-results';
-import { fetchAniList, BROWSE_ANIMES } from '@/core/api/anilist';
-import type { AnimeSummary } from '@/lib/anime';
+import { searchAnime } from '@/core/api/search';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Search as SearchIcon, X } from '@/components/ui/icons';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 export default function SearchPage() {
-  const [query, setQuery] = useState('');
-  const [debounced, setDebounced] = useState('');
+  return (
+    <Suspense>
+      <Search />
+    </Suspense>
+  );
+}
+
+function Search() {
+  // The query lives in the URL (?q=): « back » from an anime page brings the search back.
+  const initial = useSearchParams().get('q') ?? '';
+  const [query, setQuery] = useState(initial);
+  const [debounced, setDebounced] = useState(initial.trim());
 
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(query.trim()), 400);
+    const t = setTimeout(() => {
+      const q = query.trim();
+      setDebounced(q);
+      const url = q ? `/search?q=${encodeURIComponent(q)}` : '/search';
+      if (url !== `${location.pathname}${location.search}`) window.history.replaceState(null, '', url);
+    }, 400);
     return () => clearTimeout(t);
   }, [query]);
 
   const { data, isFetching, error } = useQuery({
     queryKey: ['search', debounced],
-    queryFn: async () => {
-      const res = await fetchAniList(BROWSE_ANIMES, { search: debounced, page: 1, perPage: 30, sort: ['SEARCH_MATCH', 'POPULARITY_DESC'] });
-      return (res?.Page?.media ?? []) as AnimeSummary[];
-    },
+    queryFn: () => searchAnime(debounced),
+    staleTime: 5 * 60 * 1000,
     enabled: debounced.length >= 2,
     placeholderData: keepPreviousData,
   });
@@ -30,7 +43,7 @@ export default function SearchPage() {
   return (
     <AppLayout>
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-6 md:pl-32 pr-6 pt-page pb-32">
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-8 max-md:pr-12 flex items-center gap-4" style={{ fontFamily: 'var(--font-impact)' }}>
+        <h1 className="text-4xl md:text-5xl font-bold text-sakura mb-8 max-md:pr-12 flex items-center gap-4" style={{ fontFamily: 'var(--font-impact)' }}>
           <SearchIcon className="w-8 h-8 text-sakura" />
           Recherche
         </h1>
@@ -41,7 +54,7 @@ export default function SearchPage() {
           </div>
           <input
             type="search"
-            autoFocus
+            autoFocus={!initial}
             aria-label="Rechercher un anime"
             className="block w-full pl-12 pr-12 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-[#8E8E93] focus:outline-none focus:ring-2 focus:ring-sakura focus:border-transparent transition-all [&::-webkit-search-cancel-button]:hidden"
             placeholder="Rechercher un anime, un film..."

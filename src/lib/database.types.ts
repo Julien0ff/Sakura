@@ -184,6 +184,12 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      admin_list_users: { Args: { q?: string }; Returns: Json };
+      admin_revoke_banner: { Args: { anime: number; target: string }; Returns: undefined };
+      admin_stats: { Args: never; Returns: Json };
+      admin_unlock_banner: { Args: { anime: number; anime_title: string; target: string; trophy: boolean; url: string }; Returns: undefined };
+      admin_user_banners: { Args: { target: string }; Returns: Json };
+      is_admin: { Args: never; Returns: boolean };
       delete_own_account: { Args: never; Returns: undefined };
       get_public_profile: { Args: { name: string }; Returns: Json };
       set_banner: { Args: { banner: string }; Returns: undefined };

@@ -11,6 +11,7 @@ import { Group, Row, Segmented, ActionButton, Toggle } from '@/components/settin
 import { openChangelog } from '@/components/layout/changelog-popup';
 import { AppGroup } from '@/components/settings/app-group';
 import { AccountGroup } from '@/components/settings/account-group';
+import { AdminGroup } from '@/components/settings/admin-group';
 import { detectPlatform } from '@/lib/app-release';
 
 const noopSubscribe = () => () => {};
@@ -41,6 +42,7 @@ export default function SettingsPage() {
 
         <div className="max-w-2xl space-y-7">
           <AccountGroup />
+          <AdminGroup />
           <AppGroup />
 
           <Group title="Lecture">

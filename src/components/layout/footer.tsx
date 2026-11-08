@@ -8,7 +8,7 @@ const linkCls = 'underline underline-offset-2 hover:text-white';
 
 export function Footer() {
   return (
-    <footer className="relative mt-10 md:mt-16 px-5 md:pl-32 md:pr-10 pt-6 md:pt-10 pb-4 md:pb-10 border-t border-white/[0.06] text-[12px] md:text-[13px] text-[#8E8E93]">
+    <footer className="site-footer relative mt-10 md:mt-16 px-5 md:pl-32 md:pr-10 pt-6 md:pt-10 pb-4 md:pb-10 border-t border-white/[0.06] text-[12px] md:text-[13px] text-[#8E8E93]">
       {/* ───────── Mobile: compact, ~4 lines ───────── */}
       <div className="md:hidden space-y-3">
         <div className="flex items-center gap-2 text-white">

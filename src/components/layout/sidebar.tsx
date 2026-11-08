@@ -5,6 +5,7 @@ import { Home, Compass, Bookmark, Clock, Search, CalendarDays } from '@/componen
 import { AccountMenu } from '@/components/account/account-menu';
 import { usePathname } from 'next/navigation';
 import { haptic } from '@/lib/haptics';
+import { useAppStore } from '@/core/store';
 
 export const navItems = [
   { name: 'Accueil', href: '/', icon: Home },
@@ -26,6 +27,8 @@ const mobileTabs = [
 
 export function MobileNav() {
   const pathname = usePathname();
+  // Settings › Apparence: icons only = lower bar, names kept for screen readers.
+  const labels = useAppStore((s) => s.settings.tabLabels ?? true);
 
   return (
     <>
@@ -35,7 +38,7 @@ export function MobileNav() {
       </div>
 
       {/* Progressive blur + dim behind the bar so it always sits on a calm background. */}
-      <div aria-hidden className="scroll-edge-bottom md:hidden z-30">
+      <div aria-hidden className={`scroll-edge-bottom md:hidden z-30 ${labels ? '' : 'compact'}`}>
         <span />
         <span />
         <span />
@@ -54,8 +57,9 @@ export function MobileNav() {
                 <Link
                   href={item.href}
                   aria-current={isActive ? 'page' : undefined}
+                  aria-label={labels ? undefined : item.name}
                   onClick={() => haptic(isActive ? 'light' : 'selection')}
-                  className={`relative flex h-[54px] flex-col items-center justify-center gap-0.5 rounded-[22px] text-[11px] font-semibold tracking-tight transition-colors duration-300 active:scale-95 ${
+                  className={`relative flex ${labels ? 'h-[54px]' : 'h-[46px]'} flex-col items-center justify-center gap-0.5 rounded-[22px] text-[11px] font-semibold tracking-tight transition-colors duration-300 active:scale-95 ${
                     isActive ? 'text-white' : 'text-[#A1A1A6] hover:text-white/90'
                   }`}
                 >
@@ -67,7 +71,7 @@ export function MobileNav() {
                     />
                   )}
                   <Icon className="relative w-[22px] h-[22px]" strokeWidth={isActive ? 2.4 : 1.9} />
-                  <span className="tab-label relative truncate max-w-full px-1">{item.name}</span>
+                  {labels && <span className="tab-label relative truncate max-w-full px-1">{item.name}</span>}
                 </Link>
               </li>
             );

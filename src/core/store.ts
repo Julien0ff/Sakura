@@ -79,6 +79,8 @@ export type Settings = {
   releaseNotifications: boolean;
   /** Which releases to notify: 'auto' = the default language. */
   notifyLang: NotifyLang;
+  /** Phones: names under the tab bar icons (false = icons only, lower bar). */
+  tabLabels: boolean;
 };
 
 /** Tombstone keys in `deleted`: a removal must reach the other devices. */

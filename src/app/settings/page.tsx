@@ -1,5 +1,6 @@
 'use client';
 
+import { PreviewChoice, TabBarPreview } from '@/components/settings/tab-bar-preview';
 import { AppLayout } from '@/components/layout/app-layout';
 import { useAuth } from '@/core/auth';
 import { useAppStore, type EpisodeView, type Lang } from '@/core/store';
@@ -80,21 +81,44 @@ export default function SettingsPage() {
             />
           </Group>
 
-          {isIphone && (
-            <Group title="Apparence" footer="Liquid Glass : le matériau translucide d’iOS 26 pour la barre d’onglets, les boutons flottants, les menus et les fenêtres. Le contenu ne change pas.">
-              <Row label="Interface" stackOnMobile>
-                <Segmented
-                  label="Interface"
-                  value={settings.uiStyle ?? 'default'}
+          {/* Phones only: the tab bar doesn't exist from md up. */}
+          <div className="md:hidden">
+            <Group
+              title="Apparence"
+              footer={
+                isIphone
+                  ? 'Liquid Glass : le matériau translucide d’iOS 26 pour la barre d’onglets, les boutons flottants, les menus et les fenêtres. Le contenu ne change pas.'
+                  : undefined
+              }
+            >
+              <div className="px-4 py-3">
+                <div className="text-[16px] text-white mb-3">Barre d’onglets</div>
+                <PreviewChoice
+                  label="Barre d’onglets"
+                  value={(settings.tabLabels ?? true) ? 'labels' : 'icons'}
                   options={[
-                    ['default', 'Par défaut'],
-                    ['liquid', 'Liquid Glass'],
+                    { value: 'labels', name: 'Avec les noms', preview: <TabBarPreview labels liquid={settings.uiStyle === 'liquid'} /> },
+                    { value: 'icons', name: 'Icônes seules', preview: <TabBarPreview labels={false} liquid={settings.uiStyle === 'liquid'} /> },
                   ]}
-                  onChange={(v) => updateSettings({ uiStyle: v })}
+                  onChange={(v) => updateSettings({ tabLabels: v === 'labels' })}
                 />
-              </Row>
+              </div>
+              {isIphone && (
+                <div className="px-4 py-3">
+                  <div className="text-[16px] text-white mb-3">Interface</div>
+                  <PreviewChoice
+                    label="Interface"
+                    value={settings.uiStyle ?? 'default'}
+                    options={[
+                      { value: 'default', name: 'Par défaut', preview: <TabBarPreview labels={settings.tabLabels ?? true} liquid={false} /> },
+                      { value: 'liquid', name: 'Liquid Glass', preview: <TabBarPreview labels={settings.tabLabels ?? true} liquid /> },
+                    ]}
+                    onChange={(v) => updateSettings({ uiStyle: v })}
+                  />
+                </div>
+              )}
             </Group>
-          )}
+          </div>
 
           {touchDevice && (
           <Group title="Retour haptique" footer="Android (Chrome, Edge, Samsung Internet) et iPhone sous iOS 18 ou plus récent.">

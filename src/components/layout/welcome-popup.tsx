@@ -6,6 +6,10 @@ import { X, History, FastForward, CalendarDays } from '@/components/ui/icons';
 import { useAppStore, type Lang } from '@/core/store';
 import { siteConfig } from '@/lib/site-config';
 import { haptic } from '@/lib/haptics';
+import { signIn, useAuth, type Provider } from '@/core/auth';
+import { accountsEnabled } from '@/lib/supabase';
+import { DiscordIcon, GoogleIcon } from '@/components/account/provider-icons';
+import { toast } from '@/components/ui/toast';
 
 const STORAGE_KEY = 'hasSeenWelcome';
 
@@ -20,6 +24,7 @@ export function WelcomePopup() {
   const [closing, setClosing] = useState(false);
   const defaultLang = useAppStore((s) => s.settings.defaultLang);
   const updateSettings = useAppStore((s) => s.updateSettings);
+  const { user } = useAuth();
 
   useEffect(() => {
     if (localStorage.getItem(STORAGE_KEY)) return;
@@ -56,7 +61,7 @@ export function WelcomePopup() {
     >
       <div className="relative flex flex-col max-h-[min(100dvh-2rem,44rem)] overflow-hidden rounded-[28px] border border-white/10 bg-[#141416] shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)]">
         {/* Art: the banner fades into the card instead of ending on a hard edge */}
-        <div className="relative shrink-0 h-32 sm:h-48 md:h-56 [@media(max-height:820px)]:md:h-36">
+        <div className="relative shrink-0 h-24 sm:h-48 md:h-56 [@media(max-height:820px)]:md:h-36">
           <img src="/banner.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#141416]/40 to-[#141416]" />
           <img src="/icon.png" alt="" className="absolute left-6 md:left-8 -bottom-6 w-14 h-14 rounded-2xl shadow-xl ring-1 ring-white/15" />
@@ -78,15 +83,15 @@ export function WelcomePopup() {
             Vos animes, sans publicité, avec un suivi qui se souvient de tout. Projet open-source et gratuit, compte facultatif.
           </p>
 
-          <ul className="mt-5 md:mt-7 grid gap-3.5 md:grid-cols-3 md:gap-3">
+          <ul className="mt-5 md:mt-7 grid gap-2.5 sm:gap-3.5 md:grid-cols-3 md:gap-3">
             {FEATURES.map(({ icon: Icon, title, text }) => (
-              <li key={title} className="flex gap-3.5 md:flex-col md:gap-3 md:p-4 md:rounded-2xl md:bg-white/[0.04] md:border md:border-white/[0.06]">
+              <li key={title} className="flex items-center sm:items-start gap-3.5 md:flex-col md:gap-3 md:p-4 md:rounded-2xl md:bg-white/[0.04] md:border md:border-white/[0.06]">
                 <span className="shrink-0 w-10 h-10 rounded-xl bg-white/[0.07] flex items-center justify-center">
                   <Icon className="w-5 h-5 text-white" />
                 </span>
                 <span>
                   <span className="block text-[15px] font-semibold">{title}</span>
-                  <span className="block text-[13px] leading-snug text-[#8E8E93]">{text}</span>
+                  <span className="hidden sm:block text-[13px] leading-snug text-[#8E8E93]">{text}</span>
                 </span>
               </li>
             ))}
@@ -125,6 +130,27 @@ export function WelcomePopup() {
               C&apos;est parti
             </button>
           </div>
+          {/* Direct sign-in, right under the main button: lists and progress follow the user everywhere. */}
+          {accountsEnabled && !user && (
+            <div className="mt-3 flex items-center gap-2">
+              <span className="text-[13px] text-[#8E8E93] shrink-0">Se connecter :</span>
+              {(['discord', 'google'] as Provider[]).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => {
+                    haptic('selection');
+                    close();
+                    void signIn(p, window.location.pathname + window.location.search).catch(() => toast('Connexion impossible pour le moment'));
+                  }}
+                  className="flex-1 h-11 rounded-2xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-[14px] font-semibold text-white flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  {p === 'discord' ? <DiscordIcon className="w-4 h-4 text-[#5865F2]" /> : <GoogleIcon className="w-4 h-4" />}
+                  {p === 'discord' ? 'Discord' : 'Google'}
+                </button>
+              ))}
+            </div>
+          )}
           <p className="mt-4 text-center md:text-left text-[12px] text-[#636366]">
             En continuant, vous acceptez les{' '}
             <Link href="/legal/cgu" onClick={close} className="underline underline-offset-2 hover:text-white">

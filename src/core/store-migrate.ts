@@ -4,7 +4,7 @@ import { isListStatus } from './tracking.ts';
 
 export const STORE_VERSION = 11;
 
-export const DEFAULT_SETTINGS: Settings = { defaultLang: 'vostfr', autoSkip: false, autoNext: true, haptics: true, hapticIntensity: 'normal', episodeView: 'auto', calendarLang: 'all', discordPresence: true, discordBrowsing: true, uiStyle: 'default', releaseNotifications: true, notifyLang: 'auto' };
+export const DEFAULT_SETTINGS: Settings = { defaultLang: 'vostfr', autoSkip: false, autoNext: true, haptics: true, hapticIntensity: 'normal', episodeView: 'auto', calendarLang: 'all', discordPresence: true, discordBrowsing: true, uiStyle: 'default', releaseNotifications: true, notifyLang: 'auto', tabLabels: true };
 
 /**
  * v0 → v1: settings gained autoSkip / autoNext, progress map added. v2–3: haptics.

@@ -54,6 +54,7 @@ export function DesktopBridge() {
 
   useEffect(() => {
     if (!isApp()) return;
+    document.documentElement.classList.add('in-app');
     if (isLiteRendering()) document.documentElement.classList.add('app-lite');
     if (isMobileApp()) {
       const html = document.documentElement;

@@ -8,6 +8,7 @@ export async function GET() {
   const first = (p: 'android' | 'ios') => release.downloads[p]?.[0]?.url ?? null;
   return NextResponse.json(
     { version: release.version, beta: release.beta, url: release.url, android: first('android'), ios: first('ios') },
-    { headers: { 'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=3600' } },
+    // Short: a new release must reach the apps' update check quickly.
+    { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } },
   );
 }

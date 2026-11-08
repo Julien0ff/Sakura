@@ -1,6 +1,6 @@
 /**
  * Latest app release on GitHub, for the « Application » page, /api/app-release (update check of
- * the mobile apps) and /altstore.json. Server only, cached 5 min by Next's fetch cache.
+ * the mobile apps) and /altstore.json. Server only, cached 2 min by Next's fetch cache.
  *
  * No GitHub API: its 60 requests/hour per IP run out on Vercel's shared IPs, and a refused
  * refresh left the cache serving an old release for hours. The updater's latest.json (a release
@@ -10,7 +10,7 @@
 import { readRelease, releaseAssetNames } from '@/lib/app-release';
 
 const REPO = 'Julien0ff/Sakura';
-const CACHE = { next: { revalidate: 300 } };
+const CACHE = { next: { revalidate: 120 } };
 
 export async function latestRelease() {
   try {

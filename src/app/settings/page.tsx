@@ -28,7 +28,7 @@ export default function SettingsPage() {
 
   return (
     <AppLayout>
-      <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-4 sm:px-6 md:pl-32 md:pr-10 pt-[max(var(--safe-top),24px)] md:pt-10 pb-10">
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 px-4 sm:px-6 md:pl-32 md:pr-10 pt-page md:pt-10 pb-10">
         {/* pr-14 on phones keeps the title clear of the floating settings/gear button */}
         <h1
           className="text-[34px] md:text-5xl font-bold text-white mb-6 md:mb-8 flex items-center gap-3 md:gap-4 pr-14 md:pr-0"

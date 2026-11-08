@@ -113,10 +113,28 @@ export function DesktopBridge() {
     // Cold start: the link arrived before this page was listening.
     void desktop.takePendingAuth().then((link) => link && finish(link));
     // Android: a newer .apk on GitHub? (iPhone: AltStore / SideStore handle updates.)
-    const updateCheck = setTimeout(() => void checkAndroidUpdate().then((u) => u && announceAndroidUpdate(u)).catch(() => {}), 5000);
+    let offered: string | null = null;
+    let lastCheck = 0;
+    const checkUpdate = () => {
+      lastCheck = Date.now();
+      void checkAndroidUpdate()
+        .then((u) => {
+          if (!u || u.version === offered) return;
+          offered = u.version;
+          announceAndroidUpdate(u);
+        })
+        .catch(() => {});
+    };
+    const updateCheck = setTimeout(checkUpdate, 5000);
+    // Phones keep the app suspended for days: check again when it comes back after an hour.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastCheck > 3_600_000) checkUpdate();
+    };
+    document.addEventListener('visibilitychange', onVisible);
 
     return () => {
       clearTimeout(updateCheck);
+      document.removeEventListener('visibilitychange', onVisible);
       document.removeEventListener('click', onClick, true);
       unlisteners.forEach((u) => void u.then((f) => f()));
     };

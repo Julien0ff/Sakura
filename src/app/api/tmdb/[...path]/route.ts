@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 
 // Only the read endpoints the app uses.
-const ALLOWED = [/^search\/(tv|movie)$/, /^tv\/\d+$/, /^tv\/\d+\/season\/\d+$/, /^movie\/\d+$/];
+const ALLOWED = [/^search\/(tv|movie)$/, /^tv\/\d+$/, /^tv\/\d+\/season\/\d+$/, /^movie\/\d+$/, /^discover\/tv$/];
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const token = process.env.TMDB_READ_TOKEN;

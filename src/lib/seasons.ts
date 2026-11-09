@@ -96,3 +96,36 @@ export function openingSeason(seasons: TmdbSeason[], start: FuzzyDate): number {
   const isLast = i === dated.length - 1;
   return !isLast || t - dated[i].at <= LAST_SEASON_SPAN_DAYS * DAY ? dated[i].n : 1;
 }
+
+export type ExtraEdge = {
+  relationType: string;
+  node: { id: number; type?: string | null; format?: string | null; title: { romaji?: string | null; english?: string | null }; startDate?: FuzzyDate };
+};
+export type ExtraEntry = { id: number; label: string; title: string };
+
+const EXTRA_LABELS: Record<string, string> = { MOVIE: 'Film', OVA: 'OVA', SPECIAL: 'Spécial' };
+const kind = (e: ExtraEdge) => Object.keys(EXTRA_LABELS).indexOf(e.node.format ?? '');
+/** Same story (not spin-offs, character cameos, music videos…). */
+const EXTRA_RELATIONS = ['SEQUEL', 'PREQUEL', 'SIDE_STORY', 'SUMMARY', 'ALTERNATIVE', 'PARENT'];
+
+/**
+ * Films, then OVAs, then specials of the show, listed after its seasons (« S1 · S2 · Film »),
+ * oldest first within each kind. Several of a kind are numbered (« Film 1 », « Film 2 »).
+ */
+export function extraEntries(edges: ExtraEdge[] | null | undefined): ExtraEntry[] {
+  const kept = (edges ?? [])
+    .filter((e) => (e.node.type ?? 'ANIME') === 'ANIME' && EXTRA_RELATIONS.includes(e.relationType) && EXTRA_LABELS[e.node.format ?? ''])
+    .sort((a, b) => kind(a) - kind(b) || (time(a.node.startDate) ?? Infinity) - (time(b.node.startDate) ?? Infinity));
+  const total: Record<string, number> = {};
+  for (const e of kept) total[e.node.format!] = (total[e.node.format!] ?? 0) + 1;
+  const seen: Record<string, number> = {};
+  return kept.map((e) => {
+    const f = e.node.format!;
+    seen[f] = (seen[f] ?? 0) + 1;
+    return {
+      id: e.node.id,
+      label: total[f] > 1 ? `${EXTRA_LABELS[f]} ${seen[f]}` : EXTRA_LABELS[f],
+      title: e.node.title.english || e.node.title.romaji || '',
+    };
+  });
+}

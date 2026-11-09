@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { matchingSeason, isListedSeason, showTitle, pickShow, openingSeason } from './seasons.ts';
+import { matchingSeason, isListedSeason, showTitle, pickShow, openingSeason, extraEntries } from './seasons.ts';
 
 // TMDB « Assassination Classroom »: one show, two seasons.
 const seasons = [
@@ -75,4 +75,35 @@ test('openingSeason: a later part of a season opens on that season', () => {
   // Long after the last season TMDB knows (a new season TMDB lacks): season 1, as before.
   assert.equal(openingSeason(aot, { year: 2025, month: 1, day: 1 }), 1);
   assert.equal(openingSeason(aot, null), 1);
+});
+
+const rel = (relationType: string, id: number, format: string, year: number, month = 1, type = 'ANIME') => ({
+  relationType,
+  node: { id, type, format, title: { romaji: `R${id}`, english: `E${id}` }, startDate: { year, month, day: 1 } },
+});
+
+test('extraEntries: films, then OVAs, then specials of the show, each by date', () => {
+  const edges = [
+    rel('SIDE_STORY', 3, 'OVA', 2017),
+    rel('SEQUEL', 2, 'TV', 2016),
+    rel('SIDE_STORY', 4, 'MOVIE', 2016, 11),
+    rel('SUMMARY', 5, 'SPECIAL', 2015, 6),
+  ];
+  assert.deepEqual(
+    extraEntries(edges).map((e) => [e.id, e.label, e.title]),
+    [[4, 'Film', 'E4'], [3, 'OVA', 'E3'], [5, 'Spécial', 'E5']]
+  );
+});
+
+test('extraEntries: several of a kind are numbered; spin-offs, music, manga and characters left out', () => {
+  const edges = [
+    rel('SEQUEL', 7, 'MOVIE', 2020),
+    rel('PREQUEL', 6, 'MOVIE', 2018),
+    rel('SPIN_OFF', 8, 'MOVIE', 2019),
+    rel('OTHER', 9, 'MUSIC', 2019),
+    rel('CHARACTER', 10, 'MOVIE', 2019),
+    rel('SIDE_STORY', 11, 'MOVIE', 2019, 1, 'MANGA'),
+  ];
+  assert.deepEqual(extraEntries(edges).map((e) => [e.id, e.label]), [[6, 'Film 1'], [7, 'Film 2']]);
+  assert.deepEqual(extraEntries(undefined), []);
 });

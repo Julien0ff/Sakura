@@ -63,3 +63,8 @@ skills-lock.json
 
 # Discord Social SDK (CI checkout of the private sakura-sdk repo)
 .social-sdk/
+
+# Superpowers specs & plans
+/docs/superpowers/
+
+

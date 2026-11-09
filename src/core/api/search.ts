@@ -1,6 +1,7 @@
 import { fetchAniList, BROWSE_ANIMES } from '@/core/api/anilist';
 import type { AnimeSummary } from '@/lib/anime';
 import { mergeSearchResults, needsFallback, searchTokens } from '@/lib/search';
+import { cartoonSummary, isCartoon, type TmdbCartoon } from '@/lib/cartoons';
 
 const SORT = ['SEARCH_MATCH', 'POPULARITY_DESC'];
 
@@ -28,11 +29,28 @@ async function tmdbOriginalTitles(query: string): Promise<string[]> {
   }
 }
 
+/** Western cartoons (TMDB) matching the query: AniList doesn't list them. */
+async function cartoons(query: string): Promise<AnimeSummary[]> {
+  try {
+    const res = await fetch(`/api/tmdb/search/tv?query=${encodeURIComponent(query)}&language=fr-FR`);
+    const data = (await res.json()) as { results?: TmdbCartoon[] };
+    return (data.results ?? []).filter(isCartoon).slice(0, 10).map(cartoonSummary);
+  } catch {
+    return [];
+  }
+}
+
 /**
  * AniList search, made tolerant: when AniList alone finds little, also search each word of the
- * query (« assassin class ») and the Japanese titles of TMDB's French matches (« attaque des titans »).
+ * query (« assassin class ») and the Japanese titles of TMDB's French matches (« attaque des titans »),
+ * then the matching cartoons.
  */
 export async function searchAnime(query: string): Promise<AnimeSummary[]> {
+  const [animes, toons] = await Promise.all([searchAniList(query), cartoons(query)]);
+  return [...animes, ...toons];
+}
+
+async function searchAniList(query: string): Promise<AnimeSummary[]> {
   const primary = await anilist(query, 30);
   if (!needsFallback(primary)) return primary;
 

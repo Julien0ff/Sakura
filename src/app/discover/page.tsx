@@ -10,6 +10,7 @@ import { Compass, CalendarDays } from '@/components/ui/icons';
 import Link from 'next/link';
 import { haptic } from '@/lib/haptics';
 import { useState } from 'react';
+import { cartoonSummary, discoverQuery, isCartoon, type TmdbCartoon } from '@/lib/cartoons';
 
 // Labels FR -> genres AniList (les valeurs doivent correspondre exactement à l'API).
 const GENRES: { label: string; value: string }[] = [
@@ -29,6 +30,21 @@ const GENRES: { label: string; value: string }[] = [
   { label: 'Mecha', value: 'Mecha' },
 ];
 
+/** Western cartoons (TMDB), not an AniList genre. */
+const CARTOONS = 'CARTOONS';
+const CHIPS = [{ label: 'Dessins animés', value: CARTOONS }, ...GENRES];
+
+async function browseCartoons(sort: string, page: number) {
+  const res = await fetch(`/api/tmdb/discover/tv?${discoverQuery(sort, page)}`);
+  if (!res.ok) throw new Error('TMDB');
+  const data = (await res.json()) as { results?: TmdbCartoon[]; total_pages?: number };
+  return {
+    media: (data.results ?? []).filter(isCartoon).map(cartoonSummary) as AnimeSummary[],
+    hasNext: page < (data.total_pages ?? 0),
+    page,
+  };
+}
+
 const SORTS = [
   { label: 'Populaires', value: 'POPULARITY_DESC' },
   { label: 'Tendances', value: 'TRENDING_DESC' },
@@ -44,6 +60,7 @@ export default function DiscoverPage() {
     queryKey: ['discover', genre, sort],
     initialPageParam: 1,
     queryFn: async ({ pageParam }) => {
+      if (genre === CARTOONS) return browseCartoons(sort, pageParam);
       const res = await fetchAniList(BROWSE_ANIMES, { genre, sort: [sort], page: pageParam, perPage: 30 });
       return {
         media: (res?.Page?.media ?? []) as AnimeSummary[],
@@ -84,7 +101,7 @@ export default function DiscoverPage() {
         </div>
 
         <div className="flex gap-2 md:gap-3 mb-4 overflow-x-auto pb-2 scrollbar-none -mx-6 px-6 md:mx-0 md:px-0" role="tablist" aria-label="Genres">
-          {GENRES.map((g) => (
+          {CHIPS.map((g) => (
             <button key={g.value} role="tab" aria-selected={genre === g.value} onClick={() => {
                 haptic('selection');
                 setGenre(g.value);
@@ -111,7 +128,7 @@ export default function DiscoverPage() {
           ))}
         </div>
 
-        <AnimeResults animes={animes} isLoading={isLoading} error={error} emptyMessage="Aucun anime trouvé pour ce genre." />
+        <AnimeResults animes={animes} isLoading={isLoading} error={error} emptyMessage={genre === CARTOONS ? 'Aucun dessin animé trouvé.' : 'Aucun anime trouvé pour ce genre.'} />
 
         {hasNextPage && (
           <div className="flex justify-center mt-10">

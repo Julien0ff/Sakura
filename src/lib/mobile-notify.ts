@@ -17,6 +17,8 @@ const AIRING_QUERY = `query ($ids: [Int], $from: Int, $to: Int, $page: Int) {
 }`;
 
 async function fetchAiring(ids: number[], from: number, to: number): Promise<AiringItem[]> {
+  ids = ids.filter((id) => id > 0); // cartoons (negative ids) aren't on AniList
+  if (ids.length === 0) return [];
   const out: AiringItem[] = [];
   for (let page = 1; page <= 3; page++) {
     const res = await fetch('https://graphql.anilist.co', {

@@ -17,12 +17,13 @@ import { onEpisodeWatched } from '@/core/auto-track';
 import { PlayerOverlay, type PlayerSource } from '@/components/player/player-overlay';
 import { getSkipTimes } from '@/core/api/aniskip';
 import { useBack } from '@/lib/nav-history';
-import { isListedSeason, openingSeason } from '@/lib/seasons';
+import { extraEntries, isListedSeason, openingSeason } from '@/lib/seasons';
 import { useAmbientColor } from '@/lib/use-ambient-color';
 import { readableOn } from '@/lib/color';
 import { haptic } from '@/lib/haptics';
 import { EasterEggDialog, HUNTER_EGG_SRC, isHunterXHunter, useRapidClicks } from '@/components/anime/easter-egg';
 import { getTMDBDetails, getTMDBSeasonEpisodes } from '@/core/api/tmdb';
+import { cartoonMedia, isCartoonId, tmdbIdOf } from '@/lib/cartoons';
 
 function AnimeDetailsContent() {
   const searchParams = useSearchParams();
@@ -74,7 +75,8 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
   const requestIdRef = useRef(0);
   const autoPlayedRef = useRef(false);
   const [activeTab, setActiveTab] = useState<'episodes' | 'details' | 'relations'>('episodes');
-  const [activeLang, setActiveLang] = useState<Lang>(defaultLang);
+  // Cartoons are dubbed (Anime-Sama often has them in VF only).
+  const [activeLang, setActiveLang] = useState<Lang>(isCartoonId(Number(id)) ? 'vf' : defaultLang);
   const [activeSeason, setActiveSeason] = useState<number>(1);
   const [playingEpisode, setPlayingEpisode] = useState<any>(null);
   const [videoData, setVideoData] = useState<PlayerSource | null>(null);
@@ -207,16 +209,18 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
     };
 
     try {
-      let currentScraper = 'vostfree';
+      // Cartoons: only Anime-Sama has them.
+      const cartoon = isCartoonId(currentAnime.id);
+      let currentScraper = cartoon ? 'animesama' : 'vostfree';
       let sources = await fetchFromScraper(currentScraper);
       
-      if (!sources || sources.length === 0) {
+      if (!cartoon && (!sources || sources.length === 0)) {
         console.log('Vostfree failed, auto-falling back to arkanime');
         currentScraper = 'arkanime';
         sources = await fetchFromScraper('arkanime');
       }
       
-      if (!sources || sources.length === 0) {
+      if (!cartoon && (!sources || sources.length === 0)) {
         console.log('Arkanime failed, auto-falling back to animesama');
         currentScraper = 'animesama';
         sources = await fetchFromScraper('animesama');
@@ -228,7 +232,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
         const bestSource = sources.find((s: PlayerSource) => s.type === 'hls' || s.type === 'mp4') || sources[0];
         setVideoData(bestSource);
       } else {
-        setVideoError("Aucun lien vidéo trouvé pour cet épisode (ni sur Vostfree, ni sur Arkanime, ni sur AnimeSama).");
+        setVideoError(cartoon ? "Aucun lien vidéo trouvé pour cet épisode sur AnimeSama." : "Aucun lien vidéo trouvé pour cet épisode (ni sur Vostfree, ni sur Arkanime, ni sur AnimeSama).");
       }
     } catch (err) {
       console.error(err);
@@ -241,6 +245,11 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
   const { data: anime, isLoading, error } = useQuery({
     queryKey: ['anime', id],
     queryFn: async () => {
+      // Western cartoons: TMDB show, negative id (src/lib/cartoons.ts).
+      if (isCartoonId(Number(id))) {
+        const res = await fetch(`/api/tmdb/tv/${tmdbIdOf(Number(id))}?language=fr-FR&append_to_response=external_ids`);
+        return res.ok ? cartoonMedia(await res.json()) : null;
+      }
       const anilistData = await fetchAniList(GET_ANIME_DETAILS, { id: Number(id) });
       if (!anilistData?.Media) return null;
       
@@ -386,6 +395,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
   const rating = formatScore(anime.averageScore);
   const listEntry = watchlist.find((a) => a.id === anime.id);
   const epLayout = EPISODE_LAYOUTS[settings.episodeView ?? 'auto'];
+  const extras = extraEntries(anime.relations?.edges);
   // Last episode watched in the current season → "Reprendre".
   const lastWatched = history.find((h) => h.id === anime.id && h.season === activeSeason);
   const resumeEpisode = lastWatched ? episodeList.find((e) => e.episode_number === lastWatched.episodeNumber) : undefined;
@@ -644,9 +654,9 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                     <h2 className="text-xl font-bold text-white flex items-center gap-3">
                       Liste des épisodes
                     </h2>
-                    {anime.tmdbSeasons && anime.tmdbSeasons.length > 0 && (
+                    {(anime.tmdbSeasons?.length > 0 || extras.length > 0) && (
                       <div className="flex flex-wrap gap-2 pb-2 max-w-full">
-                        {anime.tmdbSeasons.map((s: any) => (
+                        {(anime.tmdbSeasons ?? []).map((s: any) => (
                           <button
                             key={s.season_number}
                             onClick={() => { haptic('selection'); setActiveSeason(s.season_number); }}
@@ -658,6 +668,18 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                           >
                             {s.name}
                           </button>
+                        ))}
+                        {/* Films / OVAs of the show: their own page (and player), after the seasons. */}
+                        {extras.map((x) => (
+                          <Link
+                            key={x.id}
+                            href={`/anime?id=${x.id}`}
+                            title={x.title}
+                            onClick={() => haptic('selection')}
+                            className="whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-semibold transition-all border bg-transparent text-[#8E8E93] border-transparent hover:bg-white/5 hover:text-white"
+                          >
+                            {x.label}
+                          </Link>
                         ))}
                       </div>
                     )}
@@ -875,7 +897,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {anime.relations?.edges
                     // Seasons already listed under « Épisodes » (same TMDB show) don't get a card.
-                    ?.filter((e: any) => e.node.type === 'ANIME' && !isListedSeason(e, anime.tmdbSeasons ?? []))
+                    ?.filter((e: any) => e.node.type === 'ANIME' && !isListedSeason(e, anime.tmdbSeasons ?? []) && !extras.some((x) => x.id === e.node.id))
                     .map((edge: any) => (
                     <Link 
                       href={`/anime?id=${edge.node.id}`} 

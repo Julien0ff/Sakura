@@ -9,6 +9,7 @@ import { Play, Info, Star } from '@/components/ui/icons';
 import Link from 'next/link';
 import { formatScore, statusLabel, type AnimeSummary } from '@/lib/anime';
 import { useAmbientColor } from '@/lib/use-ambient-color';
+import { extractAccentColor, getCachedColor, useExtractedColor } from '@/lib/extract-color';
 import { readableOn } from '@/lib/color';
 import { haptic } from '@/lib/haptics';
 
@@ -58,6 +59,25 @@ export function HeroBanner() {
         .map(cartoonSummary)
         .filter((c) => Boolean(c.bannerImage)) as unknown as AnimeSummary[];
 
+      // Quick color resolution for cartoons from cache or fast decode
+      await Promise.allSettled(
+        cartoonBanners.map(async (c) => {
+          const img = c.coverImage.large || c.coverImage.extraLarge || c.bannerImage;
+          if (img) {
+            const cached = getCachedColor(img);
+            if (cached) {
+              c.coverImage.color = cached;
+              return;
+            }
+            const color = await Promise.race([
+              extractAccentColor(img),
+              new Promise<null>((r) => setTimeout(() => r(null), 250)),
+            ]);
+            if (color) c.coverImage.color = color;
+          }
+        })
+      );
+
       // Interleave: [anime, cartoon, anime, cartoon, anime...]
       const combined: AnimeSummary[] = [];
       let cIdx = 0;
@@ -74,10 +94,42 @@ export function HeroBanner() {
 
   const animes = data ?? [];
   const count = animes.length;
+  const [extractedColors, setExtractedColors] = useState<Record<number, string>>({});
+
   const active = animes[currentIndex];
-  const activeColor = active?.coverImage.color || '#0A84FF';
+  const activePoster = active?.coverImage?.large || active?.coverImage?.extraLarge || active?.bannerImage;
+  const directActiveExtracted = useExtractedColor(activePoster, active?.coverImage?.color);
+  const activeColor = (active && (extractedColors[active.id] || active.coverImage?.color || directActiveExtracted)) || '#0A84FF';
 
   useAmbientColor(active ? activeColor : null);
+
+  // Background color extraction for any slide missing its color
+  useEffect(() => {
+    if (!animes.length) return;
+    let stale = false;
+
+    animes.forEach((anime) => {
+      if (anime.coverImage?.color) return;
+      const img = anime.coverImage?.large || anime.coverImage?.extraLarge || anime.bannerImage;
+      if (!img) return;
+
+      const cached = getCachedColor(img);
+      if (cached) {
+        setExtractedColors((prev) => (prev[anime.id] === cached ? prev : { ...prev, [anime.id]: cached }));
+        return;
+      }
+
+      extractAccentColor(img).then((col) => {
+        if (!stale && col) {
+          setExtractedColors((prev) => ({ ...prev, [anime.id]: col }));
+        }
+      });
+    });
+
+    return () => {
+      stale = true;
+    };
+  }, [animes]);
 
   const goTo = useCallback((i: number) => setCurrentIndex(((i % count) + count) % count), [count]);
 
@@ -123,7 +175,7 @@ export function HeroBanner() {
         const isActive = index === currentIndex;
         const title = anime.title.english || anime.title.romaji || '';
         const rating = formatScore(anime.averageScore);
-        const color = anime.coverImage.color || '#0A84FF';
+        const color = extractedColors[anime.id] || anime.coverImage.color || (isActive ? directActiveExtracted : null) || '#0A84FF';
         const wide = anime.bannerImage || anime.coverImage.extraLarge || undefined;
         const tall = anime.coverImage.extraLarge || wide;
 

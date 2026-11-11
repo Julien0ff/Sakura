@@ -5,6 +5,22 @@ import { useState, useEffect } from 'react';
 /** Memory cache for extracted colors across the session. */
 const memoryCache = new Map<string, string>();
 
+/** Check memory or local storage cache synchronously for a previously extracted color. */
+export function getCachedColor(imageUrl?: string | null): string | null {
+  if (!imageUrl) return null;
+  if (memoryCache.has(imageUrl)) return memoryCache.get(imageUrl)!;
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = localStorage.getItem(`sakura:color:${imageUrl}`);
+      if (cached && /^#[0-9a-f]{6}$/i.test(cached)) {
+        memoryCache.set(imageUrl, cached);
+        return cached;
+      }
+    } catch {}
+  }
+  return null;
+}
+
 /** RGB to HSL conversion (H: 0-360, S: 0-1, L: 0-1). */
 function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
   r /= 255;
@@ -49,26 +65,22 @@ export async function extractAccentColor(imageUrl: string): Promise<string | nul
   if (!imageUrl) return null;
   if (typeof window === 'undefined') return null;
 
-  // Check in-memory cache
-  if (memoryCache.has(imageUrl)) {
-    return memoryCache.get(imageUrl)!;
-  }
+  const cached = getCachedColor(imageUrl);
+  if (cached) return cached;
 
-  // Check persistent storage
   const storageKey = `sakura:color:${imageUrl}`;
-  try {
-    const cached = localStorage.getItem(storageKey);
-    if (cached && /^#[0-9a-f]{6}$/i.test(cached)) {
-      memoryCache.set(imageUrl, cached);
-      return cached;
-    }
-  } catch {}
 
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
 
+    const timer = setTimeout(() => {
+      cleanUp();
+      resolve(null);
+    }, 2500);
+
     const cleanUp = () => {
+      clearTimeout(timer);
       img.onload = null;
       img.onerror = null;
     };
@@ -156,7 +168,7 @@ export async function extractAccentColor(imageUrl: string): Promise<string | nul
     // Use smaller TMDB thumbnail if it's a TMDB image to accelerate download & decode
     let src = imageUrl;
     if (src.includes('image.tmdb.org/t/p/')) {
-      src = src.replace(/\/t\/p\/(original|w500|w342)\//, '/t/p/w92/');
+      src = src.replace(/\/t\/p\/[a-zA-Z0-9_-]+\//, '/t/p/w92/');
     }
     img.src = src;
   });
@@ -170,8 +182,7 @@ export async function extractAccentColor(imageUrl: string): Promise<string | nul
 export function useExtractedColor(imageUrl?: string | null, initialColor?: string | null): string | null {
   const [color, setColor] = useState<string | null>(() => {
     if (initialColor) return initialColor;
-    if (!imageUrl) return null;
-    return memoryCache.get(imageUrl) || (typeof window !== 'undefined' ? localStorage.getItem(`sakura:color:${imageUrl}`) : null);
+    return getCachedColor(imageUrl);
   });
 
   useEffect(() => {

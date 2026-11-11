@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, Maximize, Minimize, SkipForward, Star, X } from '@/components/ui/icons';
+import { ArrowLeft, FastForward, Maximize, Minimize, SkipForward, Star, X } from '@/components/ui/icons';
 import type { SkipInterval } from '@/core/api/aniskip';
 import { RatingPicker } from '@/components/anime/rating-picker';
 import { toast } from '@/components/ui/toast';
@@ -11,6 +11,8 @@ import { haptic } from '@/lib/haptics';
 import { setNowPlayingMeta, setPlayerOpen } from '@/lib/native-media';
 
 const VideoPlayer = dynamic(() => import('./video-player').then((m) => m.VideoPlayer), { ssr: false });
+
+const SKIP_LABEL: Record<SkipInterval['type'], string> = { op: "Passer l'opening", ed: "Passer l'ending" };
 
 export interface PlayerSource {
   url: string;
@@ -112,6 +114,7 @@ function PlayerOverlayInner({
   const [playing, setPlaying] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [activeSkipInfo, setActiveSkipInfo] = useState<{ skip: SkipInterval; onSkip: () => void } | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -319,6 +322,7 @@ function PlayerOverlayInner({
               showRatePrompt();
               if (next && autoNext) setCountdown(NEXT_COUNTDOWN);
             }}
+            onActiveSkipChange={setActiveSkipInfo}
           />
         ) : null}
       </div>
@@ -472,6 +476,18 @@ function PlayerOverlayInner({
             Lire maintenant
           </button>
         </div>
+      )}
+
+      {/* Skip opening / ending button */}
+      {activeSkipInfo && countdown === null && (
+        <button
+          type="button"
+          onClick={activeSkipInfo.onSkip}
+          className="absolute bottom-24 right-6 md:right-10 z-[125] pointer-events-auto flex items-center gap-2.5 px-5 py-3 rounded-full bg-white text-black text-sm font-bold shadow-2xl hover:scale-105 active:scale-95 transition-transform animate-in fade-in slide-in-from-bottom-4 cursor-pointer"
+        >
+          <FastForward className="w-4 h-4" fill="currentColor" />
+          <span>{SKIP_LABEL[activeSkipInfo.skip.type]}</span>
+        </button>
       )}
     </div>
   );

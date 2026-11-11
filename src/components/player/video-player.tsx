@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { usePlyr, APITypes } from 'plyr-react';
 import 'plyr-react/plyr.css';
 import Hls from 'hls.js';
-import { FastForward } from '@/components/ui/icons';
+import { FastForward, X } from '@/components/ui/icons';
 import type { SkipInterval } from '@/core/api/aniskip';
 import { haptic } from '@/lib/haptics';
 import { onNativeMediaAction, setNowPlayingState } from '@/lib/native-media';
 
-interface VideoPlayerProps {
+export interface VideoPlayerProps {
   src: string;
   type?: 'hls' | 'mp4' | 'youtube' | 'iframe';
   poster?: string;
@@ -28,9 +28,11 @@ interface VideoPlayerProps {
   onNextSource?: () => void;
   /** Estimated episode duration in seconds (for iframe players). */
   estimatedDuration?: number;
+  /** Callback when an opening / ending is active, so PlayerOverlay can render the button. */
+  onActiveSkipChange?: (info: { skip: SkipInterval; onSkip: () => void } | null) => void;
 }
 
-const SKIP_LABEL: Record<SkipInterval['type'], string> = { op: "Passer l'opening", ed: "Passer l'ending" };
+export const SKIP_LABEL: Record<SkipInterval['type'], string> = { op: "Passer l'opening", ed: "Passer l'ending" };
 
 export function VideoPlayer({
   src,
@@ -46,37 +48,102 @@ export function VideoPlayer({
   onError,
   onNextSource,
   estimatedDuration,
+  onActiveSkipChange,
 }: VideoPlayerProps) {
   const plyrRef = useRef<APITypes>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeSkip, setActiveSkip] = useState<SkipInterval | null>(null);
   const [iframeLoading, setIframeLoading] = useState(type === 'iframe');
   const [slowIframe, setSlowIframe] = useState(false);
+  const [iframeSeekTime, setIframeSeekTime] = useState<number | null>(null);
 
   const isAnimeSama = Boolean(src && (src.includes('ansembed') || src.includes('anime-sama')));
 
   // Anime-Sama embeds start with a 4s intro bumper. When starting from 0, jump directly past it.
   const iframeSrc = useMemo(() => {
-    if (!isAnimeSama) return src;
-    if (startAt > 4) {
-      return src.includes('#') ? src : `${src}#t=${Math.floor(startAt)}`;
+    const target = iframeSeekTime ?? (startAt > 4 ? startAt : (isAnimeSama ? 4 : 0));
+    if (isAnimeSama) {
+      const clean = src.replace(/([?&])start=\d+/, '').replace(/#t=\d+/, '');
+      const joiner = clean.includes('?') ? '&' : '?';
+      const t = Math.max(target, 4);
+      return `${clean}${joiner}start=${Math.floor(t)}#t=${Math.floor(t)}`;
     }
-    if (src.includes('#t=')) return src;
-    return src.includes('?') ? `${src}&start=4#t=4` : `${src}?start=4#t=4`;
-  }, [src, isAnimeSama, startAt]);
+    if (target > 0) {
+      const clean = src.replace(/#t=\d+/, '');
+      return `${clean}#t=${Math.floor(target)}`;
+    }
+    return src;
+  }, [src, isAnimeSama, startAt, iframeSeekTime]);
+
+  // Elapsed playhead for iframes
+  const elapsedRef = useRef(startAt || (isAnimeSama ? 4 : 0));
+  useEffect(() => {
+    elapsedRef.current = startAt || (isAnimeSama ? 4 : 0);
+    setIframeSeekTime(null);
+  }, [src, startAt, isAnimeSama]);
+
+  const doIframeSeek = useCallback(
+    (time: number) => {
+      elapsedRef.current = time;
+      latest.current.onProgress?.(time, estimatedDuration || 1440);
+      setIframeSeekTime(time);
+
+      try {
+        const win = iframeRef.current?.contentWindow;
+        if (win) {
+          win.postMessage({ type: 'seek', time }, '*');
+          win.postMessage({ event: 'command', func: 'seekTo', args: [time, true] }, '*');
+          win.postMessage({ method: 'setCurrentTime', value: time }, '*');
+          win.postMessage(JSON.stringify({ event: 'seek', val: time }), '*');
+        }
+      } catch {
+        /* cross-origin error */
+      }
+
+      if (iframeRef.current) {
+        try {
+          const u = new URL(iframeRef.current.src);
+          u.hash = `t=${Math.floor(time)}`;
+          if (u.searchParams.has('start')) {
+            u.searchParams.set('start', String(Math.floor(time)));
+          }
+          iframeRef.current.src = u.toString();
+        } catch {
+          const base = iframeRef.current.src.split('#')[0];
+          iframeRef.current.src = `${base}#t=${Math.floor(time)}`;
+        }
+      }
+    },
+    [estimatedDuration]
+  );
 
   useEffect(() => {
     setIframeLoading(type === 'iframe');
     setSlowIframe(false);
+    if (slowTimerRef.current) {
+      clearTimeout(slowTimerRef.current);
+      slowTimerRef.current = null;
+    }
     if (type !== 'iframe') return;
-    const t = setTimeout(() => setSlowIframe(true), 8000);
-    return () => clearTimeout(t);
+
+    // Only alert after 12s if the iframe has NOT loaded yet
+    slowTimerRef.current = setTimeout(() => {
+      setSlowIframe(true);
+    }, 12000);
+
+    return () => {
+      if (slowTimerRef.current) {
+        clearTimeout(slowTimerRef.current);
+        slowTimerRef.current = null;
+      }
+    };
   }, [src, type]);
 
   // For iframe players (cartoons / AnimeSama embeds):
-  // Since cross-origin frames cannot directly notify parent HTML5 video events, we:
   // 1. Listen for postMessage events ('ended', 'finish', 'complete')
-  // 2. Track elapsed watch time to periodically report progress, unlock ratings & trigger auto-next
+  // 2. Track elapsed watch time to periodically report progress, check AniSkip intervals & trigger auto-next
   useEffect(() => {
     if (type !== 'iframe') return;
 
@@ -96,31 +163,66 @@ export function VideoPlayer({
     window.addEventListener('message', onMessage);
 
     const duration = estimatedDuration && estimatedDuration > 0 ? estimatedDuration : 1440;
-    let elapsed = startAt || (isAnimeSama ? 4 : 0);
+    const skipped = new Set<string>();
     let endedFired = false;
 
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
-      elapsed += 5;
-      latest.current.onProgress?.(elapsed, duration);
+      elapsedRef.current += 1;
+      const elapsed = elapsedRef.current;
+
+      // Check AniSkip interval
+      const current = latest.current.skipTimes.find((s) => elapsed >= s.start && elapsed < s.end - 1) ?? null;
+      if (current && latest.current.autoSkip && !skipped.has(current.type)) {
+        skipped.add(current.type);
+        doIframeSeek(current.end);
+        setActiveSkip(null);
+      } else {
+        setActiveSkip((prev) => (prev?.type === current?.type && prev?.start === current?.start ? prev : current));
+      }
+
+      if (elapsed % 5 === 0) {
+        latest.current.onProgress?.(elapsed, duration);
+      }
 
       if (!endedFired && elapsed >= duration) {
         endedFired = true;
         latest.current.onEnded?.();
       }
-    }, 5000);
+    }, 1000);
 
     return () => {
       window.removeEventListener('message', onMessage);
       clearInterval(interval);
       latest.current.onPlayingChange?.(false);
+      setActiveSkip(null);
     };
-  }, [type, estimatedDuration, startAt, isAnimeSama]);
+  }, [type, estimatedDuration, isAnimeSama, doIframeSeek]);
 
   // Latest callbacks/values in refs so media listeners don't need re-binding.
-  const latest = useRef({ onProgress, onEnded, onPlayingChange, onError, onNextSource, skipTimes, autoSkip, startAt });
+  const latest = useRef({
+    onProgress,
+    onEnded,
+    onPlayingChange,
+    onError,
+    onNextSource,
+    skipTimes,
+    autoSkip,
+    startAt,
+    onActiveSkipChange,
+  });
   useEffect(() => {
-    latest.current = { onProgress, onEnded, onPlayingChange, onError, onNextSource, skipTimes, autoSkip, startAt };
+    latest.current = {
+      onProgress,
+      onEnded,
+      onPlayingChange,
+      onError,
+      onNextSource,
+      skipTimes,
+      autoSkip,
+      startAt,
+      onActiveSkipChange,
+    };
   });
 
   const videoRef = usePlyr(
@@ -360,12 +462,22 @@ export function VideoPlayer({
     };
   }, [src, type]);
 
-  const skip = () => {
+  const skip = useCallback(() => {
     haptic('light');
-    const video = getMedia();
-    if (video && activeSkip) video.currentTime = activeSkip.end;
-    setActiveSkip(null);
-  };
+    if (activeSkip) {
+      if (type === 'iframe') {
+        doIframeSeek(activeSkip.end);
+      } else {
+        const video = getMedia();
+        if (video) video.currentTime = activeSkip.end;
+      }
+      setActiveSkip(null);
+    }
+  }, [activeSkip, type, doIframeSeek]);
+
+  useEffect(() => {
+    latest.current.onActiveSkipChange?.(activeSkip ? { skip: activeSkip, onSkip: skip } : null);
+  }, [activeSkip, skip]);
 
   return (
     <div className="relative w-full h-full bg-black">
@@ -378,31 +490,51 @@ export function VideoPlayer({
             </div>
           )}
           {slowIframe && (
-            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-black/80 backdrop-blur-md border border-white/10 text-white text-xs animate-in fade-in">
-              <span>Le lecteur tarde à répondre ?</span>
+            <div className="absolute top-[max(var(--safe-top),16px)] left-1/2 -translate-x-1/2 z-[115] h-11 flex items-center gap-2.5 px-4 rounded-full bg-black/85 backdrop-blur-xl border border-white/20 text-white text-xs shadow-2xl animate-in fade-in max-w-[90vw]">
+              <span className="truncate">Le lecteur tarde à répondre ?</span>
               {latest.current.onNextSource && (
                 <button
                   type="button"
-                  onClick={() => latest.current.onNextSource?.()}
-                  className="px-3 py-1 rounded-full bg-white text-black font-semibold cursor-pointer hover:bg-white/90"
+                  onClick={() => {
+                    setSlowIframe(false);
+                    latest.current.onNextSource?.();
+                  }}
+                  className="shrink-0 px-3 py-1.5 rounded-full bg-white text-black font-semibold cursor-pointer hover:bg-white/90 transition-colors"
                 >
                   Essayer un autre lecteur
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => setSlowIframe(false)}
+                aria-label="Fermer la suggestion"
+                className="shrink-0 p-1 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
           )}
           <iframe
+            ref={iframeRef}
             src={iframeSrc}
             className="w-full h-full"
             allowFullScreen
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
             onLoad={() => {
+              if (slowTimerRef.current) {
+                clearTimeout(slowTimerRef.current);
+                slowTimerRef.current = null;
+              }
               setIframeLoading(false);
               setSlowIframe(false);
             }}
             onError={() => {
+              if (slowTimerRef.current) {
+                clearTimeout(slowTimerRef.current);
+                slowTimerRef.current = null;
+              }
               setIframeLoading(false);
-              latest.current.onError?.('Erreur de chargement de l\'iframe.');
+              latest.current.onError?.("Erreur de chargement de l'iframe.");
             }}
           />
         </>
@@ -416,10 +548,11 @@ export function VideoPlayer({
           />
         </div>
       )}
-      {activeSkip && (
+      {activeSkip && !onActiveSkipChange && (
         <button
+          type="button"
           onClick={skip}
-          className="absolute bottom-24 right-6 md:right-10 z-50 flex items-center gap-2 px-5 py-3 rounded-full bg-white text-black text-sm font-bold shadow-2xl hover:scale-105 active:scale-95 transition-transform animate-in fade-in slide-in-from-bottom-4 cursor-pointer"
+          className="absolute bottom-24 right-6 md:right-10 z-[125] pointer-events-auto flex items-center gap-2 px-5 py-3 rounded-full bg-white text-black text-sm font-bold shadow-2xl hover:scale-105 active:scale-95 transition-transform animate-in fade-in slide-in-from-bottom-4 cursor-pointer"
         >
           <FastForward className="w-4 h-4" fill="currentColor" />
           {SKIP_LABEL[activeSkip.type]}

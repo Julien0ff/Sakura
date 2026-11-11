@@ -15,6 +15,7 @@
     ]
   },
   "permissions": [
+    "notification:default",
     "haptics:allow-impact-feedback",
     "haptics:allow-notification-feedback",
     "haptics:allow-selection-feedback",

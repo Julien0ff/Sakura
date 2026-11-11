@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { ArrowLeft, SkipForward, X } from '@/components/ui/icons';
 import type { SkipInterval } from '@/core/api/aniskip';
 import { RatingPicker } from '@/components/anime/rating-picker';
+import { toast } from '@/components/ui/toast';
 import { haptic } from '@/lib/haptics';
 import { setNowPlayingMeta, setPlayerOpen } from '@/lib/native-media';
 
@@ -191,6 +192,26 @@ function PlayerOverlayInner({
   // Only hide while the video plays, so paused/idle states keep the title and controls visible.
   const chromeHidden = idle && playing && !isLoading && !error && countdown === null;
 
+  const handlePlayerError = (msg: string) => {
+    console.warn('[player-overlay] video error:', msg);
+    const currIdx = current ? sources.findIndex((s) => s.url === current.url) : -1;
+    if (currIdx >= 0 && currIdx < sources.length - 1) {
+      const nextSource = sources[currIdx + 1];
+      toast(`Lecteur indisponible, bascule sur ${sourceName(nextSource, currIdx + 1)}…`);
+      onSelectSource(nextSource);
+    }
+  };
+
+  const handleNextSource = () => {
+    const currIdx = current ? sources.findIndex((s) => s.url === current.url) : -1;
+    if (sources.length > 1) {
+      const nextIdx = (currIdx + 1) % sources.length;
+      const nextSource = sources[nextIdx];
+      toast(`Bascule sur ${sourceName(nextSource, nextIdx)}…`);
+      onSelectSource(nextSource);
+    }
+  };
+
   return (
     <div
       role="dialog"
@@ -228,6 +249,8 @@ function PlayerOverlayInner({
             startAt={startAt}
             skipTimes={skipTimes}
             autoSkip={autoSkip}
+            onError={handlePlayerError}
+            onNextSource={sources.length > 1 ? handleNextSource : undefined}
             onProgress={(time, duration) => {
               onProgress(time, duration);
               if (duration > 0 && time / duration >= 0.9) showRatePrompt();

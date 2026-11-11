@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase';
 import { isTrophy } from '@/lib/trophies';
 import { haptic } from '@/lib/haptics';
 import { parseAnimeQuery, type AdminBanner, type AdminStats, type AdminUser } from '@/lib/admin';
+import { DiscordWebhooksSection } from '@/components/admin/discord-webhooks';
 
 type Media = { id: number; bannerImage: string | null; popularity: number | null; title: { romaji: string; english: string | null } };
 
@@ -77,6 +78,7 @@ export default function AdminPage() {
         ) : (
           <div className="max-w-6xl space-y-7">
             <Stats />
+            <DiscordWebhooksSection />
             <div className="grid gap-7 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
               <UserList selectedId={selected?.id ?? null} onSelect={setSelected} />
               {selected ? (

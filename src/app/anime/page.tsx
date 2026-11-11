@@ -19,6 +19,7 @@ import { getSkipTimes } from '@/core/api/aniskip';
 import { useBack } from '@/lib/nav-history';
 import { extraEntries, isListedSeason, openingSeason } from '@/lib/seasons';
 import { useAmbientColor } from '@/lib/use-ambient-color';
+import { useExtractedColor } from '@/lib/extract-color';
 import { readableOn } from '@/lib/color';
 import { haptic } from '@/lib/haptics';
 import { EasterEggDialog, HUNTER_EGG_SRC, isHunterXHunter, useRapidClicks } from '@/components/anime/easter-egg';
@@ -96,7 +97,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
       id: currentAnime.id,
       title: currentAnime.tmdbTitle || currentAnime.title.english || currentAnime.title.romaji,
       cover: currentAnime.coverImage.extraLarge,
-      color: currentAnime.coverImage.color,
+      color: currentAnime.coverImage?.color ?? null,
       score: currentAnime.averageScore,
       status: currentAnime.status,
       episodeNumber: ep.episode_number,
@@ -160,7 +161,10 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
       let searchData: any[] = [];
       for (const query of queriesToTry) {
         try {
-          const searchRes = await fetch(`/api/scraper?action=search&query=${encodeURIComponent(query)}&scraper=${scraperName}`);
+          const searchRes = await fetch(
+            `/api/scraper?action=search&query=${encodeURIComponent(query)}&scraper=${scraperName}`,
+            { signal: AbortSignal.timeout(8000) }
+          );
           const data = await searchRes.json();
           if (Array.isArray(data) && data.length > 0) {
             searchData = data;
@@ -188,7 +192,10 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
           }
 
           if (bestMatch) {
-            const epRes = await fetch(`/api/scraper?action=episodes&url=${encodeURIComponent(bestMatch.url)}&lang=${lang}&season=${activeSeason}`);
+            const epRes = await fetch(
+              `/api/scraper?action=episodes&url=${encodeURIComponent(bestMatch.url)}&lang=${lang}&season=${activeSeason}`,
+              { signal: AbortSignal.timeout(8000) }
+            );
             const episodesList = await epRes.json();
 
             const matchedEp = Array.isArray(episodesList)
@@ -196,7 +203,10 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
               : undefined;
 
             if (matchedEp) {
-              const resolveRes = await fetch(`/api/scraper?action=resolve&url=${encodeURIComponent(matchedEp.url)}`);
+              const resolveRes = await fetch(
+                `/api/scraper?action=resolve&url=${encodeURIComponent(matchedEp.url)}`,
+                { signal: AbortSignal.timeout(8000) }
+              );
               const resolved = await resolveRes.json();
               if (Array.isArray(resolved) && resolved.length > 0 && resolved[0]?.url) {
                 return resolved;
@@ -306,7 +316,17 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay, anime, isLoadingEpisodes, episodeList.length]);
 
-  useAmbientColor(anime?.coverImage?.color);
+  const posterUrl = anime?.coverImage?.large || anime?.coverImage?.extraLarge || anime?.bannerImage;
+  const extractedColor = useExtractedColor(posterUrl, anime?.coverImage?.color);
+  const effectiveColor = anime?.coverImage?.color || extractedColor || null;
+
+  useAmbientColor(effectiveColor);
+
+  useEffect(() => {
+    if (anime && !anime.coverImage.color && extractedColor) {
+      anime.coverImage.color = extractedColor;
+    }
+  }, [anime, extractedColor]);
 
   // Easter egg (Hunter×Hunter only): 5 quick clicks on the poster swap it for a hidden
   // image and show it in a popup; 5 more quick clicks bring the original back.
@@ -390,7 +410,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
     );
   }
 
-  const animeColor = anime.coverImage.color || '#0A84FF';
+  const animeColor = effectiveColor || '#0A84FF';
   const title = anime.tmdbTitle || anime.title.english || anime.title.romaji;
   const rating = formatScore(anime.averageScore);
   const listEntry = watchlist.find((a) => a.id === anime.id);
@@ -459,7 +479,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                     id: anime.id,
                     title,
                     cover: anime.coverImage.extraLarge,
-                    color: anime.coverImage.color,
+                    color: effectiveColor,
                     score: anime.averageScore,
                     status: anime.status,
                     anilistStatus: anime.status,
@@ -604,7 +624,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                     id: anime.id,
                     title,
                     cover: anime.coverImage.extraLarge,
-                    color: anime.coverImage.color,
+                    color: effectiveColor,
                     score: anime.averageScore,
                     status: anime.status,
                   }}

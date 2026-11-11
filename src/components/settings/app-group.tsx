@@ -9,6 +9,7 @@ import { toast } from '@/components/ui/toast';
 import { currentApp, desktop, isApp, isDesktop, type DiscordLinkStatus, type PresenceStatus } from '@/lib/desktop';
 import { ADD_SOURCE_LINKS } from '@/lib/app-release';
 import { checkAndroidUpdate } from '@/lib/mobile-update';
+import { sendTestNotification } from '@/lib/mobile-notify';
 import { useAppStore } from '@/core/store';
 
 const noop = () => () => {};
@@ -142,19 +143,35 @@ export function AppGroup() {
         onChange={(v) => updateSettings({ releaseNotifications: v })}
       />
       {releaseNotifications && (
-        <Row label="Langue des sorties" hint="Auto : votre langue par défaut." stackOnMobile>
-          <Segmented<NotifyLang>
-            label="Langue des sorties"
-            value={notifyLang}
-            options={[
-              ['auto', 'Auto'],
-              ['vostfr', 'VOSTFR'],
-              ['vf', 'VF'],
-              ['all', 'Les deux'],
-            ]}
-            onChange={(v) => updateSettings({ notifyLang: v })}
-          />
-        </Row>
+        <>
+          <Row label="Langue des sorties" hint="Auto : votre langue par défaut." stackOnMobile>
+            <Segmented<NotifyLang>
+              label="Langue des sorties"
+              value={notifyLang}
+              options={[
+                ['auto', 'Auto'],
+                ['vostfr', 'VOSTFR'],
+                ['vf', 'VF'],
+                ['all', 'Les deux'],
+              ]}
+              onChange={(v) => updateSettings({ notifyLang: v })}
+            />
+          </Row>
+          <Row label="Tester les notifications" hint="Envoie une notification d'essai pour vérifier l'affichage." stackOnMobile>
+            <ActionButton
+              onClick={async () => {
+                const ok = await sendTestNotification();
+                if (ok) {
+                  toast('Notification de test envoyée !');
+                } else {
+                  toast('Veuillez autoriser les notifications dans les paramètres de votre appareil.');
+                }
+              }}
+            >
+              Envoyer un test
+            </ActionButton>
+          </Row>
+        </>
       )}
       {mobile && link && link.state !== 'unavailable' && (
         <Row label="Compte Discord" hint={LINK_LABELS[link.state] + (link.error ? ` (${link.error})` : '')} stackOnMobile>

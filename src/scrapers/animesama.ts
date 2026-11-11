@@ -209,34 +209,7 @@ export class AnimeSamaScraper implements AnimeScraper {
         else if (u.includes('oneupload')) name = 'Oneupload';
         else if (u.includes('lpayer')) name = 'Lpayer';
 
-        // Attempt to extract direct HLS link from ansembed
-        if (u.includes('ansembed')) {
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 4000);
-            const res = await fetch(u, {
-              headers: {
-                Referer: 'https://anime-sama.to/',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
-              },
-              signal: controller.signal,
-            });
-            clearTimeout(timeoutId);
-            const html = await res.text();
-            const sourceMatch = html.match(/sources:\s*\[\{\s*file:\s*['"]([^'"]+\.m3u8[^'"]*)['"]/);
-            if (sourceMatch && sourceMatch[1]) {
-              resolvedSources.push({
-                url: sourceMatch[1],
-                quality: `${name} (Direct)`,
-                type: 'hls',
-              });
-            }
-          } catch (e) {
-            console.warn('Failed to extract ansembed direct link', e);
-          }
-        }
-
-        // Always keep the embed URL as a reliable playback source
+        // Embed URL as reliable iframe playback source
         resolvedSources.push({
           url: u,
           quality: name,

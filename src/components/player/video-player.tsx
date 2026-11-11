@@ -335,7 +335,6 @@ export function VideoPlayer({
             className="w-full h-full"
             allowFullScreen
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-top-navigation-by-user-activation allow-popups"
             onLoad={() => {
               setIframeLoading(false);
               setSlowIframe(false);

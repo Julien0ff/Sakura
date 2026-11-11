@@ -17,7 +17,7 @@ import { onEpisodeWatched } from '@/core/auto-track';
 import { PlayerOverlay, type PlayerSource } from '@/components/player/player-overlay';
 import { getSkipTimes } from '@/core/api/aniskip';
 import { useBack } from '@/lib/nav-history';
-import { extraEntries, isListedSeason, openingSeason } from '@/lib/seasons';
+import { extraEntries, isListedSeason, matchingSeason, openingSeason } from '@/lib/seasons';
 import { useAmbientColor } from '@/lib/use-ambient-color';
 import { useExtractedColor } from '@/lib/extract-color';
 import { readableOn } from '@/lib/color';
@@ -26,6 +26,7 @@ import { toast } from '@/components/ui/toast';
 import { EasterEggDialog, HUNTER_EGG_SRC, isHunterXHunter, useRapidClicks } from '@/components/anime/easter-egg';
 import { getTMDBDetails, getTMDBSeasonEpisodes } from '@/core/api/tmdb';
 import { cartoonMedia, isCartoonId, tmdbIdOf } from '@/lib/cartoons';
+import { setOnlinePlaybackActivity } from '@/lib/online-presence';
 
 function AnimeDetailsContent() {
   const searchParams = useSearchParams();
@@ -409,12 +410,25 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
     anime ? { id: anime.id, title: anime.tmdbTitle || anime.title.english || anime.title.romaji, cover: anime.coverImage?.extraLarge || anime.coverImage?.large || null } : null
   );
 
-  // AniSkip is keyed by MyAnimeList id + episode number of *this* AniList entry. TMDB seasons > 1
-  // usually map to another AniList entry, so only look it up for season 1 / single-season shows.
-  const skipEnabled = !!anime?.idMal && !!playingEpisode && (activeSeason === 1 || !(anime?.tmdbSeasons?.length > 1));
+  // AniSkip is keyed by MyAnimeList id + episode number.
+  // For Season 1, use anime.idMal. For sequels/other seasons, look for the matching relation's idMal.
+  const targetMalId = useMemo(() => {
+    if (!anime) return null;
+    if (activeSeason === 1 || !anime.relations?.edges?.length) return anime.idMal ?? null;
+    const match = anime.relations.edges.find(
+      (e: any) =>
+        e.node?.type === 'ANIME' &&
+        e.node?.idMal &&
+        isListedSeason(e, anime.tmdbSeasons ?? []) &&
+        matchingSeason(anime.tmdbSeasons ?? [], e.node.startDate) === activeSeason
+    );
+    return match?.node?.idMal ?? anime.idMal ?? null;
+  }, [anime, activeSeason]);
+
+  const skipEnabled = Boolean(targetMalId && playingEpisode);
   const { data: skipTimes = [] } = useQuery({
-    queryKey: ['aniskip', anime?.idMal, playingEpisode?.episode_number],
-    queryFn: () => getSkipTimes(anime.idMal, playingEpisode.episode_number),
+    queryKey: ['aniskip', targetMalId, playingEpisode?.episode_number],
+    queryFn: () => getSkipTimes(targetMalId!, playingEpisode!.episode_number),
     enabled: skipEnabled,
     staleTime: Infinity,
   });
@@ -449,6 +463,19 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
   const lastWatched = history.find((h) => h.id === anime.id && h.season === activeSeason);
   const resumeEpisode = lastWatched ? episodeList.find((e) => e.episode_number === lastWatched.episodeNumber) : undefined;
   const currentProgressKey = playingEpisode ? progressKey(anime.id, activeSeason, playingEpisode.episode_number) : '';
+
+  useEffect(() => {
+    if (playingEpisode && title) {
+      setOnlinePlaybackActivity({
+        title,
+        details: `Épisode ${playingEpisode.episode_number}${activeLang === 'vf' ? ' · VF' : ' · VOSTFR'}`,
+        isPlaying: true,
+      });
+    } else {
+      setOnlinePlaybackActivity(null);
+    }
+    return () => setOnlinePlaybackActivity(null);
+  }, [playingEpisode, title, activeLang]);
 
   return (
     <AppLayout>
@@ -494,6 +521,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
             skipTimes={skipTimes}
             autoSkip={settings.autoSkip}
             startAt={progress[currentProgressKey]?.time ?? 0}
+            estimatedDuration={((playingEpisode.runtime as number | undefined) || (anime.duration as number | undefined) || 0) * 60 || 1440}
             episodeRating={episodeRatings[currentProgressKey]?.rating ?? null}
             onRateEpisode={(r) => rateEpisode(anime.id, activeSeason, playingEpisode.episode_number, r)}
             onPlayingChange={(playing) => updatePlayback({ playing })}

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, Maximize, Minimize, SkipForward, X } from '@/components/ui/icons';
+import { ArrowLeft, Maximize, Minimize, SkipForward, Star, X } from '@/components/ui/icons';
 import type { SkipInterval } from '@/core/api/aniskip';
 import { RatingPicker } from '@/components/anime/rating-picker';
 import { toast } from '@/components/ui/toast';
@@ -43,6 +43,8 @@ interface PlayerOverlayProps {
   /** The user's rating for this episode (1–10). */
   episodeRating?: number | null;
   onRateEpisode?: (rating: number | null) => void;
+  /** Estimated duration in seconds (used for iframe players to track progress & end). */
+  estimatedDuration?: number;
 }
 
 const NEXT_COUNTDOWN = 8;
@@ -88,6 +90,7 @@ function PlayerOverlayInner({
   artwork,
   episodeRating = null,
   onRateEpisode,
+  estimatedDuration,
 }: PlayerOverlayProps) {
   // End-of-episode rating prompt: shown once per episode, never touches the next-episode countdown.
   const [ratePrompt, setRatePrompt] = useState<'hidden' | 'shown' | 'done'>('hidden');
@@ -115,7 +118,13 @@ function PlayerOverlayInner({
     const updateOrientation = () => {
       const landscape = typeof window !== 'undefined' && window.innerWidth > window.innerHeight;
       setIsLandscape(landscape);
-      setIsFullscreen(!!document.fullscreenElement);
+      const fsEl = document.fullscreenElement;
+      setIsFullscreen(!!fsEl);
+      // If a child (e.g. iframe or video) entered fullscreen natively, promote fullscreen to overlayRef
+      // so Sakura's controls, popups, and close button stay on the fullscreen top layer.
+      if (fsEl && fsEl !== overlayRef.current && overlayRef.current?.contains(fsEl)) {
+        overlayRef.current.requestFullscreen?.().catch(() => {});
+      }
     };
     updateOrientation();
     window.addEventListener('resize', updateOrientation);
@@ -200,6 +209,10 @@ function PlayerOverlayInner({
     idleTimer.current = setTimeout(() => setIdle(true), IDLE_MS);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !document.fullscreenElement) onCloseRef.current();
+      if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        toggleFullscreen();
+      }
     };
     window.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
@@ -264,7 +277,7 @@ function PlayerOverlayInner({
       onKeyDown={wake}
     >
       {/* Video / states */}
-      <div className="absolute inset-0 flex items-center justify-center">
+      <div onDoubleClick={toggleFullscreen} className="absolute inset-0 flex items-center justify-center">
         {isLoading ? (
           <div className="flex flex-col items-center gap-4 text-white">
             <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: color, borderTopColor: 'transparent' }} />
@@ -292,6 +305,7 @@ function PlayerOverlayInner({
             autoSkip={autoSkip}
             onError={handlePlayerError}
             onNextSource={sources.length > 1 ? handleNextSource : undefined}
+            estimatedDuration={estimatedDuration}
             onProgress={(time, duration) => {
               onProgress(time, duration);
               if (duration > 0 && time / duration >= 0.9) showRatePrompt();
@@ -357,10 +371,30 @@ function PlayerOverlayInner({
                 ))}
               </div>
             )}
+            {onRateEpisode && (
+              <button
+                type="button"
+                onClick={() => {
+                  haptic('light');
+                  setRatePrompt((r) => (r === 'shown' ? 'hidden' : 'shown'));
+                }}
+                aria-label="Noter cet épisode"
+                className={`flex items-center gap-1.5 h-11 px-3.5 rounded-full backdrop-blur-md transition-colors cursor-pointer ${
+                  episodeRating != null ? 'bg-amber-400 text-black font-bold' : 'bg-white/15 text-white hover:bg-white/25'
+                }`}
+                title={episodeRating != null ? `Note : ${episodeRating}/10` : 'Noter cet épisode'}
+              >
+                <Star className="w-4 h-4" />
+                <span className="text-xs font-semibold">{episodeRating != null ? `${episodeRating}/10` : 'Noter'}</span>
+              </button>
+            )}
             {next && (
               <button
                 onClick={() => {
                   haptic('medium');
+                  if (onRateEpisode && episodeRating == null && ratePrompt !== 'done') {
+                    showRatePrompt();
+                  }
                   next.onPlay();
                 }}
                 className="flex items-center gap-2 h-11 px-4 rounded-full bg-white/15 backdrop-blur-md text-white font-semibold text-sm hover:bg-white/25 transition-colors cursor-pointer"

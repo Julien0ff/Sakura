@@ -11,6 +11,7 @@ import { Toaster } from '@/components/ui/toast';
 import { DesktopBridge } from '@/components/desktop/desktop-bridge';
 import { NavTracker } from '@/lib/nav-history';
 import { detectPlatform } from '@/lib/app-release';
+import { OnlinePresenceTracker } from '@/lib/online-presence';
 
 function HapticsSync() {
   const on = useAppStore((s) => s.settings.haptics);
@@ -50,6 +51,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <DesktopBridge />
         <Suspense>
           <NavTracker />
+          <OnlinePresenceTracker />
         </Suspense>
         {children}
         <Toaster />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePlyr, APITypes } from 'plyr-react';
 import 'plyr-react/plyr.css';
 import Hls from 'hls.js';
@@ -26,6 +26,8 @@ interface VideoPlayerProps {
   onPlayingChange?: (playing: boolean) => void;
   onError?: (message: string) => void;
   onNextSource?: () => void;
+  /** Estimated episode duration in seconds (for iframe players). */
+  estimatedDuration?: number;
 }
 
 const SKIP_LABEL: Record<SkipInterval['type'], string> = { op: "Passer l'opening", ed: "Passer l'ending" };
@@ -43,12 +45,25 @@ export function VideoPlayer({
   onPlayingChange,
   onError,
   onNextSource,
+  estimatedDuration,
 }: VideoPlayerProps) {
   const plyrRef = useRef<APITypes>(null);
   const hlsRef = useRef<Hls | null>(null);
   const [activeSkip, setActiveSkip] = useState<SkipInterval | null>(null);
   const [iframeLoading, setIframeLoading] = useState(type === 'iframe');
   const [slowIframe, setSlowIframe] = useState(false);
+
+  const isAnimeSama = Boolean(src && (src.includes('ansembed') || src.includes('anime-sama')));
+
+  // Anime-Sama embeds start with a 4s intro bumper. When starting from 0, jump directly past it.
+  const iframeSrc = useMemo(() => {
+    if (!isAnimeSama) return src;
+    if (startAt > 4) {
+      return src.includes('#') ? src : `${src}#t=${Math.floor(startAt)}`;
+    }
+    if (src.includes('#t=')) return src;
+    return src.includes('?') ? `${src}&start=4#t=4` : `${src}?start=4#t=4`;
+  }, [src, isAnimeSama, startAt]);
 
   useEffect(() => {
     setIframeLoading(type === 'iframe');
@@ -57,6 +72,50 @@ export function VideoPlayer({
     const t = setTimeout(() => setSlowIframe(true), 8000);
     return () => clearTimeout(t);
   }, [src, type]);
+
+  // For iframe players (cartoons / AnimeSama embeds):
+  // Since cross-origin frames cannot directly notify parent HTML5 video events, we:
+  // 1. Listen for postMessage events ('ended', 'finish', 'complete')
+  // 2. Track elapsed watch time to periodically report progress, unlock ratings & trigger auto-next
+  useEffect(() => {
+    if (type !== 'iframe') return;
+
+    latest.current.onPlayingChange?.(true);
+
+    const onMessage = (e: MessageEvent) => {
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        const evt = String(data?.event || data?.type || data?.action || '');
+        if (/ended|finish|complete/i.test(evt)) {
+          latest.current.onEnded?.();
+        }
+      } catch {
+        // Ignore non-json or unrelated messages
+      }
+    };
+    window.addEventListener('message', onMessage);
+
+    const duration = estimatedDuration && estimatedDuration > 0 ? estimatedDuration : 1440;
+    let elapsed = startAt || (isAnimeSama ? 4 : 0);
+    let endedFired = false;
+
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      elapsed += 5;
+      latest.current.onProgress?.(elapsed, duration);
+
+      if (!endedFired && elapsed >= duration) {
+        endedFired = true;
+        latest.current.onEnded?.();
+      }
+    }, 5000);
+
+    return () => {
+      window.removeEventListener('message', onMessage);
+      clearInterval(interval);
+      latest.current.onPlayingChange?.(false);
+    };
+  }, [type, estimatedDuration, startAt, isAnimeSama]);
 
   // Latest callbacks/values in refs so media listeners don't need re-binding.
   const latest = useRef({ onProgress, onEnded, onPlayingChange, onError, onNextSource, skipTimes, autoSkip, startAt });
@@ -77,7 +136,8 @@ export function VideoPlayer({
               sources: [{ src, type: type === 'mp4' ? 'video/mp4' : 'application/x-mpegURL' }],
             },
       options: {
-        controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
+        controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay'],
+        fullscreen: { enabled: false },
         settings: ['quality', 'speed'],
         quality: {
           default: 0,
@@ -136,7 +196,8 @@ export function VideoPlayer({
       if (!video || resumed) return;
       resumed = true;
       const { startAt: at } = latest.current;
-      if (at > 5 && video.duration && at < video.duration - 30) video.currentTime = at;
+      const initialTime = at > 5 && video.duration && at < video.duration - 30 ? at : (isAnimeSama ? 4 : 0);
+      if (initialTime > 0) video.currentTime = initialTime;
     };
 
     const onTime = () => {
@@ -331,7 +392,7 @@ export function VideoPlayer({
             </div>
           )}
           <iframe
-            src={src}
+            src={iframeSrc}
             className="w-full h-full"
             allowFullScreen
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"

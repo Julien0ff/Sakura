@@ -124,6 +124,7 @@ query ($id: Int) {
         relationType
         node {
           id
+          idMal
           title {
             romaji
             english

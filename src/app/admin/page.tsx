@@ -16,6 +16,8 @@ import { haptic } from '@/lib/haptics';
 import { parseAnimeQuery, type AdminBanner, type AdminStats, type AdminUser } from '@/lib/admin';
 import { cartoonSummary, isCartoon, isCartoonId, tmdbIdOf, type TmdbCartoon } from '@/lib/cartoons';
 import { DiscordWebhooksSection } from '@/components/admin/discord-webhooks';
+import { OnlineUsersSection } from '@/components/admin/online-users-section';
+import { useOnlineUsers } from '@/lib/online-presence';
 
 type Media = { id: number; bannerImage: string | null; popularity: number | null; title: { romaji: string; english: string | null } };
 
@@ -79,6 +81,7 @@ export default function AdminPage() {
         ) : (
           <div className="max-w-6xl space-y-7">
             <Stats />
+            <OnlineUsersSection />
             <DiscordWebhooksSection />
             <div className="grid gap-7 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
               <UserList selectedId={selected?.id ?? null} onSelect={setSelected} />
@@ -97,17 +100,22 @@ export default function AdminPage() {
 
 function Stats() {
   const { data } = useQuery({ queryKey: ['admin', 'stats'], queryFn: () => rpc<AdminStats>('admin_stats') });
-  const items: [string, number | undefined][] = [
+  const { total: onlineCount } = useOnlineUsers();
+  const items: [string, number | undefined, boolean?][] = [
+    ['En ligne', onlineCount, true],
     ['Utilisateurs', data?.users],
     ['Profils publics', data?.public_profiles],
     ['Bannières', data?.banners],
     ['Trophées', data?.trophies],
   ];
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-      {items.map(([label, n]) => (
-        <div key={label} className={`${card} px-4 py-3`}>
-          <div className="text-[26px] font-bold text-white tabular-nums">{n ?? '–'}</div>
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+      {items.map(([label, n, isOnline]) => (
+        <div key={label} className={`${card} px-4 py-3 relative overflow-hidden`}>
+          <div className="flex items-center gap-2">
+            <div className="text-[26px] font-bold text-white tabular-nums">{n ?? '–'}</div>
+            {isOnline && <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" title="Actifs en direct" />}
+          </div>
           <div className="text-[13px] text-[#8E8E93]">{label}</div>
         </div>
       ))}

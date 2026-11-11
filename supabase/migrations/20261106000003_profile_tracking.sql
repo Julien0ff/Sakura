@@ -66,7 +66,7 @@ begin
   end if;
   if banner ~ '^default:[1-4]$' then
     null;
-  elsif banner ~ '^anime:[0-9]{1,9}$' then
+  elsif banner ~ '^anime:-?[0-9]{1,9}$' then
     if not exists (
       select 1 from public.unlocked_banners u
       where u.user_id = uid and u.anime_id = substring(banner from 7)::int
@@ -183,7 +183,7 @@ begin
     from (select 1) one
     left join public.unlocked_banners u
       on u.user_id = p.id
-     and u.anime_id = case when p.banner_id ~ '^anime:[0-9]{1,9}$' then substring(p.banner_id from 7)::int end;
+     and u.anime_id = case when p.banner_id ~ '^anime:-?[0-9]{1,9}$' then substring(p.banner_id from 7)::int end;
 
   return jsonb_build_object(
     'username', p.username,

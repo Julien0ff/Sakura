@@ -111,7 +111,7 @@ set search_path = ''
 as $$
 begin
   perform public.assert_admin();
-  if anime is null or anime <= 0 or url !~ '^https://' then
+  if anime is null or anime = 0 or url !~ '^https://' then
     raise exception 'banner_invalid';
   end if;
   insert into public.unlocked_banners (user_id, anime_id, banner_url, title, is_trophy)

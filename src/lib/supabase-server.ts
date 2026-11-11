@@ -14,6 +14,9 @@ export const getPublicProfile = cache(async (username: string): Promise<PublicPr
   if (!url || !key || !USERNAME_RE.test(username)) return null;
   const client = createClient<Database>(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data, error } = await client.rpc('get_public_profile', { name: username });
-  if (error) throw error;
+  if (error) {
+    console.error('[getPublicProfile] RPC error:', error);
+    return null;
+  }
   return (data as unknown as PublicProfile | null) ?? null;
 });

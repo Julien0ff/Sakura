@@ -64,74 +64,82 @@ security definer
 set search_path = ''
 as $$
 declare
-  p record;
-  vis jsonb;
+  p public.profiles%rowtype;
+  is_owner boolean;
   blk jsonb;
   out_blocks jsonb := '[]'::jsonb;
   content jsonb;
   ban jsonb;
-  is_owner boolean;
 begin
-  select id, username, display_name, avatar_url, banner_id, visibility, is_public, created_at
-    into p
-    from public.profiles
-    where lower(username) = lower(name);
-
-  if p.id is null then
+  select * into p from public.profiles where username = name;
+  if not found then
+    return null;
+  end if;
+  -- auth.uid() is NULL for visitors: without coalesce, NOT is_owner would be NULL and leak private data.
+  is_owner := coalesce(p.id = auth.uid(), false);
+  if not p.is_public and not is_owner then
     return null;
   end if;
 
-  is_owner := (auth.uid() = p.id);
-
-  if not is_owner and not coalesce(p.is_public, true) then
-    return null;
-  end if;
-
-  vis := coalesce(p.visibility, '{"blocks":[]}'::jsonb);
-
-  for blk in select * from jsonb_array_elements(coalesce(vis -> 'blocks', '[]'::jsonb)) loop
-    if not is_owner and not coalesce((blk ->> 'visible')::boolean, false) then
+  for blk in select * from jsonb_array_elements(coalesce(p.visibility -> 'blocks', '[]'::jsonb)) loop
+    -- The owner gets every block (edit mode needs them); visitors only visible ones.
+    if not is_owner and coalesce((blk ->> 'visible')::boolean, false) is not true then
       continue;
     end if;
     content := case blk ->> 'id'
       when 'stats' then (
         select jsonb_build_object(
-          'anime_count', count(*),
-          'episode_count', coalesce(sum(episodes_watched), 0),
-          'days_watched', round((coalesce(sum(minutes_watched), 0) / 1440.0)::numeric, 1),
-          'mean_score', round(coalesce(avg(score), 0)::numeric, 1)
-        ) from public.profile_stats where user_id = p.id)
+          'completed', count(*) filter (where w.list_status = 'completed'),
+          'watching', count(*) filter (where w.list_status = 'watching'),
+          'avg_rating', round(avg(w.rating)::numeric, 1),
+          'hours', (select round(coalesce(sum(e.time), 0)::numeric / 3600) from public.episode_progress e where e.user_id = p.id)
+        )
+        from public.watchlist_entries w where w.user_id = p.id and w.deleted_at is null)
       when 'favorite' then (
-        select coalesce(jsonb_agg(x.row), '[]'::jsonb) from (
-          select jsonb_build_object('anime_id', anime_id, 'title', title, 'cover_url', cover_url, 'color', color, 'score', score) as row
-          from public.watchlist where user_id = p.id and is_favorite and not coalesce(is_deleted, false)
-          order by updated_at desc limit 1) x)
-      when 'watching' then (
-        select coalesce(jsonb_agg(x.row), '[]'::jsonb) from (
-          select jsonb_build_object('anime_id', anime_id, 'title', title, 'cover_url', cover_url, 'color', color, 'score', score, 'status', status) as row
-          from public.watchlist where user_id = p.id and status = 'watching' and not coalesce(is_deleted, false)
-          order by updated_at desc limit 20) x)
-      when 'completed' then (
-        select coalesce(jsonb_agg(x.row), '[]'::jsonb) from (
-          select jsonb_build_object('anime_id', anime_id, 'title', title, 'cover_url', cover_url, 'color', color, 'score', score, 'status', status) as row
-          from public.watchlist where user_id = p.id and status = 'completed' and not coalesce(is_deleted, false)
-          order by coalesce(completed_at, updated_at) desc limit 20) x)
-      when 'planned' then (
-        select coalesce(jsonb_agg(x.row), '[]'::jsonb) from (
-          select jsonb_build_object('anime_id', anime_id, 'title', title, 'cover_url', cover_url, 'color', color, 'score', score, 'status', status) as row
-          from public.watchlist where user_id = p.id and status = 'planned' and not coalesce(is_deleted, false)
-          order by updated_at desc limit 20) x)
+        select coalesce(jsonb_agg(x), '[]'::jsonb) from (
+          select w.anime_id, w.title, w.cover, w.color, w.list_status, w.rating,
+                 w.completed_on_sakura_at is not null as completed_on_sakura
+          from public.watchlist_entries w
+          where w.user_id = p.id and w.deleted_at is null and w.favorite
+          order by w.updated_at desc limit 1) x)
       when 'top_rated' then (
-        select coalesce(jsonb_agg(x.row), '[]'::jsonb) from (
-          select jsonb_build_object('anime_id', anime_id, 'title', title, 'cover_url', cover_url, 'color', color, 'score', score, 'user_rating', user_rating) as row
-          from public.watchlist where user_id = p.id and user_rating is not null and not coalesce(is_deleted, false)
-          order by user_rating desc, updated_at desc limit 10) x)
+        select coalesce(jsonb_agg(x), '[]'::jsonb) from (
+          select w.anime_id, w.title, w.cover, w.color, w.list_status, w.rating,
+                 w.completed_on_sakura_at is not null as completed_on_sakura
+          from public.watchlist_entries w
+          where w.user_id = p.id and w.deleted_at is null and w.rating is not null
+          order by w.rating desc, w.updated_at desc limit 20) x)
       when 'episode_ratings' then (
-        select coalesce(jsonb_agg(x.row), '[]'::jsonb) from (
-          select jsonb_build_object('anime_id', r.anime_id, 'season', r.season, 'episode', r.episode, 'rating', r.rating, 'title', w.title, 'cover_url', w.cover_url) as row
+        select coalesce(jsonb_agg(x), '[]'::jsonb) from (
+          select r.anime_id, r.season, r.episode, r.rating,
+                 coalesce(w.title, h.title) as title, coalesce(w.cover, h.cover) as cover, coalesce(w.color, h.color) as color
           from public.episode_ratings r
-          join public.watchlist w on w.user_id = r.user_id and w.anime_id = r.anime_id and not coalesce(w.is_deleted, false)
-          where r.user_id = p.id and not coalesce(r.is_deleted, false)
+          left join public.watchlist_entries w on w.user_id = r.user_id and w.anime_id = r.anime_id
+          left join public.history_entries h on h.user_id = r.user_id and h.anime_id = r.anime_id
+          where r.user_id = p.id and r.deleted_at is null and r.rating is not null
+          order by r.updated_at desc limit 20) x)
+      when 'watching' then (
+        select coalesce(jsonb_agg(x), '[]'::jsonb) from (
+          select w.anime_id, w.title, w.cover, w.color, w.list_status, w.rating,
+                 h.episode_number as episode, h.season,
+                 w.completed_on_sakura_at is not null as completed_on_sakura
+          from public.watchlist_entries w
+          left join public.history_entries h on h.user_id = w.user_id and h.anime_id = w.anime_id and h.deleted_at is null
+          where w.user_id = p.id and w.deleted_at is null and w.list_status = 'watching'
+          order by w.updated_at desc limit 20) x)
+      when 'completed' then (
+        select coalesce(jsonb_agg(x), '[]'::jsonb) from (
+          select w.anime_id, w.title, w.cover, w.color, w.list_status, w.rating,
+                 w.completed_on_sakura_at is not null as completed_on_sakura
+          from public.watchlist_entries w
+          where w.user_id = p.id and w.deleted_at is null and w.list_status = 'completed'
+          order by w.updated_at desc limit 20) x)
+      when 'planned' then (
+        select coalesce(jsonb_agg(x), '[]'::jsonb) from (
+          select w.anime_id, w.title, w.cover, w.color, w.list_status, w.rating,
+                 w.completed_on_sakura_at is not null as completed_on_sakura
+          from public.watchlist_entries w
+          where w.user_id = p.id and w.deleted_at is null and w.list_status = 'planned'
           order by w.updated_at desc limit 20) x)
       else null
     end;

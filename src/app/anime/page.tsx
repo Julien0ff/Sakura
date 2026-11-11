@@ -433,6 +433,20 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
     staleTime: Infinity,
   });
 
+  const title = anime?.tmdbTitle || anime?.title?.english || anime?.title?.romaji;
+
+  useEffect(() => {
+    if (playingEpisode && title) {
+      setOnlinePlaybackActivity({
+        title,
+        details: `Épisode ${playingEpisode.episode_number}${activeLang === 'vf' ? ' · VF' : ' · VOSTFR'}`,
+        isPlaying: true,
+      });
+    } else {
+      setOnlinePlaybackActivity(null);
+    }
+    return () => setOnlinePlaybackActivity(null);
+  }, [playingEpisode, title, activeLang]);
 
   if (isLoading) {
     return (
@@ -454,7 +468,6 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
   }
 
   const animeColor = effectiveColor || '#0A84FF';
-  const title = anime.tmdbTitle || anime.title.english || anime.title.romaji;
   const rating = formatScore(anime.averageScore);
   const listEntry = watchlist.find((a) => a.id === anime.id);
   const epLayout = EPISODE_LAYOUTS[settings.episodeView ?? 'auto'];
@@ -463,19 +476,6 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
   const lastWatched = history.find((h) => h.id === anime.id && h.season === activeSeason);
   const resumeEpisode = lastWatched ? episodeList.find((e) => e.episode_number === lastWatched.episodeNumber) : undefined;
   const currentProgressKey = playingEpisode ? progressKey(anime.id, activeSeason, playingEpisode.episode_number) : '';
-
-  useEffect(() => {
-    if (playingEpisode && title) {
-      setOnlinePlaybackActivity({
-        title,
-        details: `Épisode ${playingEpisode.episode_number}${activeLang === 'vf' ? ' · VF' : ' · VOSTFR'}`,
-        isPlaying: true,
-      });
-    } else {
-      setOnlinePlaybackActivity(null);
-    }
-    return () => setOnlinePlaybackActivity(null);
-  }, [playingEpisode, title, activeLang]);
 
   return (
     <AppLayout>

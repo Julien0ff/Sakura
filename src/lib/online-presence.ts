@@ -150,6 +150,80 @@ export function setOnlinePlaybackActivity(override: { title: string; details: st
   playbackListeners.forEach((l) => l());
 }
 
+// Module-level singleton state for the tab's presence channel
+let sharedChannel: RealtimeChannel | null = null;
+let channelSubscriptionStatus: 'IDLE' | 'SUBSCRIBING' | 'SUBSCRIBED' = 'IDLE';
+const presenceStateListeners = new Set<(presences: ActivePresencePayload[]) => void>();
+const connectionStatusListeners = new Set<(connected: boolean) => void>();
+let latestPresences: ActivePresencePayload[] = [];
+let latestPayloadToTrack: ActivePresencePayload | null = null;
+
+function notifyPresenceState() {
+  if (!sharedChannel) return;
+  const rawState = sharedChannel.presenceState<ActivePresencePayload>();
+  const list: ActivePresencePayload[] = [];
+  const seen = new Set<string>();
+
+  for (const key of Object.keys(rawState)) {
+    const items = rawState[key] as unknown as ActivePresencePayload[];
+    if (items && items.length > 0) {
+      const latest = items[items.length - 1];
+      if (latest && latest.key && !seen.has(latest.key)) {
+        seen.add(latest.key);
+        list.push(latest);
+      }
+    }
+  }
+
+  list.sort((a, b) => {
+    if (a.activity?.isPlaying && !b.activity?.isPlaying) return -1;
+    if (!a.activity?.isPlaying && b.activity?.isPlaying) return 1;
+    if (!a.isAnonymous && b.isAnonymous) return -1;
+    if (a.isAnonymous && !b.isAnonymous) return 1;
+    return (b.lastSeenAt || 0) - (a.lastSeenAt || 0);
+  });
+
+  latestPresences = list;
+  presenceStateListeners.forEach((l) => l(list));
+}
+
+function getOrCreatePresenceChannel(): RealtimeChannel | null {
+  if (!supabase) return null;
+  if (sharedChannel) return sharedChannel;
+
+  const sessionKey = getSessionKey();
+  const channel = supabase.channel('online-presence', {
+    config: {
+      presence: {
+        key: sessionKey,
+      },
+    },
+  });
+  sharedChannel = channel;
+
+  // IMPORTANT: Wire event handlers BEFORE calling subscribe()
+  channel
+    .on('presence', { event: 'sync' }, notifyPresenceState)
+    .on('presence', { event: 'join' }, notifyPresenceState)
+    .on('presence', { event: 'leave' }, notifyPresenceState);
+
+  channelSubscriptionStatus = 'SUBSCRIBING';
+
+  channel.subscribe(async (status) => {
+    const connected = status === 'SUBSCRIBED';
+    channelSubscriptionStatus = connected ? 'SUBSCRIBED' : 'IDLE';
+    connectionStatusListeners.forEach((l) => l(connected));
+    if (connected) {
+      notifyPresenceState();
+      if (latestPayloadToTrack && sharedChannel) {
+        await sharedChannel.track(latestPayloadToTrack).catch(() => {});
+      }
+    }
+  });
+
+  return channel;
+}
+
 /** Hook mounted globally in <Providers> to publish real-time presence */
 export function OnlinePresenceTracker() {
   const pathname = usePathname();
@@ -170,18 +244,10 @@ export function OnlinePresenceTracker() {
   const connectedAt = useMemo(() => Date.now(), []);
 
   useEffect(() => {
-    if (!supabase) return;
+    const channel = getOrCreatePresenceChannel();
+    if (!channel) return;
 
-    const channelName = 'online-presence';
     const channelKey = user?.id ? `usr_${user.id}` : sessionKey;
-    const channel: RealtimeChannel = supabase.channel(channelName, {
-      config: {
-        presence: {
-          key: channelKey,
-        },
-      },
-    });
-
     const isAnon = !user;
     const username = profile?.username || (isAnon ? `Invité #${sessionKey.slice(-4)}` : user.email?.split('@')[0] || 'Utilisateur');
     const avatarUrl = profile?.banner_id?.startsWith('default:') ? null : (profile as unknown as { avatar_url?: string })?.avatar_url || null;
@@ -210,26 +276,25 @@ export function OnlinePresenceTracker() {
       lastSeenAt: Date.now(),
     };
 
-    let intervalId: ReturnType<typeof setInterval> | null = null;
+    latestPayloadToTrack = payload;
 
-    channel.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
-        await channel.track(payload);
-        // Periodic heartbeat every 25 seconds
-        intervalId = setInterval(() => {
-          if (typeof document !== 'undefined' && document.hidden) return;
-          void channel.track({
-            ...payload,
-            lastSeenAt: Date.now(),
-          });
-        }, 25000);
+    if (channelSubscriptionStatus === 'SUBSCRIBED') {
+      void channel.track(payload).catch(() => {});
+    }
+
+    // Periodic heartbeat every 25 seconds
+    const intervalId = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      if (channelSubscriptionStatus === 'SUBSCRIBED') {
+        void channel.track({
+          ...payload,
+          lastSeenAt: Date.now(),
+        }).catch(() => {});
       }
-    });
+    }, 25000);
 
     return () => {
-      if (intervalId) clearInterval(intervalId);
-      void channel.untrack().catch(() => {});
-      void channel.unsubscribe();
+      clearInterval(intervalId);
     };
   }, [user?.id, profile?.username, pathname, searchParams, playbackState, sessionKey, device, connectedAt, profile, user?.email]);
 
@@ -238,60 +303,28 @@ export function OnlinePresenceTracker() {
 
 /** Hook for the Admin panel to subscribe to all online presences in real-time */
 export function useOnlineUsers() {
-  const [presences, setPresences] = useState<ActivePresencePayload[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const channelRef = useRef<RealtimeChannel | null>(null);
+  const [presences, setPresences] = useState<ActivePresencePayload[]>(latestPresences);
+  const [isConnected, setIsConnected] = useState(channelSubscriptionStatus === 'SUBSCRIBED');
 
   useEffect(() => {
-    if (!supabase) return;
+    getOrCreatePresenceChannel();
 
-    const channelName = 'online-presence';
-    const channel = supabase.channel(channelName);
-    channelRef.current = channel;
+    setPresences(latestPresences);
+    setIsConnected(channelSubscriptionStatus === 'SUBSCRIBED');
 
-    const syncState = () => {
-      const state = channel.presenceState<ActivePresencePayload>();
-      const list: ActivePresencePayload[] = [];
-      const seen = new Set<string>();
-
-      for (const key of Object.keys(state)) {
-        const items = state[key];
-        if (items && items.length > 0) {
-          // Take the most recent presence for this key
-          const latest = items[items.length - 1];
-          if (latest && !seen.has(latest.key)) {
-            seen.add(latest.key);
-            list.push(latest);
-          }
-        }
-      }
-
-      // Sort: users currently watching video first, then members, then guests, by lastSeenAt
-      list.sort((a, b) => {
-        if (a.activity.isPlaying && !b.activity.isPlaying) return -1;
-        if (!a.activity.isPlaying && b.activity.isPlaying) return 1;
-        if (!a.isAnonymous && b.isAnonymous) return -1;
-        if (a.isAnonymous && !b.isAnonymous) return 1;
-        return b.lastSeenAt - a.lastSeenAt;
-      });
-
+    const onPresence = (list: ActivePresencePayload[]) => {
       setPresences(list);
     };
+    const onConnection = (connected: boolean) => {
+      setIsConnected(connected);
+    };
 
-    channel
-      .on('presence', { event: 'sync' }, syncState)
-      .on('presence', { event: 'join' }, syncState)
-      .on('presence', { event: 'leave' }, syncState)
-      .subscribe((status) => {
-        setIsConnected(status === 'SUBSCRIBED');
-        if (status === 'SUBSCRIBED') {
-          syncState();
-        }
-      });
+    presenceStateListeners.add(onPresence);
+    connectionStatusListeners.add(onConnection);
 
     return () => {
-      void channel.unsubscribe();
-      channelRef.current = null;
+      presenceStateListeners.delete(onPresence);
+      connectionStatusListeners.delete(onConnection);
     };
   }, []);
 

@@ -96,19 +96,24 @@ function PlayerOverlayInner({
 }: PlayerOverlayProps) {
   // End-of-episode rating prompt: shown once per episode, never touches the next-episode countdown.
   const [ratePrompt, setRatePrompt] = useState<'hidden' | 'shown' | 'done'>('hidden');
+  const [ratePromptManual, setRatePromptManual] = useState(false);
   const [promptFor, setPromptFor] = useState(episodeLabel);
   if (promptFor !== episodeLabel) {
     setPromptFor(episodeLabel);
     setRatePrompt('hidden');
+    setRatePromptManual(false);
   }
   const showRatePrompt = () => {
-    if (onRateEpisode) setRatePrompt((r) => (r === 'hidden' ? 'shown' : r));
+    if (onRateEpisode) {
+      setRatePromptManual(false);
+      setRatePrompt((r) => (r === 'hidden' ? 'shown' : r));
+    }
   };
   useEffect(() => {
-    if (ratePrompt !== 'shown') return;
+    if (ratePrompt !== 'shown' || ratePromptManual) return;
     const t = setTimeout(() => setRatePrompt('done'), RATE_PROMPT_MS);
     return () => clearTimeout(t);
-  }, [ratePrompt]);
+  }, [ratePrompt, ratePromptManual]);
   const [idle, setIdle] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -380,7 +385,11 @@ function PlayerOverlayInner({
                 type="button"
                 onClick={() => {
                   haptic('light');
-                  setRatePrompt((r) => (r === 'shown' ? 'hidden' : 'shown'));
+                  setRatePrompt((r) => {
+                    if (r === 'shown') return 'hidden';
+                    setRatePromptManual(true);
+                    return 'shown';
+                  });
                 }}
                 aria-label="Noter cet épisode"
                 className={`flex items-center gap-1.5 h-11 px-3.5 rounded-full backdrop-blur-md transition-colors cursor-pointer ${
@@ -434,7 +443,14 @@ function PlayerOverlayInner({
         <div className="absolute z-[120] left-4 md:left-10 bottom-24 w-[min(92vw,340px)] p-4 rounded-3xl bg-black/70 backdrop-blur-xl border border-white/10 text-white shadow-2xl animate-in fade-in slide-in-from-bottom-4">
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="text-xs font-semibold uppercase tracking-wider text-white/60">Noter cet épisode</div>
-            <button onClick={() => setRatePrompt('done')} aria-label="Fermer" className="p-1 rounded-full hover:bg-white/10 cursor-pointer">
+            <button
+              onClick={() => {
+                setRatePrompt('done');
+                setRatePromptManual(false);
+              }}
+              aria-label="Fermer"
+              className="p-1 rounded-full hover:bg-white/10 cursor-pointer"
+            >
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -445,6 +461,7 @@ function PlayerOverlayInner({
             onChange={(r) => {
               onRateEpisode(r);
               setRatePrompt('done');
+              setRatePromptManual(false);
             }}
           />
         </div>

@@ -33,8 +33,8 @@ const DATA_DIR = path.join(process.cwd(), 'data');
 const CONFIG_PATH = path.join(DATA_DIR, 'discord-webhooks.json');
 
 const SAKURA_COLOR = 0xff69b4; // Sakura Pink
-const SAKURA_AVATAR = 'https://raw.githubusercontent.com/Julien0ff/Sakura/main/public/icon-512.png';
 const SAKURA_URL = 'https://sakura.thefoxy.me';
+const SAKURA_AVATAR = `${SAKURA_URL}/icon.png`;
 
 async function loadConfig(): Promise<DiscordWebhooksConfig> {
   try {
@@ -176,10 +176,8 @@ export async function POST(req: NextRequest) {
             color: SAKURA_COLOR,
             fields: [
               { name: '🌐 Site Web & Web App', value: `[Accéder à SAKURA](${SAKURA_URL})`, inline: false },
-              { name: '💻 Application Desktop (Windows / Linux)', value: '[Télécharger sur GitHub](https://github.com/Julien0ff/Sakura/releases/latest)', inline: false },
-              { name: '📱 Applications Mobiles (Android APK & iOS)', value: `[Page de Téléchargement](${SAKURA_URL}/app)`, inline: false },
-              { name: '💬 Serveur Communautaire Discord', value: '[Rejoindre le Discord](https://discord.gg/sakura-anime)', inline: false },
-              { name: '🐛 Dépôt GitHub & Signaler un bug', value: '[GitHub Julien0ff/Sakura](https://github.com/Julien0ff/Sakura)', inline: false },
+              { name: '📲 Télécharger l\'Application (iOS, Android, Windows, Linux)', value: `[sakura.thefoxy.me/app](${SAKURA_URL}/app)`, inline: false },
+              { name: '💬 Serveur Communautaire Discord', value: '[Rejoindre le Discord](https://discord.gg/YYBY6TrUSZ)', inline: false },
             ],
             footer: { text: 'SAKURA • Liens Officiels', icon_url: SAKURA_AVATAR },
             timestamp: new Date().toISOString(),

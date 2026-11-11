@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase';
 import { isTrophy } from '@/lib/trophies';
 import { haptic } from '@/lib/haptics';
 import { parseAnimeQuery, type AdminBanner, type AdminStats, type AdminUser } from '@/lib/admin';
+import { cartoonSummary, isCartoon, isCartoonId, tmdbIdOf, type TmdbCartoon } from '@/lib/cartoons';
 import { DiscordWebhooksSection } from '@/components/admin/discord-webhooks';
 
 type Media = { id: number; bannerImage: string | null; popularity: number | null; title: { romaji: string; english: string | null } };
@@ -328,9 +329,35 @@ function UnlockSearch({ unlockedIds, busy, onUnlock }: { unlockedIds: Set<number
     enabled: !!parsed,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const res =
-        parsed && 'id' in parsed ? await fetchAniList(BY_ID, { id: parsed.id }) : await fetchAniList(BY_TITLE, { search: parsed && 'search' in parsed ? parsed.search : '' });
-      return (res?.Page?.media ?? []) as Media[];
+      if (!parsed) return [];
+      if ('id' in parsed) {
+        if (isCartoonId(parsed.id)) {
+          const res = await fetch(`/api/tmdb/tv/${tmdbIdOf(parsed.id)}?language=fr-FR`);
+          if (!res.ok) return [];
+          const c = cartoonSummary(await res.json());
+          return [{ id: c.id, bannerImage: c.bannerImage, popularity: 0, title: { romaji: c.title.romaji || '', english: c.title.english || null } }] as Media[];
+        }
+        const res = await fetchAniList(BY_ID, { id: parsed.id });
+        return (res?.Page?.media ?? []) as Media[];
+      }
+      const [aniRes, tmdbRes] = await Promise.all([
+        fetchAniList(BY_TITLE, { search: parsed.search }).catch(() => null),
+        fetch(`/api/tmdb/search/tv?query=${encodeURIComponent(parsed.search)}&language=fr-FR`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      ]);
+      const aniMedia = ((aniRes?.Page?.media ?? []) as Media[]).filter((m) => m.bannerImage);
+      const tmdbShows: TmdbCartoon[] = tmdbRes?.results ?? [];
+      const cartoonMediaList: Media[] = tmdbShows
+        .filter(isCartoon)
+        .slice(0, 4)
+        .map(cartoonSummary)
+        .filter((c) => Boolean(c.bannerImage))
+        .map((c) => ({
+          id: c.id,
+          bannerImage: c.bannerImage,
+          popularity: 0,
+          title: { romaji: c.title.romaji || '', english: c.title.english || null },
+        }));
+      return [...aniMedia, ...cartoonMediaList];
     },
   });
 
@@ -343,8 +370,8 @@ function UnlockSearch({ unlockedIds, busy, onUnlock }: { unlockedIds: Set<number
           type="search"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Titre, identifiant ou lien AniList"
-          aria-label="Rechercher un anime"
+          placeholder="Titre, identifiant ou lien (anime ou dessin animé)"
+          aria-label="Rechercher un anime ou dessin animé"
           className={input}
         />
       </div>

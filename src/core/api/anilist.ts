@@ -94,6 +94,7 @@ query ($id: Int) {
       english
       native
     }
+    synonyms
     coverImage {
       extraLarge
       color

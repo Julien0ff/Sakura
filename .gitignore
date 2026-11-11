@@ -67,4 +67,5 @@ skills-lock.json
 # Superpowers specs & plans
 /docs/superpowers/
 
-
+CLAUDE.md
+AGENTS.md

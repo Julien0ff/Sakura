@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase';
 import { DEFAULT_BANNERS } from '@/lib/banners';
 import { isTrophy } from '@/lib/trophies';
 import { fetchAniList } from '@/core/api/anilist';
+import { cartoonSummary, isCartoonId, tmdbIdOf } from '@/lib/cartoons';
 import { haptic } from '@/lib/haptics';
 
 type Media = { id: number; bannerImage: string | null; episodes: number | null; popularity: number | null; title: { romaji: string; english: string | null } };
@@ -73,8 +74,36 @@ export function BannerPicker({ current, onPicked }: { current: string | null; on
     queryKey: ['locked-banners', candidateIds.join(',')],
     enabled: candidateIds.length > 0,
     queryFn: async () => {
-      const res = await fetchAniList(BANNERS_QUERY, { ids: candidateIds });
-      return ((res?.Page?.media ?? []) as Media[]).filter((m) => m.bannerImage);
+      const positiveIds = candidateIds.filter((id) => id > 0);
+      const cartoonIds = candidateIds.filter((id) => isCartoonId(id));
+
+      const [aniRes, cartoonMediaList] = await Promise.all([
+        positiveIds.length > 0 ? fetchAniList(BANNERS_QUERY, { ids: positiveIds }) : null,
+        Promise.all(
+          cartoonIds.map(async (cId) => {
+            const tmdbId = tmdbIdOf(cId);
+            try {
+              const res = await fetch(`/api/tmdb/tv/${tmdbId}?language=fr-FR`);
+              if (!res.ok) return null;
+              const json = await res.json();
+              const c = cartoonSummary(json);
+              return {
+                id: c.id,
+                bannerImage: c.bannerImage,
+                episodes: json.number_of_episodes ?? null,
+                popularity: Math.round(json.popularity ?? 0),
+                title: { romaji: c.title.romaji || '', english: c.title.english || null },
+              } as Media;
+            } catch {
+              return null;
+            }
+          })
+        ),
+      ]);
+
+      const aniMedia = ((aniRes?.Page?.media ?? []) as Media[]).filter((m) => m.bannerImage);
+      const validCartoons = cartoonMediaList.filter((c): c is Media => Boolean(c && c.bannerImage));
+      return [...aniMedia, ...validCartoons];
     },
   });
 
@@ -82,8 +111,31 @@ export function BannerPicker({ current, onPicked }: { current: string | null; on
     queryKey: ['trophy-showcase'],
     staleTime: 60 * 60 * 1000,
     queryFn: async () => {
-      const res = await fetchAniList(TROPHY_SHOWCASE_QUERY, {});
-      return ((res?.Page?.media ?? []) as Media[]).filter((m) => m.bannerImage && isTrophy(m.id, m.popularity));
+      const [res, cartoonShows] = await Promise.all([
+        fetchAniList(TROPHY_SHOWCASE_QUERY, {}),
+        Promise.all(
+          [94605, 60625, 37854, 246].map(async (tId) => {
+            try {
+              const r = await fetch(`/api/tmdb/tv/${tId}?language=fr-FR`);
+              if (!r.ok) return null;
+              const json = await r.json();
+              const c = cartoonSummary(json);
+              return {
+                id: c.id,
+                bannerImage: c.bannerImage,
+                episodes: json.number_of_episodes ?? null,
+                popularity: Math.round(json.popularity ?? 0),
+                title: { romaji: c.title.romaji || '', english: c.title.english || null },
+              } as Media;
+            } catch {
+              return null;
+            }
+          })
+        ),
+      ]);
+      const animeTrophies = ((res?.Page?.media ?? []) as Media[]).filter((m) => m.bannerImage && isTrophy(m.id, m.popularity));
+      const cartoonTrophies = cartoonShows.filter((c): c is Media => Boolean(c && c.bannerImage));
+      return [...animeTrophies, ...cartoonTrophies];
     },
   });
   const trophies = showcase.filter((m) => !unlockedIds.has(m.id) && !candidateIds.includes(m.id)).slice(0, 12);

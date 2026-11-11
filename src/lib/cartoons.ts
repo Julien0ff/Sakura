@@ -54,7 +54,7 @@ export function cartoonSummary(show: TmdbCartoon) {
     id: cartoonId(show.id),
     title: { english: show.name || show.original_name || null, romaji: show.original_name || show.name || null, native: null },
     coverImage: { extraLarge: image('w500', show.poster_path), large: image('w342', show.poster_path), color: null },
-    bannerImage: image('original', show.backdrop_path),
+    bannerImage: image('w1280', show.backdrop_path) || image('original', show.backdrop_path),
     description: show.overview || null,
     format: 'TV',
     seasonYear: year(show.first_air_date),

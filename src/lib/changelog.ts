@@ -21,6 +21,28 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: '2026-11-11',
+    date: '11 novembre 2026',
+    title: 'Plein écran en paysage, bannières de dessins animés et webhooks Discord',
+    banner: '/banner-news.png',
+    features: [
+      { text: 'Plein écran en paysage : tournez votre téléphone à l’horizontale pour basculer automatiquement la vidéo en plein écran sans coupure.' },
+      { text: 'Nouveau bouton plein écran dans la barre du lecteur pour agrandir ou réduire la vidéo manuellement à tout moment.' },
+      { text: 'Dessins animés en bannières : les grands classiques de l’animation rejoignent le carrousel de l’accueil et sont déblocables pour votre profil.' },
+      { text: 'Fiches dessins animés : couleur d’ambiance dynamique extraite de l’affiche, harmonisée avec le reste du site.' },
+      { text: 'Administration : intégration de webhooks Discord pour les nouveaux épisodes, animes, changelogs, liens utiles et règlement.', beta: true },
+      { text: 'Rejoindre la communauté : accès direct au serveur Discord officiel depuis la fenêtre de bienvenue et le menu de profil.' },
+      { text: 'Notifications mobiles : test instantané disponible dans Paramètres › Application pour vérifier la réception sur votre téléphone.' },
+    ],
+    fixes: [
+      { text: 'Webhooks Discord : correction de la photo de profil (pfp) de SAKURA et simplification des liens officiels vers la page de téléchargement unique.' },
+      { text: 'Sur iPhone et Android, la barre de navigation et le flou du bas s’effacent complètement dès l’ouverture du lecteur.' },
+      { text: 'Fin des chargements infinis : si un flux vidéo direct ne démarre pas rapidement, le lecteur passe automatiquement au lecteur suivant.' },
+      { text: 'Recherche de sources renforcée : meilleure reconnaissance des titres français (« Les Carnets de l’apothicaire »), des accents et bascule automatique VOSTFR / VF si une langue manque.' },
+      { text: 'Optimisation de la résolution des bannières pour un affichage plus rapide sur mobile.' },
+    ],
+  },
+  {
     id: '2026-11-08',
     date: '8 novembre 2026',
     title: 'SAKURA sur Android et iPhone',

@@ -723,3 +723,19 @@ html.app-pip .player-overlay .plyr__control--overlaid {
     display: none !important;
   }
 }
+
+/* When player is open: completely hide mobile nav, blur overlays, and floating chrome */
+html.player-open nav,
+html.player-open .mobile-nav,
+html.player-open .scroll-edge-bottom,
+html.player-open .top-float {
+  display: none !important;
+}
+
+/* Mobile landscape: edge-to-edge video and notch safe area support */
+@media (orientation: landscape) and (max-height: 550px) {
+  .player-overlay {
+    padding-left: max(env(safe-area-inset-left), 0px);
+    padding-right: max(env(safe-area-inset-right), 0px);
+  }
+}

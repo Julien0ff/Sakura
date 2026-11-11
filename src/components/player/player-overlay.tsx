@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, SkipForward, X } from '@/components/ui/icons';
+import { ArrowLeft, Maximize, Minimize, SkipForward, X } from '@/components/ui/icons';
 import type { SkipInterval } from '@/core/api/aniskip';
 import { RatingPicker } from '@/components/anime/rating-picker';
 import { toast } from '@/components/ui/toast';
@@ -107,6 +107,42 @@ function PlayerOverlayInner({
   const [idle, setIdle] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const updateOrientation = () => {
+      const landscape = typeof window !== 'undefined' && window.innerWidth > window.innerHeight;
+      setIsLandscape(landscape);
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    updateOrientation();
+    window.addEventListener('resize', updateOrientation);
+    window.addEventListener('orientationchange', updateOrientation);
+    document.addEventListener('fullscreenchange', updateOrientation);
+    return () => {
+      window.removeEventListener('resize', updateOrientation);
+      window.removeEventListener('orientationchange', updateOrientation);
+      document.removeEventListener('fullscreenchange', updateOrientation);
+    };
+  }, []);
+
+  // When switching phone to landscape while video plays, auto-request fullscreen if available
+  useEffect(() => {
+    if (isLandscape && playing && typeof window !== 'undefined' && window.innerHeight < 600 && !document.fullscreenElement) {
+      overlayRef.current?.requestFullscreen?.().catch(() => {});
+    }
+  }, [isLandscape, playing]);
+
+  const toggleFullscreen = () => {
+    haptic('light');
+    if (!document.fullscreenElement) {
+      overlayRef.current?.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+    }
+  };
 
   // System media controls (Android notification, lock screen, media keys): episode, anime, artwork,
   // « next ». Embedded iframe players keep their own (cross-origin), only direct videos use this.
@@ -168,10 +204,14 @@ function PlayerOverlayInner({
     window.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    document.documentElement.classList.add('player-open');
+    document.body.classList.add('player-open');
     return () => {
       clearTimeout(idleTimer.current);
       window.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
+      document.documentElement.classList.remove('player-open');
+      document.body.classList.remove('player-open');
     };
   }, []);
 
@@ -214,6 +254,7 @@ function PlayerOverlayInner({
 
   return (
     <div
+      ref={overlayRef}
       role="dialog"
       aria-modal="true"
       aria-label={`${animeTitle} — ${episodeLabel}`}
@@ -273,7 +314,7 @@ function PlayerOverlayInner({
         className={`absolute inset-x-0 top-0 z-[110] pointer-events-none transition-opacity duration-500 ${chromeHidden ? 'opacity-0' : 'opacity-100'}`}
       >
         <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/85 via-black/40 to-transparent" />
-        <div className="relative flex items-start gap-3 px-4 md:px-6 pt-[max(var(--safe-top),16px)]">
+        <div className="relative flex items-start gap-3 px-4 md:px-6 pt-[max(var(--safe-top),16px)] pl-[max(env(safe-area-inset-left),16px)] pr-[max(env(safe-area-inset-right),16px)]">
           <button
             onClick={onClose}
             aria-label="Fermer le lecteur"
@@ -288,6 +329,14 @@ function PlayerOverlayInner({
           </div>
 
           <div className="pointer-events-auto flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
+              className="flex items-center justify-center w-11 h-11 rounded-full bg-white/15 backdrop-blur-md text-white hover:bg-white/25 transition-colors cursor-pointer"
+            >
+              {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+            </button>
             {sources.length > 1 && (
               <div className="hidden sm:flex items-center gap-1 p-1 rounded-full bg-white/10 backdrop-blur-md" role="radiogroup" aria-label="Lecteur">
                 {sources.map((s, i) => (

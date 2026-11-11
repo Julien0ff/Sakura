@@ -181,13 +181,16 @@ src-tauri/                  Application desktop (Rust)
 
 ## Identité visuelle
 
-Les fichiers sont dans [`public/`](public/).
+Les fichiers sont dans [`public/`](public/) et [`src-tauri/icons/ios/source/`](src-tauri/icons/ios/source/).
 
 | Fichier | Aperçu | Usage |
 | --- | --- | --- |
-| [`icon.png`](public/icon.png) — 512 × 512 | <img src="public/icon.png" alt="Icône SAKURA" width="64" /> | Icône de l'app, favicon, barre latérale, footer |
+| [`icon.png`](public/icon.png) — 512 × 512 | <img src="public/icon.png" alt="Icône SAKURA" width="64" /> | Icône du site, favicon, barre latérale, footer |
+| [`icon-app-dark.png`](src-tauri/icons/ios/source/icon-4096-dark.png) — 4096 × 4096 | <img src="src-tauri/icons/ios/source/icon-4096-dark.png" alt="Icône SAKURA" width="64" /> | Icône de l'app iOS et Android en dark mode |
+| [`icon-app-normal.png`](src-tauri/icons/ios/source/icon-4096.png) — 4096 × 4096 | <img src="src-tauri/icons/ios/source/icon-4096.png" alt="Icône SAKURA" width="64" /> | Icône de l'app iOS et Android en normal et white mode |
 | [`text.png`](public/text.png) — 1500 × 500 | <img src="public/text.png" alt="Logotype SAKURA" width="220" /> | Logotype seul, fond transparent |
 | [`banner.png`](public/banner.png) — 1500 × 500 | <img src="public/banner.png" alt="Bannière SAKURA" width="220" /> | Bannière : README, popup de bienvenue, partage sur les réseaux (Open Graph) |
+| [`banner-news.png`](public/banner-news.png) — 1500 × 500 | <img src="public/banner-news.png" alt="Bannière SAKURA" width="220" /> | Bannière : page du popup des changelogs |
 
 Couleur principale : rose sakura `#FF7AA8`.
 

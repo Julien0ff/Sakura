@@ -129,7 +129,10 @@ export function VideoPlayer({
       latest.current.onProgress?.(video.currentTime, video.duration);
     };
 
+    let startupWatchdog: ReturnType<typeof setTimeout> | undefined;
+
     const onLoaded = () => {
+      clearTimeout(startupWatchdog);
       if (!video || resumed) return;
       resumed = true;
       const { startAt: at } = latest.current;
@@ -210,12 +213,21 @@ export function VideoPlayer({
       latest.current.onError?.(err?.message || 'Erreur de lecture du lecteur vidéo.');
     };
 
+    let networkRetries = 0;
     const attach = () => {
       video = getMedia();
       if (!video) {
         if (++attempts <= 50) timer = setTimeout(attach, 100);
         return;
       }
+
+      // If playback fails to start within 7s (e.g. stalled/blocked HLS), switch to next source
+      startupWatchdog = setTimeout(() => {
+        if (video && video.readyState < 2 && !video.currentTime && !resumed) {
+          console.warn('[video-player] Startup watchdog fired, auto-failing over to next source');
+          latest.current.onError?.('Délai de chargement dépassé');
+        }
+      }, 7000);
 
       if (type === 'hls' && Hls.isSupported()) {
         hlsRef.current?.destroy();
@@ -229,7 +241,12 @@ export function VideoPlayer({
             console.warn('[video-player] HLS fatal error:', data.type, data.details);
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
-                hls.startLoad();
+                if (++networkRetries <= 2) {
+                  hls.startLoad();
+                } else {
+                  hls.destroy();
+                  latest.current.onError?.('Erreur réseau du flux HLS');
+                }
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
                 hls.recoverMediaError();
@@ -261,6 +278,7 @@ export function VideoPlayer({
 
     return () => {
       clearTimeout(timer);
+      clearTimeout(startupWatchdog);
       report(true);
       video?.removeEventListener('loadedmetadata', onLoaded);
       video?.removeEventListener('timeupdate', onTime);
@@ -317,7 +335,7 @@ export function VideoPlayer({
             className="w-full h-full"
             allowFullScreen
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-top-navigation-by-user-activation"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-top-navigation-by-user-activation allow-popups"
             onLoad={() => {
               setIframeLoading(false);
               setSlowIframe(false);
@@ -330,7 +348,12 @@ export function VideoPlayer({
         </>
       ) : (
         <div className="w-full h-full" key={src}>
-          <video ref={videoRef} className="plyr-react plyr" playsInline />
+          <video
+            ref={videoRef}
+            className="plyr-react plyr"
+            playsInline
+            {...({ 'webkit-playsinline': 'true', 'x5-playsinline': 'true' } as any)}
+          />
         </div>
       )}
       {activeSkip && (

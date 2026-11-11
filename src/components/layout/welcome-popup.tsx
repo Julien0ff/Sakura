@@ -151,6 +151,19 @@ export function WelcomePopup() {
               ))}
             </div>
           )}
+
+          <div className="mt-3">
+            <a
+              href="https://discord.gg/YYBY6TrUSZ"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => haptic('selection')}
+              className="w-full h-11 rounded-2xl bg-[#5865F2]/15 hover:bg-[#5865F2]/25 border border-[#5865F2]/30 text-[14px] font-semibold text-white flex items-center justify-center gap-2.5 transition-colors cursor-pointer"
+            >
+              <DiscordIcon className="w-4 h-4 text-[#5865F2]" />
+              <span>Rejoindre notre communauté Discord</span>
+            </a>
+          </div>
           <p className="mt-4 text-center md:text-left text-[12px] text-[#636366]">
             En continuant, vous acceptez les{' '}
             <Link href="/legal/cgu" onClick={close} className="underline underline-offset-2 hover:text-white">

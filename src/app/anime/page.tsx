@@ -22,6 +22,7 @@ import { useAmbientColor } from '@/lib/use-ambient-color';
 import { useExtractedColor } from '@/lib/extract-color';
 import { readableOn } from '@/lib/color';
 import { haptic } from '@/lib/haptics';
+import { toast } from '@/components/ui/toast';
 import { EasterEggDialog, HUNTER_EGG_SRC, isHunterXHunter, useRapidClicks } from '@/components/anime/easter-egg';
 import { getTMDBDetails, getTMDBSeasonEpisodes } from '@/core/api/tmdb';
 import { cartoonMedia, isCartoonId, tmdbIdOf } from '@/lib/cartoons';
@@ -110,9 +111,11 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
     setVideoError(null);
     setIsLoadingVideo(true);
     
-    const fetchFromScraper = async (scraperName: string) => {
+    const fetchFromScraper = async (scraperName: string, targetLang: Lang = lang) => {
       const cleanTitle = (str: string) => {
         return (str || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
           .toLowerCase()
           .replace(/×/g, ' x ')
           .replace(/\(\d{4}\)/g, '')
@@ -121,6 +124,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
           .replace(/ Saison \d+/gi, '')
           .replace(/ Part \d+/gi, '')
           .replace(/ Partie \d+/gi, '')
+          .replace(/[’‘`]/g, "'")
           .replace(/[:\-–—!?,.'"]/g, ' ')
           .replace(/\s+/g, ' ')
           .trim();
@@ -129,31 +133,38 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
       const titleRo = currentAnime.title?.romaji || '';
       const titleEn = currentAnime.title?.english || '';
       const titleFr = currentAnime.tmdbTitle || '';
+      const synonyms: string[] = Array.isArray(currentAnime.synonyms) ? currentAnime.synonyms : [];
 
       const cleanRo = cleanTitle(titleRo);
       const cleanEn = cleanTitle(titleEn);
       const cleanFr = cleanTitle(titleFr);
+      const cleanSynonyms = synonyms.map(cleanTitle).filter((s) => s.length >= 3);
 
-      const baseTitles = Array.from(new Set([cleanRo, cleanEn, cleanFr].filter(Boolean)));
+      const candidateTitles = Array.from(new Set([cleanRo, cleanEn, cleanFr, ...cleanSynonyms].filter(Boolean)));
       
       const queriesToTry: string[] = [];
       if (activeSeason > 1) {
-        for (const t of baseTitles) {
+        for (const t of candidateTitles) {
           queriesToTry.push(`${t} saison ${activeSeason}`);
         }
       }
-      for (const t of baseTitles) {
+      for (const t of candidateTitles) {
         queriesToTry.push(t);
       }
 
       const isTitleMatch = (resTitle: string) => {
         const cleanRes = cleanTitle(resTitle);
         if (!cleanRes) return false;
-        for (const candidate of [cleanRo, cleanEn, cleanFr]) {
+        for (const candidate of candidateTitles) {
           if (!candidate) continue;
           if (candidate === cleanRes) return true;
           if (candidate.length >= 4 && cleanRes.includes(candidate)) return true;
           if (cleanRes.length >= 4 && candidate.includes(cleanRes)) return true;
+          // Word-based match for longer titles (e.g. "rick et morty" vs "rick and morty")
+          const candWords = candidate.split(' ').filter((w) => w.length >= 3 && !['les', 'des', 'the', 'and'].includes(w));
+          const resWords = cleanRes.split(' ').filter((w) => w.length >= 3 && !['les', 'des', 'the', 'and'].includes(w));
+          if (candWords.length >= 2 && candWords.every((w) => cleanRes.includes(w))) return true;
+          if (resWords.length >= 2 && resWords.every((w) => candidate.includes(w))) return true;
         }
         return false;
       };
@@ -168,7 +179,9 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
           const data = await searchRes.json();
           if (Array.isArray(data) && data.length > 0) {
             searchData = data;
-            break;
+            if (data.some((res: any) => isTitleMatch(res.title))) {
+              break;
+            }
           }
         } catch {}
       }
@@ -180,7 +193,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
           let bestMatch = strictMatches.find((res: any) => {
             const t = res.title.toLowerCase();
             const u = res.url.toLowerCase();
-            if (lang === 'vf') {
+            if (targetLang === 'vf') {
               return t.includes('vf') || t.includes('french') || u.includes('-vf-') || u.includes('french');
             } else {
               return t.includes('vostfr') || u.includes('-vostfr-');
@@ -193,13 +206,15 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
 
           if (bestMatch) {
             const epRes = await fetch(
-              `/api/scraper?action=episodes&url=${encodeURIComponent(bestMatch.url)}&lang=${lang}&season=${activeSeason}`,
+              `/api/scraper?action=episodes&url=${encodeURIComponent(bestMatch.url)}&lang=${targetLang}&season=${activeSeason}`,
               { signal: AbortSignal.timeout(8000) }
             );
             const episodesList = await epRes.json();
 
+            const targetNum = Number(ep.episode_number);
             const matchedEp = Array.isArray(episodesList)
-              ? episodesList.find((e: any) => Number(e.number) === Number(ep.episode_number))
+              ? episodesList.find((e: any) => Number(e.number) === targetNum) ||
+                (targetNum > 0 && targetNum <= episodesList.length ? episodesList[targetNum - 1] : undefined)
               : undefined;
 
             if (matchedEp) {
@@ -222,18 +237,32 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
       // Cartoons: only Anime-Sama has them.
       const cartoon = isCartoonId(currentAnime.id);
       let currentScraper = cartoon ? 'animesama' : 'vostfree';
-      let sources = await fetchFromScraper(currentScraper);
+      let sources = await fetchFromScraper(currentScraper, lang);
       
       if (!cartoon && (!sources || sources.length === 0)) {
         console.log('Vostfree failed, auto-falling back to arkanime');
         currentScraper = 'arkanime';
-        sources = await fetchFromScraper('arkanime');
+        sources = await fetchFromScraper('arkanime', lang);
       }
       
       if (!cartoon && (!sources || sources.length === 0)) {
         console.log('Arkanime failed, auto-falling back to animesama');
         currentScraper = 'animesama';
-        sources = await fetchFromScraper('animesama');
+        sources = await fetchFromScraper('animesama', lang);
+      }
+
+      // If still no sources found in requested lang, try automatic fallback to other lang
+      if (!sources || sources.length === 0) {
+        const otherLang: Lang = lang === 'vf' ? 'vostfr' : 'vf';
+        const scrapersToTry = cartoon ? ['animesama'] : ['vostfree', 'arkanime', 'animesama'];
+        for (const sName of scrapersToTry) {
+          const fallbackSources = await fetchFromScraper(sName, otherLang);
+          if (fallbackSources && fallbackSources.length > 0) {
+            sources = fallbackSources;
+            toast(`Aucune source en ${lang.toUpperCase()}, bascule automatique en ${otherLang.toUpperCase()}`);
+            break;
+          }
+        }
       }
 
       if (isStale()) return;

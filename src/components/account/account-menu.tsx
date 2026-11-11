@@ -124,6 +124,15 @@ export function AccountMenu({ placement }: { placement: 'mobile' | 'sidebar' }) 
               <Link href="/settings" onClick={close} className={item}>
                 <Settings className="w-4 h-4" /> Paramètres
               </Link>
+              <a
+                href="https://discord.gg/YYBY6TrUSZ"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={close}
+                className={item}
+              >
+                <DiscordIcon className="w-4 h-4 text-[#5865F2]" /> Rejoindre le Discord
+              </a>
               <div className="h-px bg-white/10 my-1 mx-2" />
               <button
                 type="button"
@@ -161,6 +170,15 @@ export function AccountMenu({ placement }: { placement: 'mobile' | 'sidebar' }) 
               <Link href="/settings" onClick={close} className={item}>
                 <Settings className="w-4 h-4" /> Paramètres
               </Link>
+              <a
+                href="https://discord.gg/YYBY6TrUSZ"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={close}
+                className={item}
+              >
+                <DiscordIcon className="w-4 h-4 text-[#5865F2]" /> Rejoindre le Discord
+              </a>
             </>
           )}
         </div>

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAniList, GET_TRENDING_ANIMES } from '@/core/api/anilist';
 import { getTMDBDetails } from '@/core/api/tmdb';
+import { cartoonSummary, discoverQuery, type TmdbCartoon } from '@/lib/cartoons';
 import { Play, Info, Star } from '@/components/ui/icons';
 import Link from 'next/link';
 import { formatScore, statusLabel, type AnimeSummary } from '@/lib/anime';
@@ -33,9 +34,13 @@ export function HeroBanner() {
   const { data, isLoading } = useQuery({
     queryKey: ['hero-animes'],
     queryFn: async () => {
-      const aniData = await fetchAniList(GET_TRENDING_ANIMES, { page: 1, perPage: 6 });
-      const media = (aniData?.Page?.media ?? []) as AnimeSummary[];
-      return Promise.all(
+      const [aniData, cartoonRes] = await Promise.all([
+        fetchAniList(GET_TRENDING_ANIMES, { page: 1, perPage: 5 }).catch(() => null),
+        fetch(`/api/tmdb/discover/tv?${discoverQuery('POPULARITY_DESC', 1)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      ]);
+
+      const media = ((aniData?.Page?.media ?? []) as AnimeSummary[]).slice(0, 5);
+      const enrichedAnimes = await Promise.all(
         media.map(async (anime) => {
           const tmdb = await getTMDBDetails(anime.title.english || anime.title.romaji || '', anime.seasonYear);
           return {
@@ -45,6 +50,24 @@ export function HeroBanner() {
           };
         })
       );
+
+      // Top popular cartoons with high-res backdrop
+      const rawCartoons: TmdbCartoon[] = cartoonRes?.results ?? [];
+      const cartoonBanners: AnimeSummary[] = rawCartoons
+        .slice(0, 4)
+        .map(cartoonSummary)
+        .filter((c) => Boolean(c.bannerImage)) as unknown as AnimeSummary[];
+
+      // Interleave: [anime, cartoon, anime, cartoon, anime...]
+      const combined: AnimeSummary[] = [];
+      let cIdx = 0;
+      for (let i = 0; i < enrichedAnimes.length; i++) {
+        combined.push(enrichedAnimes[i]);
+        if (i % 2 === 0 && cIdx < cartoonBanners.length) {
+          combined.push(cartoonBanners[cIdx++]);
+        }
+      }
+      return combined.length > 0 ? combined : enrichedAnimes;
     },
     staleTime: 10 * 60 * 1000,
   });

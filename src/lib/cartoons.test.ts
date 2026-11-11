@@ -74,7 +74,7 @@ test('cartoonMedia: the anime page shape, seasons without specials, no AniList e
   assert.equal(m.idMal, null);
   assert.equal(m.imdbId, 'tt1942683');
   assert.deepEqual(m.startDate, { year: 2011, month: 5, day: 3 });
-  assert.equal(m.bannerImage, 'https://image.tmdb.org/t/p/original/gumball-bg.jpg');
+  assert.equal(m.bannerImage, 'https://image.tmdb.org/t/p/w1280/gumball-bg.jpg');
 });
 
 test('discoverQuery: animated shows outside Asia, sorted like Découvrir', () => {

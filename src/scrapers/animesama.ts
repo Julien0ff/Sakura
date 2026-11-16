@@ -121,27 +121,52 @@ export class AnimeSamaScraper implements AnimeScraper {
 
       if (!episodesPath) return [];
 
-      let epsJsUrl = `${animeUrl}/${episodesPath}/episodes.js`.replace(/([^:])\/\//g, '$1/');
+      const seasonUrl = `${animeUrl}/${episodesPath}/`.replace(/([^:])\/\//g, '$1/');
+      let epsJs = '';
+      let jeton = '';
 
-      const epsResponse = await fetch(epsJsUrl, { headers: this.getHeaders(animeUrl) });
-      if (!epsResponse.ok) {
-        // Fallback to direct episodes.js
-        epsJsUrl = `${animeUrl}/episodes.js`.replace(/([^:])\/\//g, '$1/');
-        const fallbackRes = await fetch(epsJsUrl, { headers: this.getHeaders(animeUrl) });
-        if (!fallbackRes.ok) return [];
+      // Try fetching season page directly (since Anime-Sama now inlines eps1, eps2... in the HTML)
+      try {
+        const seasonResponse = await fetch(seasonUrl, { headers: this.getHeaders(animeUrl) });
+        if (seasonResponse.ok) {
+          const seasonHtml = await seasonResponse.text();
+          const jetonMatch = seasonHtml.match(/var\s+epsJeton\s*=\s*["']([^"']+)["']/);
+          if (jetonMatch) jeton = jetonMatch[1];
+          if (seasonHtml.includes('eps1')) {
+            epsJs = seasonHtml;
+          }
+        }
+      } catch (err) {
+        console.warn('AnimeSama season page fetch error:', err);
       }
 
-      const epsJs = await (epsResponse.ok ? epsResponse.text() : '');
+      // Fallback: try fetching episodes.js if not found in season HTML
+      if (!epsJs) {
+        let epsJsUrl = `${animeUrl}/${episodesPath}/episodes.js`.replace(/([^:])\/\//g, '$1/');
+        try {
+          let epsResponse = await fetch(epsJsUrl, { headers: this.getHeaders(animeUrl) });
+          if (!epsResponse.ok) {
+            epsJsUrl = `${animeUrl}/episodes.js`.replace(/([^:])\/\//g, '$1/');
+            epsResponse = await fetch(epsJsUrl, { headers: this.getHeaders(animeUrl) });
+          }
+          if (epsResponse.ok) {
+            epsJs = await epsResponse.text();
+          }
+        } catch (err) {
+          console.warn('AnimeSama episodes.js fetch error:', err);
+        }
+      }
+
       if (!epsJs) return [];
 
-      // parse var eps1, eps2, etc.
+      // parse var eps1, eps2, etc. Supporting both http URLs and lien:XXXXX tokens
       const extractEps = (matchVar: string) => {
         const match = epsJs.match(new RegExp(`var\\s+${matchVar}\\s*=\\s*\\[([\\s\\S]*?)\\];`));
         if (!match || !match[1]) return [];
         return match[1]
           .split(',')
           .map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
-          .filter((s) => s.startsWith('http'));
+          .filter((s) => s.startsWith('http') || s.startsWith('lien:'));
       };
 
       const eps1 = extractEps('eps1');
@@ -154,7 +179,7 @@ export class AnimeSamaScraper implements AnimeScraper {
       const maxEps = Math.max(eps1.length, eps2.length, eps3.length, eps4.length, eps5.length);
 
       for (let i = 0; i < maxEps; i++) {
-        const players = [];
+        const players: string[] = [];
         if (eps1[i]) players.push(eps1[i]);
         if (eps2[i]) players.push(eps2[i]);
         if (eps3[i]) players.push(eps3[i]);
@@ -164,7 +189,11 @@ export class AnimeSamaScraper implements AnimeScraper {
         if (players.length > 0) {
           episodes.push({
             number: i + 1,
-            url: JSON.stringify(players),
+            url: JSON.stringify({
+              players,
+              jeton,
+              seasonUrl,
+            }),
             title: `Épisode ${i + 1}`,
           });
         }
@@ -179,7 +208,53 @@ export class AnimeSamaScraper implements AnimeScraper {
 
   async resolveVideo(episodeUrl: string): Promise<VideoSource[]> {
     try {
-      const urls: string[] = JSON.parse(episodeUrl);
+      let players: string[] = [];
+      let jeton = '';
+      let seasonUrl = '';
+
+      try {
+        const parsed = JSON.parse(episodeUrl);
+        if (Array.isArray(parsed)) {
+          players = parsed;
+        } else if (parsed && typeof parsed === 'object') {
+          players = Array.isArray(parsed.players) ? parsed.players : [];
+          jeton = parsed.jeton || '';
+          seasonUrl = parsed.seasonUrl || '';
+        }
+      } catch {
+        players = [episodeUrl];
+      }
+
+      // Resolve any lien:XXXXX tokens to their final host URLs
+      const resolvedUrls = await Promise.all(
+        players.map(async (u) => {
+          if (u.startsWith('lien:')) {
+            const lienId = u.slice(5);
+            try {
+              const res = await fetch(`https://anime-sama.to/api/lien.php?j=${encodeURIComponent(jeton)}&l=${lienId}`, {
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                  'Referer': seasonUrl || 'https://anime-sama.to/',
+                  'Accept': 'application/json',
+                },
+                signal: AbortSignal.timeout(6000),
+              });
+              if (res.ok) {
+                const data = await res.json();
+                if (data && data.u && typeof data.u === 'string') {
+                  return data.u;
+                }
+              }
+            } catch (err) {
+              console.warn(`[AnimeSama] Failed to resolve lien ${lienId}:`, err);
+            }
+            return null;
+          }
+          return u;
+        })
+      );
+
+      const validUrls = resolvedUrls.filter((u): u is string => Boolean(u && u.startsWith('http')));
 
       // Sort to prioritize stable and responsive players
       const scoreUrl = (url: string) => {
@@ -194,7 +269,7 @@ export class AnimeSamaScraper implements AnimeScraper {
         return 5;
       };
 
-      const sortedUrls = [...urls].sort((a, b) => scoreUrl(b) - scoreUrl(a));
+      const sortedUrls = [...validUrls].sort((a, b) => scoreUrl(b) - scoreUrl(a));
 
       const resolvedSources: VideoSource[] = [];
 

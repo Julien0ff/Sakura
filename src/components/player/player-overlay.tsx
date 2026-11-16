@@ -63,6 +63,67 @@ function sourceName(s: PlayerSource, i: number) {
 
 const subscribeNoop = () => () => {};
 
+const getFsElement = () => {
+  if (typeof document === 'undefined') return null;
+  return (
+    document.fullscreenElement ||
+    (document as any).webkitFullscreenElement ||
+    (document as any).mozFullScreenElement ||
+    (document as any).msFullscreenElement ||
+    null
+  );
+};
+
+const requestContainerFullscreen = async (target: HTMLElement): Promise<boolean> => {
+  try {
+    if (target.requestFullscreen) {
+      await target.requestFullscreen();
+      return true;
+    }
+    const anyTarget = target as any;
+    if (anyTarget.webkitRequestFullscreen) {
+      await anyTarget.webkitRequestFullscreen();
+      return true;
+    }
+    if (anyTarget.webkitRequestFullScreen) {
+      await anyTarget.webkitRequestFullScreen();
+      return true;
+    }
+    if (anyTarget.mozRequestFullScreen) {
+      await anyTarget.mozRequestFullScreen();
+      return true;
+    }
+    if (anyTarget.msRequestFullscreen) {
+      await anyTarget.msRequestFullscreen();
+      return true;
+    }
+  } catch {}
+  return false;
+};
+
+const exitContainerFullscreen = async (): Promise<boolean> => {
+  try {
+    if (document.exitFullscreen) {
+      await document.exitFullscreen();
+      return true;
+    }
+    const anyDoc = document as any;
+    if (anyDoc.webkitExitFullscreen) {
+      await anyDoc.webkitExitFullscreen();
+      return true;
+    }
+    if (anyDoc.mozCancelFullScreen) {
+      await anyDoc.mozCancelFullScreen();
+      return true;
+    }
+    if (anyDoc.msExitFullscreen) {
+      await anyDoc.msExitFullscreen();
+      return true;
+    }
+  } catch {}
+  return false;
+};
+
 /** Full-screen player rendered in a portal on <body>, above every app layer (sidebar, tab bar). */
 export function PlayerOverlay(props: PlayerOverlayProps) {
   const mounted = useSyncExternalStore(subscribeNoop, () => true, () => false);
@@ -126,39 +187,82 @@ function PlayerOverlayInner({
     const updateOrientation = () => {
       const landscape = typeof window !== 'undefined' && window.innerWidth > window.innerHeight;
       setIsLandscape(landscape);
-      const fsEl = document.fullscreenElement;
+      const fsEl = getFsElement();
       setIsFullscreen(!!fsEl);
       // If a child (e.g. iframe or video) entered fullscreen natively, promote fullscreen to overlayRef
       // so Sakura's controls, popups, and close button stay on the fullscreen top layer.
       if (fsEl && fsEl !== overlayRef.current && overlayRef.current?.contains(fsEl)) {
-        overlayRef.current.requestFullscreen?.().catch(() => {});
+        requestContainerFullscreen(overlayRef.current).catch(() => {});
       }
     };
     updateOrientation();
     window.addEventListener('resize', updateOrientation);
     window.addEventListener('orientationchange', updateOrientation);
     document.addEventListener('fullscreenchange', updateOrientation);
+    document.addEventListener('webkitfullscreenchange', updateOrientation);
+    document.addEventListener('mozfullscreenchange', updateOrientation);
+    document.addEventListener('MSFullscreenChange', updateOrientation);
     return () => {
       window.removeEventListener('resize', updateOrientation);
       window.removeEventListener('orientationchange', updateOrientation);
       document.removeEventListener('fullscreenchange', updateOrientation);
+      document.removeEventListener('webkitfullscreenchange', updateOrientation);
+      document.removeEventListener('mozfullscreenchange', updateOrientation);
+      document.removeEventListener('MSFullscreenChange', updateOrientation);
     };
   }, []);
 
   // When switching phone to landscape while video plays, auto-request fullscreen if available
   useEffect(() => {
-    if (isLandscape && playing && typeof window !== 'undefined' && window.innerHeight < 600 && !document.fullscreenElement) {
-      overlayRef.current?.requestFullscreen?.().catch(() => {});
+    if (isLandscape && playing && typeof window !== 'undefined' && window.innerHeight < 600 && !getFsElement()) {
+      if (overlayRef.current) {
+        requestContainerFullscreen(overlayRef.current).catch(() => {});
+      }
     }
   }, [isLandscape, playing]);
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = async () => {
     haptic('light');
-    if (!document.fullscreenElement) {
-      overlayRef.current?.requestFullscreen?.().catch(() => {});
-    } else {
-      document.exitFullscreen?.().catch(() => {});
+    const fsEl = getFsElement();
+
+    if (fsEl) {
+      await exitContainerFullscreen();
+      try {
+        (screen.orientation as any)?.unlock?.();
+      } catch {}
+      setIsFullscreen(false);
+      return;
     }
+
+    let success = false;
+    if (overlayRef.current) {
+      success = await requestContainerFullscreen(overlayRef.current);
+
+      // Fallback for iOS video elements (Safari on iPhone only allows webkitEnterFullscreen on <video>)
+      if (!success) {
+        const video = overlayRef.current.querySelector('video') as any;
+        if (video && typeof video.webkitEnterFullscreen === 'function') {
+          try {
+            video.webkitEnterFullscreen();
+            success = true;
+          } catch {}
+        }
+      }
+
+      if (!success) {
+        const iframe = overlayRef.current.querySelector('iframe');
+        if (iframe) {
+          success = await requestContainerFullscreen(iframe);
+        }
+      }
+    }
+
+    // Try orientation lock to landscape on mobile devices
+    try {
+      await (screen.orientation as any)?.lock?.('landscape');
+    } catch {}
+
+    setIsFullscreen(true);
   };
 
   // System media controls (Android notification, lock screen, media keys): episode, anime, artwork,
@@ -336,32 +440,32 @@ function PlayerOverlayInner({
       <div
         className={`absolute inset-x-0 top-0 z-[110] pointer-events-none transition-opacity duration-500 ${chromeHidden ? 'opacity-0' : 'opacity-100'}`}
       >
-        <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/85 via-black/40 to-transparent" />
-        <div className="relative flex items-start gap-3 px-4 md:px-6 pt-[max(var(--safe-top),16px)] pl-[max(env(safe-area-inset-left),16px)] pr-[max(env(safe-area-inset-right),16px)]">
+        <div className="absolute inset-x-0 top-0 h-24 sm:h-36 bg-gradient-to-b from-black/85 via-black/40 to-transparent" />
+        <div className="relative flex items-center gap-2 sm:gap-3 px-3 sm:px-6 pt-[max(env(safe-area-inset-top),10px)] sm:pt-[max(var(--safe-top),16px)] pl-[max(env(safe-area-inset-left),12px)] pr-[max(env(safe-area-inset-right),12px)]">
           <button
             onClick={onClose}
             aria-label="Fermer le lecteur"
-            className="pointer-events-auto shrink-0 flex items-center justify-center w-11 h-11 rounded-full bg-white/15 backdrop-blur-md text-white hover:bg-white/25 transition-colors cursor-pointer"
+            className="pointer-events-auto shrink-0 flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/15 backdrop-blur-md text-white hover:bg-white/25 transition-colors cursor-pointer"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
 
-          <div className="min-w-0 flex-1 pt-0.5">
-            <div className="text-white/70 text-xs font-semibold uppercase tracking-wider truncate">{animeTitle}</div>
-            <div className="text-white text-base md:text-lg font-bold truncate drop-shadow">{episodeLabel}</div>
+          <div className="min-w-0 flex-1">
+            <div className="text-white/70 text-[10px] sm:text-xs font-semibold uppercase tracking-wider truncate">{animeTitle}</div>
+            <div className="text-white text-xs sm:text-base md:text-lg font-bold truncate drop-shadow">{episodeLabel}</div>
           </div>
 
-          <div className="pointer-events-auto flex items-center gap-2 shrink-0">
+          <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               type="button"
               onClick={toggleFullscreen}
               aria-label={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
-              className="flex items-center justify-center w-11 h-11 rounded-full bg-white/15 backdrop-blur-md text-white hover:bg-white/25 transition-colors cursor-pointer"
+              className="flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/15 backdrop-blur-md text-white hover:bg-white/25 transition-colors cursor-pointer"
             >
-              {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+              {isFullscreen ? <Minimize className="w-4 h-4 sm:w-5 sm:h-5" /> : <Maximize className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
             {sources.length > 1 && (
-              <div className="hidden sm:flex items-center gap-1 p-1 rounded-full bg-white/10 backdrop-blur-md" role="radiogroup" aria-label="Lecteur">
+              <div className="hidden md:flex items-center gap-1 p-1 rounded-full bg-white/10 backdrop-blur-md" role="radiogroup" aria-label="Lecteur">
                 {sources.map((s, i) => (
                   <button
                     key={s.url}
@@ -392,13 +496,13 @@ function PlayerOverlayInner({
                   });
                 }}
                 aria-label="Noter cet épisode"
-                className={`flex items-center gap-1.5 h-11 px-3.5 rounded-full backdrop-blur-md transition-colors cursor-pointer ${
+                className={`flex items-center gap-1 h-9 sm:h-11 px-2.5 sm:px-3.5 rounded-full backdrop-blur-md transition-colors cursor-pointer ${
                   episodeRating != null ? 'bg-amber-400 text-black font-bold' : 'bg-white/15 text-white hover:bg-white/25'
                 }`}
                 title={episodeRating != null ? `Note : ${episodeRating}/10` : 'Noter cet épisode'}
               >
-                <Star className="w-4 h-4" />
-                <span className="text-xs font-semibold">{episodeRating != null ? `${episodeRating}/10` : 'Noter'}</span>
+                <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="text-[11px] sm:text-xs font-semibold">{episodeRating != null ? `${episodeRating}/10` : 'Noter'}</span>
               </button>
             )}
             {next && (
@@ -410,18 +514,18 @@ function PlayerOverlayInner({
                   }
                   next.onPlay();
                 }}
-                className="flex items-center gap-2 h-11 px-4 rounded-full bg-white/15 backdrop-blur-md text-white font-semibold text-sm hover:bg-white/25 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 sm:gap-2 h-9 sm:h-11 px-3 sm:px-4 rounded-full bg-white/15 backdrop-blur-md text-white font-semibold text-xs sm:text-sm hover:bg-white/25 transition-colors cursor-pointer"
               >
-                <SkipForward className="w-4 h-4" />
+                <SkipForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Suivant</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Sources on phones: second row */}
+        {/* Sources on phones or small screens: scrollable row */}
         {sources.length > 1 && (
-          <div className="sm:hidden relative mt-3 px-4 flex gap-1 overflow-x-auto scrollbar-none pointer-events-auto">
+          <div className="md:hidden relative mt-1.5 sm:mt-3 px-3 sm:px-4 pl-[max(env(safe-area-inset-left),12px)] pr-[max(env(safe-area-inset-right),12px)] flex gap-1 overflow-x-auto scrollbar-none pointer-events-auto">
             {sources.map((s, i) => (
               <button
                 key={s.url}
@@ -429,7 +533,7 @@ function PlayerOverlayInner({
                   haptic('selection');
                   onSelectSource(s);
                 }}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${current?.url === s.url ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
+                className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold ${current?.url === s.url ? 'bg-white text-black' : 'bg-white/15 text-white/80'}`}
               >
                 {sourceName(s, i)}
               </button>
@@ -440,7 +544,7 @@ function PlayerOverlayInner({
 
       {/* End-of-episode rating (bottom-left, independent from the up-next card) */}
       {ratePrompt === 'shown' && onRateEpisode && (
-        <div className="absolute z-[120] left-4 md:left-10 bottom-24 w-[min(92vw,340px)] p-4 rounded-3xl bg-black/70 backdrop-blur-xl border border-white/10 text-white shadow-2xl animate-in fade-in slide-in-from-bottom-4">
+        <div className="absolute z-[120] left-3 sm:left-4 md:left-10 bottom-16 sm:bottom-24 w-[min(90vw,340px)] p-3.5 sm:p-4 rounded-3xl bg-black/80 backdrop-blur-xl border border-white/10 text-white shadow-2xl animate-in fade-in slide-in-from-bottom-4 pl-[max(env(safe-area-inset-left),12px)]">
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="text-xs font-semibold uppercase tracking-wider text-white/60">Noter cet épisode</div>
             <button
@@ -469,11 +573,11 @@ function PlayerOverlayInner({
 
       {/* Up-next card */}
       {countdown !== null && next && (
-        <div className="absolute z-[120] right-4 md:right-10 bottom-24 w-[min(92vw,360px)] p-5 rounded-3xl bg-black/70 backdrop-blur-xl border border-white/10 text-white shadow-2xl animate-in fade-in slide-in-from-bottom-4">
+        <div className="absolute z-[120] right-3 sm:right-6 md:right-10 bottom-16 sm:bottom-24 w-[min(90vw,360px)] p-4 sm:p-5 rounded-3xl bg-black/80 backdrop-blur-xl border border-white/10 text-white shadow-2xl animate-in fade-in slide-in-from-bottom-4 pr-[max(env(safe-area-inset-right),12px)]">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-xs font-semibold uppercase tracking-wider text-white/60">Épisode suivant dans {countdown} s</div>
-              <div className="font-bold mt-1 line-clamp-2">{next.label}</div>
+              <div className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-white/60">Épisode suivant dans {countdown} s</div>
+              <div className="font-bold text-sm sm:text-base mt-1 line-clamp-2">{next.label}</div>
             </div>
             <button onClick={() => setCountdown(null)} aria-label="Annuler" className="p-1.5 rounded-full hover:bg-white/10 cursor-pointer">
               <X className="w-4 h-4" />
@@ -488,7 +592,7 @@ function PlayerOverlayInner({
               setCountdown(null);
               next.onPlay();
             }}
-            className="mt-4 w-full h-11 rounded-full bg-white text-black font-bold text-sm cursor-pointer"
+            className="mt-4 w-full h-10 sm:h-11 rounded-full bg-white text-black font-bold text-xs sm:text-sm cursor-pointer"
           >
             Lire maintenant
           </button>
@@ -500,9 +604,9 @@ function PlayerOverlayInner({
         <button
           type="button"
           onClick={activeSkipInfo.onSkip}
-          className="absolute bottom-24 right-6 md:right-10 z-[125] pointer-events-auto flex items-center gap-2.5 px-5 py-3 rounded-full bg-white text-black text-sm font-bold shadow-2xl hover:scale-105 active:scale-95 transition-transform animate-in fade-in slide-in-from-bottom-4 cursor-pointer"
+          className="absolute bottom-16 sm:bottom-24 right-4 sm:right-6 md:right-10 z-[125] pointer-events-auto flex items-center gap-2 sm:gap-2.5 px-4 sm:px-5 py-2.5 sm:py-3 rounded-full bg-white text-black text-xs sm:text-sm font-bold shadow-2xl hover:scale-105 active:scale-95 transition-transform animate-in fade-in slide-in-from-bottom-4 cursor-pointer pr-[max(env(safe-area-inset-right),16px)]"
         >
-          <FastForward className="w-4 h-4" fill="currentColor" />
+          <FastForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="currentColor" />
           <span>{SKIP_LABEL[activeSkipInfo.skip.type]}</span>
         </button>
       )}

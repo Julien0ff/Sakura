@@ -135,6 +135,8 @@ query ($id: Int) {
           }
           type
           format
+          status
+          seasonYear
           startDate {
             year
             month

@@ -26,6 +26,7 @@ export type TmdbCartoonDetails = TmdbCartoon & {
   networks?: { name: string }[];
   seasons?: { season_number: number; name: string; air_date?: string | null; episode_count?: number }[];
   external_ids?: { imdb_id?: string | null };
+  videos?: { results?: { id?: string; key?: string; site?: string; type?: string; name?: string; official?: boolean }[] };
 };
 
 const ANIMATION = 16;
@@ -72,6 +73,26 @@ export function cartoonStatus(status?: string): string {
 /** The anime page's data (AniList Media + the TMDB fields it adds) for a cartoon. */
 export function cartoonMedia(d: TmdbCartoonDetails) {
   const [y, m, day] = (d.first_air_date ?? '').split('-').map(Number);
+
+  const videos = d.videos?.results ?? [];
+  const trailerVideo =
+    videos.find((v) => v.site === 'YouTube' && v.type === 'Trailer' && v.key) ||
+    videos.find((v) => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip') && v.key) ||
+    videos.find((v) => v.site === 'YouTube' && v.key);
+
+  const allSeasons = (d.seasons ?? []).filter((s) => s.season_number > 0);
+  const now = new Date();
+  const releasedSeasons = allSeasons.filter((s) => {
+    if ((s.episode_count ?? 0) > 0) return true;
+    if (s.air_date) {
+      const air = new Date(s.air_date);
+      if (!isNaN(air.getTime()) && air <= now) return true;
+    }
+    return false;
+  });
+  const effectiveSeasons = releasedSeasons.length > 0 ? releasedSeasons : allSeasons.slice(0, 1);
+  const upcomingSeasons = allSeasons.filter((s) => !effectiveSeasons.some((es) => es.season_number === s.season_number));
+
   return {
     ...cartoonSummary(d),
     idMal: null,
@@ -79,7 +100,7 @@ export function cartoonMedia(d: TmdbCartoonDetails) {
     episodes: d.number_of_episodes ?? null,
     duration: null,
     popularity: null,
-    trailer: null,
+    trailer: trailerVideo?.key ? { id: trailerVideo.key, site: 'youtube' } : null,
     startDate: { year: y || null, month: m || null, day: day || null },
     genres: (d.genres ?? []).map((g) => g.name),
     studios: { nodes: (d.networks ?? []).map((n) => ({ name: n.name })) },
@@ -87,7 +108,13 @@ export function cartoonMedia(d: TmdbCartoonDetails) {
     tmdbId: d.id,
     tmdbTitle: d.name,
     tmdbDescription: d.overview,
-    tmdbSeasons: (d.seasons ?? []).filter((s) => s.season_number > 0),
+    tmdbSeasons: effectiveSeasons,
+    upcoming: upcomingSeasons.map((s) => ({
+      title: s.name || `Saison ${s.season_number}`,
+      type: 'season' as const,
+      date: s.air_date || null,
+      seasonNumber: s.season_number,
+    })),
     imdbId: d.external_ids?.imdb_id ?? undefined,
   };
 }

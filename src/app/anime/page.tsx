@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAniList, GET_ANIME_DETAILS } from '@/core/api/anilist';
 import { AppLayout } from '@/components/layout/app-layout';
-import { Play, ArrowLeft, Star, Calendar, MonitorPlay, Tags, Bookmark, BookmarkCheck, Check } from '@/components/ui/icons';
+import { Play, ArrowLeft, Star, Calendar, MonitorPlay, Tags, Bookmark, BookmarkCheck, Check, Sparkles } from '@/components/ui/icons';
 import Link from 'next/link';
 import { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
 import { useAnimePagePresence, useDiscordPresence, type Playback, type PresenceEpisode } from '@/components/desktop/use-discord-presence';
@@ -287,7 +287,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
     queryFn: async () => {
       // Western cartoons: TMDB show, negative id (src/lib/cartoons.ts).
       if (isCartoonId(Number(id))) {
-        const res = await fetch(`/api/tmdb/tv/${tmdbIdOf(Number(id))}?language=fr-FR&append_to_response=external_ids`);
+        const res = await fetch(`/api/tmdb/tv/${tmdbIdOf(Number(id))}?language=fr-FR&append_to_response=external_ids,videos`);
         return res.ok ? cartoonMedia(await res.json()) : null;
       }
       const anilistData = await fetchAniList(GET_ANIME_DETAILS, { id: Number(id) });
@@ -434,6 +434,92 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
   });
 
   const title = anime?.tmdbTitle || anime?.title?.english || anime?.title?.romaji;
+
+  const upcomingItems = useMemo(() => {
+    if (!anime) return [];
+    const items: { id?: number; title: string; type: 'season' | 'movie' | 'episode'; date?: string | null; badge: string }[] = [];
+
+    // 1. If cartoon, use anime.upcoming
+    if (Array.isArray((anime as any).upcoming)) {
+      for (const u of (anime as any).upcoming) {
+        items.push({
+          title: u.title,
+          type: u.type,
+          date: u.date ? new Date(u.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : null,
+          badge: 'Saison annoncée',
+        });
+      }
+    }
+
+    // 2. Next airing episode for currently releasing series
+    if (anime.nextAiringEpisode?.airingAt) {
+      const airDate = new Date(anime.nextAiringEpisode.airingAt * 1000);
+      items.push({
+        title: `Épisode ${anime.nextAiringEpisode.episode}`,
+        type: 'episode',
+        date: airDate.toLocaleDateString('fr-FR', {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'long',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        badge: 'Prochain épisode',
+      });
+    }
+
+    // 3. AniList relations (upcoming seasons, sequels, movies)
+    if (anime.relations?.edges?.length) {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+
+      for (const edge of anime.relations.edges) {
+        const node = edge.node;
+        if (!node) continue;
+
+        const isNotYetReleased = node.status === 'NOT_YET_RELEASED';
+        const isFutureDate = Boolean(
+          node.startDate?.year &&
+            (node.startDate.year > currentYear ||
+              (node.startDate.year === currentYear && (node.startDate.month ?? 0) > currentMonth))
+        );
+
+        if (isNotYetReleased || isFutureDate) {
+          const isMovie = node.format === 'MOVIE';
+          const relTitle = node.title.english || node.title.romaji || '';
+
+          let formattedDate: string | null = null;
+          if (node.startDate?.year) {
+            if (node.startDate.month && node.startDate.day) {
+              formattedDate = new Date(node.startDate.year, node.startDate.month - 1, node.startDate.day).toLocaleDateString('fr-FR', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              });
+            } else if (node.startDate.month) {
+              formattedDate = new Date(node.startDate.year, node.startDate.month - 1).toLocaleDateString('fr-FR', {
+                month: 'long',
+                year: 'numeric',
+              });
+            } else {
+              formattedDate = String(node.startDate.year);
+            }
+          }
+
+          items.push({
+            id: node.id,
+            title: relTitle,
+            type: isMovie ? 'movie' : 'season',
+            date: formattedDate,
+            badge: isMovie ? 'Film prévu' : 'Nouvelle saison',
+          });
+        }
+      }
+    }
+
+    return items;
+  }, [anime]);
 
   useEffect(() => {
     if (playingEpisode && title) {
@@ -658,6 +744,13 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                   <span className="flex items-center gap-1 text-[14px] font-medium text-[#EBEBF5]">
                     <Calendar className="w-4 h-4 opacity-70" /> {statusLabel(anime.status)}
                     {anime.seasonYear ? ` · ${anime.seasonYear}` : ''}
+                  </span>
+                )}
+                {upcomingItems.length > 0 && (
+                  <span className="flex items-center gap-1.5 px-2.5 py-1 text-[13px] font-semibold rounded-md border text-amber-300 bg-amber-400/15 border-amber-400/30 backdrop-blur-md">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {upcomingItems[0].badge}
+                    {upcomingItems[0].date ? ` : ${upcomingItems[0].date}` : ''}
                   </span>
                 )}
               </div>
@@ -910,6 +1003,36 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
 
                 {/* Right Sidebar (Genres & Infos) now inside details */}
                 <div className="space-y-6">
+                  {upcomingItems.length > 0 && (
+                    <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/15 via-white/5 to-white/5 border border-amber-500/30">
+                      <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-amber-400" /> Prochainement
+                      </h3>
+                      <div className="space-y-2.5">
+                        {upcomingItems.map((u, i) => (
+                          <div key={i} className="p-3 rounded-xl bg-white/5 border border-white/5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                                {u.badge}
+                              </span>
+                              {u.date ? (
+                                <span className="text-xs text-white/80 font-medium">{u.date}</span>
+                              ) : (
+                                <span className="text-xs text-white/50 italic">Date non communiquée</span>
+                              )}
+                            </div>
+                            <div className="text-white font-medium text-sm mt-1.5">{u.title}</div>
+                            {u.id && (
+                              <Link href={`/anime?id=${u.id}`} className="text-xs text-primary hover:underline mt-1 inline-flex items-center gap-1 cursor-pointer">
+                                Voir la fiche ↗
+                              </Link>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="p-5 rounded-2xl bg-white/5 border border-white/5">
                     <h3 className="font-bold text-white mb-3 flex items-center gap-2">
                       <Tags className="w-4 h-4 opacity-70" /> Genres
@@ -943,6 +1066,15 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                         <span className="text-[#8E8E93]">Statut</span>
                         <span className="text-white font-medium">{statusLabel(anime.status, 'Inconnu')}</span>
                       </div>
+                      {upcomingItems.length > 0 && (
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-[#8E8E93]">À venir</span>
+                          <span className="text-amber-300 font-medium text-right text-xs">
+                            {upcomingItems[0].badge}
+                            {upcomingItems[0].date ? ` (${upcomingItems[0].date})` : ''}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex justify-between">
                         <span className="text-[#8E8E93]">Score AniList</span>
                         <span className="text-white font-medium">{anime.averageScore ? `${anime.averageScore}%` : 'Non noté'}</span>

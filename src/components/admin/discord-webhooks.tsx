@@ -53,7 +53,21 @@ export function DiscordWebhooksSection() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
   const [dispatching, setDispatching] = useState<string | null>(null);
+  const [episodesList, setEpisodesList] = useState<any[]>([]);
+  const [selectedEpisodeIndex, setSelectedEpisodeIndex] = useState<number>(-1);
   const loadedFromRemote = useRef(false);
+
+  // Load planning episodes for individual episode selection
+  useEffect(() => {
+    fetch('/api/planning')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setEpisodesList(data.slice(0, 30));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Sync from Supabase profile settings or backend API on mount
   useEffect(() => {
@@ -167,7 +181,8 @@ export function DiscordWebhooksSection() {
   const handleDispatch = async (
     action: 'send_episodes' | 'send_animes' | 'send_changelog' | 'send_links' | 'send_rules',
     url: string,
-    label: string
+    label: string,
+    extraPayload?: Record<string, unknown>
   ) => {
     if (!url.trim()) {
       toast(`Veuillez renseigner l’URL du webhook pour ${label}.`);
@@ -178,12 +193,12 @@ export function DiscordWebhooksSection() {
       const res = await fetch('/api/admin/discord', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, url }),
+        body: JSON.stringify({ action, url, ...extraPayload }),
       });
       const data = await res.json();
       if (data.ok) {
         haptic('success');
-        toast(`Embed « ${label} » publié avec succès sur Discord !`);
+        toast(`Embed « ${label} » publié ! Le message précédent a été nettoyé.`);
       } else {
         toast(`Erreur lors de la publication : ${data.error || 'Erreur'}`);
       }
@@ -227,7 +242,7 @@ export function DiscordWebhooksSection() {
         {/* 1. Nouveaux Épisodes */}
         <WebhookItem
           title="Nouveaux Épisodes"
-          description="Publie une notification avec thumbnail et lecteur direct à chaque sortie d’un nouvel épisode."
+          description="Publie une notification individuelle avec affiche/bannière dès qu'un épisode sort, et remplace automatiquement le message précédent pour garder le salon propre."
           icon="🎬"
           url={config.episodesUrl}
           enabled={config.episodesEnabled}
@@ -236,16 +251,42 @@ export function DiscordWebhooksSection() {
           onTest={() => handleTest('episodes', config.episodesUrl)}
           testing={testing === 'episodes'}
           extraAction={{
-            label: dispatching === 'send_episodes' ? 'Envoi…' : 'Diffuser les sorties du jour',
-            onClick: () => handleDispatch('send_episodes', config.episodesUrl, 'Nouveaux Épisodes'),
+            label: dispatching === 'send_episodes' ? 'Envoi…' : 'Diffuser la fiche épisode',
+            onClick: () =>
+              handleDispatch(
+                'send_episodes',
+                config.episodesUrl,
+                'Nouveaux Épisodes',
+                selectedEpisodeIndex >= 0 && episodesList[selectedEpisodeIndex]
+                  ? { episode: episodesList[selectedEpisodeIndex] }
+                  : undefined
+              ),
             disabled: !config.episodesUrl.trim() || dispatching !== null,
           }}
-        />
+        >
+          {episodesList.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 pt-0.5">
+              <span className="text-[12px] text-white/60 shrink-0">Épisode à diffuser :</span>
+              <select
+                value={selectedEpisodeIndex}
+                onChange={(e) => setSelectedEpisodeIndex(Number(e.target.value))}
+                className="w-full sm:flex-1 h-9 px-3 rounded-xl bg-black/40 border border-white/10 text-[12px] text-white outline-none focus:border-sakura/70 cursor-pointer"
+              >
+                <option value={-1}>⚡ (Automatique) Dernier épisode disponible</option>
+                {episodesList.map((ep, i) => (
+                  <option key={i} value={i}>
+                    {ep.lang === 'vf' ? '🇫🇷 VF' : '🇯🇵 VOSTFR'} • {ep.title} {ep.time ? `(${ep.time})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </WebhookItem>
 
         {/* 2. Nouveaux Animes */}
         <WebhookItem
           title="Nouveaux Animes"
-          description="Annonce l’ajout d’un nouvel anime au catalogue avec synopsis, note et bannière."
+          description="Annonce l’ajout d’un anime au catalogue avec synopsis, note et bannière. Supprime automatiquement le message précédent."
           icon="🌸"
           url={config.animesUrl}
           enabled={config.animesEnabled}
@@ -254,7 +295,7 @@ export function DiscordWebhooksSection() {
           onTest={() => handleTest('animes', config.animesUrl)}
           testing={testing === 'animes'}
           extraAction={{
-            label: dispatching === 'send_animes' ? 'Envoi…' : 'Diffuser les nouveautés catalogue',
+            label: dispatching === 'send_animes' ? 'Envoi…' : 'Diffuser la nouveauté catalogue',
             onClick: () => handleDispatch('send_animes', config.animesUrl, 'Nouveaux Animes'),
             disabled: !config.animesUrl.trim() || dispatching !== null,
           }}
@@ -336,6 +377,7 @@ interface WebhookItemProps {
     onClick: () => void;
     disabled?: boolean;
   };
+  children?: React.ReactNode;
 }
 
 function WebhookItem({
@@ -349,6 +391,7 @@ function WebhookItem({
   onTest,
   testing,
   extraAction,
+  children,
 }: WebhookItemProps) {
   const [showUrl, setShowUrl] = useState(false);
 
@@ -372,6 +415,8 @@ function WebhookItem({
           <div className="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#5865F2]" />
         </label>
       </div>
+
+      {children}
 
       <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
         <div className="relative flex-1">

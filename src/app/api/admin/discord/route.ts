@@ -134,13 +134,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(result);
     }
 
+    if (action === 'get_episodes') {
+      try {
+        const planRes = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://sakura.thefoxy.me'}/api/planning`);
+        if (planRes.ok) {
+          const items = await planRes.json();
+          return NextResponse.json({ ok: true, items });
+        }
+      } catch {
+        // Fallback
+      }
+      return NextResponse.json({ ok: true, items: [] });
+    }
+
     if (action === 'send_episodes') {
-      const result = await dispatchEpisodesWebhook(body.url);
+      const result = await dispatchEpisodesWebhook(body.url, body.episode);
       return NextResponse.json(result);
     }
 
     if (action === 'send_animes') {
-      const result = await dispatchAnimesWebhook(body.url);
+      const result = await dispatchAnimesWebhook(body.url, body.animeId);
       return NextResponse.json(result);
     }
 

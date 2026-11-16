@@ -24,6 +24,9 @@ on:
           - episodes
           - animes
 
+permissions:
+  contents: write
+
 jobs:
   announce:
     name: Diffuser sur Discord
@@ -54,3 +57,14 @@ jobs:
         env:
           DISCORD_WEBHOOK_ANIMES: ${{ secrets.DISCORD_WEBHOOK_ANIMES }}
         run: node scripts/discord-announce.mjs animes
+
+      - name: Sauvegarder l'état de rotation des messages Discord
+        if: always()
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/discord-state.json || true
+          if [ -n "$(git status --porcelain data/discord-state.json)" ]; then
+            git commit -m "chore(discord): update message rotation state [skip ci]"
+            git push origin main || true
+          fi

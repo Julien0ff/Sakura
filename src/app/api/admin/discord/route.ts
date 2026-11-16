@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import os from 'os';
 import { CHANGELOG } from '@/lib/changelog';
 
 export interface DiscordWebhooksConfig {
@@ -30,27 +31,42 @@ const DEFAULT_CONFIG: DiscordWebhooksConfig = {
 };
 
 const DATA_DIR = path.join(process.cwd(), 'data');
-const CONFIG_PATH = path.join(DATA_DIR, 'discord-webhooks.json');
+const LOCAL_CONFIG_PATH = path.join(DATA_DIR, 'discord-webhooks.json');
+const TMP_CONFIG_PATH = path.join(os.tmpdir(), 'sakura-discord-webhooks.json');
 
 const SAKURA_COLOR = 0xff69b4; // Sakura Pink
 const SAKURA_URL = 'https://sakura.thefoxy.me';
 const SAKURA_AVATAR = `${SAKURA_URL}/icon.png`;
 
 async function loadConfig(): Promise<DiscordWebhooksConfig> {
+  // 1. Try local data dir (if exists)
   try {
-    const raw = await fs.readFile(CONFIG_PATH, 'utf-8');
+    const raw = await fs.readFile(LOCAL_CONFIG_PATH, 'utf-8');
     return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
   } catch {
-    return DEFAULT_CONFIG;
+    // 2. Try tmp config file
+    try {
+      const raw = await fs.readFile(TMP_CONFIG_PATH, 'utf-8');
+      return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+    } catch {
+      return DEFAULT_CONFIG;
+    }
   }
 }
 
 async function saveConfig(config: DiscordWebhooksConfig): Promise<void> {
+  // Save to tmpdir (always writable in serverless)
+  try {
+    await fs.writeFile(TMP_CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('Failed to save to tmp config:', err);
+  }
+  // Try local data dir (development)
   try {
     await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Failed to save discord webhooks config:', err);
+    await fs.writeFile(LOCAL_CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
+  } catch {
+    // Expected on read-only serverless filesystems
   }
 }
 
@@ -131,6 +147,117 @@ export async function POST(req: NextRequest) {
         ],
       });
 
+      return NextResponse.json(result);
+    }
+
+    if (action === 'send_episodes') {
+      const { url } = body;
+      let planningItems: any[] = [];
+      try {
+        const planRes = await fetch(`${SAKURA_URL}/api/planning`, { next: { revalidate: 60 } });
+        if (planRes.ok) {
+          planningItems = await planRes.json();
+        }
+      } catch {
+        // Planning fallback
+      }
+
+      const now = new Date();
+      const todayStr = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+      const capitalizedToday = todayStr.charAt(0).toUpperCase() + todayStr.slice(1);
+
+      const fields = (planningItems || []).slice(0, 12).map((item: any) => ({
+        name: `${item.lang === 'vf' ? '🇫🇷 VF' : '🇯🇵 VOSTFR'} • ${item.title || 'Anime'}`,
+        value: `Épisode ${item.ep || '1'}${item.time ? ` (${item.time})` : ''}\n[Regarder sur SAKURA](${SAKURA_URL}${item.anilist?.id ? `/anime?id=${item.anilist.id}` : ''})`,
+        inline: true,
+      }));
+
+      const embed: any = {
+        title: `🎬 Sorties d'Épisodes du Jour — ${capitalizedToday}`,
+        description:
+          fields.length > 0
+            ? 'Retrouvez les nouveaux épisodes diffusés aujourd’hui sur **SAKURA** :'
+            : 'Consultez les nouveaux épisodes et les sorties récentes directement sur SAKURA !',
+        color: SAKURA_COLOR,
+        fields:
+          fields.length > 0
+            ? fields
+            : [
+                {
+                  name: '📺 Calendrier Complet',
+                  value: `[Voir toutes les sorties de la semaine sur SAKURA](${SAKURA_URL}/calendar)`,
+                  inline: false,
+                },
+              ],
+        footer: { text: 'SAKURA • Nouveaux Épisodes', icon_url: SAKURA_AVATAR },
+        timestamp: new Date().toISOString(),
+      };
+
+      const result = await sendWebhook(url, { embeds: [embed] });
+      return NextResponse.json(result);
+    }
+
+    if (action === 'send_animes') {
+      const { url } = body;
+      let trendingList: any[] = [];
+      try {
+        const query = `
+          query {
+            Page(page: 1, perPage: 6) {
+              media(type: ANIME, sort: [TRENDING_DESC, POPULARITY_DESC]) {
+                id
+                title { romaji english }
+                description(asHtml: false)
+                averageScore
+                genres
+                bannerImage
+              }
+            }
+          }
+        `;
+        const res = await fetch('https://graphql.anilist.co', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ query }),
+        });
+        const json = await res.json();
+        trendingList = json?.data?.Page?.media || [];
+      } catch {
+        // Fallback
+      }
+
+      const fields = trendingList.slice(0, 6).map((m: any) => {
+        const title = m.title?.english || m.title?.romaji || 'Anime';
+        const score = m.averageScore ? `⭐ ${m.averageScore / 10}/10` : '';
+        const genres = (m.genres || []).slice(0, 3).join(', ');
+        return {
+          name: title,
+          value: `${genres ? `*${genres}* • ` : ''}${score}\n[Découvrir sur SAKURA](${SAKURA_URL}/anime?id=${m.id})`,
+          inline: true,
+        };
+      });
+
+      const featured = trendingList[0];
+      const embed: any = {
+        title: '🌸 Nouveautés & Tendances du Catalogue SAKURA',
+        description: 'Découvrez les animes populaires et ajouts récents à regarder en VF et VOSTFR sans publicité sur **SAKURA** !',
+        color: SAKURA_COLOR,
+        fields:
+          fields.length > 0
+            ? fields
+            : [
+                {
+                  name: '🔍 Explorer le Catalogue',
+                  value: `[Parcourir tous les animes sur SAKURA](${SAKURA_URL}/discover)`,
+                  inline: false,
+                },
+              ],
+        image: featured?.bannerImage ? { url: featured.bannerImage } : undefined,
+        footer: { text: 'SAKURA • Nouveautés Catalogue', icon_url: SAKURA_AVATAR },
+        timestamp: new Date().toISOString(),
+      };
+
+      const result = await sendWebhook(url, { embeds: [embed] });
       return NextResponse.json(result);
     }
 
@@ -232,4 +359,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: err?.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-

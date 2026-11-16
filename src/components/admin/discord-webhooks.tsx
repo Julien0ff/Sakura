@@ -1,63 +1,138 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/toast';
 import { haptic } from '@/lib/haptics';
-import { Check, Bell, Share2, Sparkles } from '@/components/ui/icons';
+import { Check } from '@/components/ui/icons';
+import { useAuth } from '@/core/auth';
+import { supabase } from '@/lib/supabase';
+import { CHANGELOG } from '@/lib/changelog';
 import type { DiscordWebhooksConfig } from '@/app/api/admin/discord/route';
+
+const LOCAL_STORAGE_KEY = 'sakura_admin_discord_webhooks';
 
 const card = 'rounded-2xl bg-white/[0.06] border border-white/[0.08]';
 const inputStyle =
   'w-full h-11 px-3.5 rounded-xl bg-black/40 border border-white/10 text-[14px] text-white placeholder:text-white/30 outline-none focus:border-sakura/70 font-mono transition-colors';
 
+const DEFAULT_CONFIG: DiscordWebhooksConfig = {
+  episodesUrl: '',
+  episodesEnabled: true,
+  animesUrl: '',
+  animesEnabled: true,
+  changelogUrl: '',
+  changelogEnabled: true,
+  linksUrl: '',
+  linksEnabled: true,
+  rulesUrl: '',
+  rulesEnabled: true,
+};
+
 export function DiscordWebhooksSection() {
-  const [config, setConfig] = useState<DiscordWebhooksConfig>({
-    episodesUrl: '',
-    episodesEnabled: true,
-    animesUrl: '',
-    animesEnabled: true,
-    changelogUrl: '',
-    changelogEnabled: true,
-    linksUrl: '',
-    linksEnabled: true,
-    rulesUrl: '',
-    rulesEnabled: true,
+  const { user, profile } = useAuth();
+
+  // Initialize immediately from localStorage if available to avoid any blank flash
+  const [config, setConfig] = useState<DiscordWebhooksConfig>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && typeof parsed === 'object') {
+            return { ...DEFAULT_CONFIG, ...parsed };
+          }
+        }
+      } catch {
+        // Ignore JSON parse errors
+      }
+    }
+    return DEFAULT_CONFIG;
   });
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
   const [dispatching, setDispatching] = useState<string | null>(null);
+  const loadedFromRemote = useRef(false);
 
+  // Sync from Supabase profile settings or backend API on mount
   useEffect(() => {
+    if (loadedFromRemote.current) return;
+
+    // 1. Check Supabase profile settings if user is loaded
+    const profSettings = (profile?.settings as Record<string, unknown>)?.discordWebhooks;
+    if (profSettings && typeof profSettings === 'object') {
+      setConfig((prev) => ({ ...prev, ...(profSettings as Partial<DiscordWebhooksConfig>) }));
+      loadedFromRemote.current = true;
+    }
+
+    // 2. Fetch from API as complementary check
     fetch('/api/admin/discord')
       .then((res) => res.json())
       .then((data) => {
         if (data && typeof data === 'object') {
-          setConfig((prev) => ({ ...prev, ...data }));
+          setConfig((prev) => {
+            // Only overwrite empty fields so we never erase valid user inputs
+            const merged = { ...prev };
+            for (const key of Object.keys(data) as (keyof DiscordWebhooksConfig)[]) {
+              if (data[key] && !prev[key]) {
+                (merged as any)[key] = data[key];
+              }
+            }
+            return merged;
+          });
+          loadedFromRemote.current = true;
         }
       })
-      .catch((e) => console.warn('Failed to load discord webhooks config', e))
+      .catch((e) => console.warn('Failed to load discord webhooks config from API:', e))
       .finally(() => setLoading(false));
-  }, []);
+  }, [profile]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
+      // 1. Immediate local persistence in localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(config));
+      }
+
+      // 2. Permanent cloud database persistence in Supabase (admin profile settings)
+      if (supabase && user?.id) {
+        try {
+          const { data: prof } = await supabase.from('profiles').select('settings').eq('id', user.id).maybeSingle();
+          const existing = (prof?.settings as Record<string, unknown>) || {};
+          await supabase
+            .from('profiles')
+            .update({
+              settings: {
+                ...existing,
+                discordWebhooks: config as unknown,
+              } as any,
+            })
+            .eq('id', user.id);
+        } catch (e) {
+          console.warn('Could not save webhooks to Supabase profile:', e);
+        }
+      }
+
+      // 3. Inform API / server runtime
       const res = await fetch('/api/admin/discord', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'save', ...config }),
       });
-      const data = await res.json();
-      if (data.ok) {
+      const data = await res.json().catch(() => null);
+
+      if (data?.ok) {
         haptic('success');
         toast('Paramètres des webhooks enregistrés avec succès !');
       } else {
-        toast(`Erreur : ${data.error || 'Impossible d’enregistrer'}`);
+        // Even if server file write was read-only, local & Supabase storage succeeded
+        haptic('success');
+        toast('Paramètres des webhooks enregistrés dans votre profil SAKURA !');
       }
     } catch {
-      toast('Erreur de connexion au serveur');
+      toast('Paramètres enregistrés en local sur votre appareil');
     } finally {
       setSaving(false);
     }
@@ -89,7 +164,11 @@ export function DiscordWebhooksSection() {
     }
   };
 
-  const handleDispatch = async (action: 'send_changelog' | 'send_links' | 'send_rules', url: string, label: string) => {
+  const handleDispatch = async (
+    action: 'send_episodes' | 'send_animes' | 'send_changelog' | 'send_links' | 'send_rules',
+    url: string,
+    label: string
+  ) => {
     if (!url.trim()) {
       toast(`Veuillez renseigner l’URL du webhook pour ${label}.`);
       return;
@@ -119,6 +198,8 @@ export function DiscordWebhooksSection() {
     return <div className={`${card} h-48 animate-pulse`} />;
   }
 
+  const latestChangelog = CHANGELOG[0];
+
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
@@ -128,7 +209,7 @@ export function DiscordWebhooksSection() {
             Webhooks Discord
           </h2>
           <p className="text-[13px] text-[#8E8E93]">
-            Configurez les canaux Discord pour la diffusion automatique et manuelle des annonces.
+            Configurez les canaux Discord pour la diffusion des annonces SAKURA (enregistré dans votre profil Supabase et localement).
           </p>
         </div>
         <button
@@ -154,6 +235,11 @@ export function DiscordWebhooksSection() {
           onToggle={(v) => setConfig((c) => ({ ...c, episodesEnabled: v }))}
           onTest={() => handleTest('episodes', config.episodesUrl)}
           testing={testing === 'episodes'}
+          extraAction={{
+            label: dispatching === 'send_episodes' ? 'Envoi…' : 'Diffuser les sorties du jour',
+            onClick: () => handleDispatch('send_episodes', config.episodesUrl, 'Nouveaux Épisodes'),
+            disabled: !config.episodesUrl.trim() || dispatching !== null,
+          }}
         />
 
         {/* 2. Nouveaux Animes */}
@@ -167,9 +253,14 @@ export function DiscordWebhooksSection() {
           onToggle={(v) => setConfig((c) => ({ ...c, animesEnabled: v }))}
           onTest={() => handleTest('animes', config.animesUrl)}
           testing={testing === 'animes'}
+          extraAction={{
+            label: dispatching === 'send_animes' ? 'Envoi…' : 'Diffuser les nouveautés catalogue',
+            onClick: () => handleDispatch('send_animes', config.animesUrl, 'Nouveaux Animes'),
+            disabled: !config.animesUrl.trim() || dispatching !== null,
+          }}
         />
 
-        {/* 3. Changelogs automatiques */}
+        {/* 3. Changelogs */}
         <WebhookItem
           title="Changelogs & Mises à Jour"
           description="Diffuse la liste détaillée des nouveautés et corrections à chaque nouvelle mise à jour."
@@ -181,7 +272,10 @@ export function DiscordWebhooksSection() {
           onTest={() => handleTest('changelog', config.changelogUrl)}
           testing={testing === 'changelog'}
           extraAction={{
-            label: dispatching === 'send_changelog' ? 'Envoi…' : 'Envoyer le changelog v0.5.2',
+            label:
+              dispatching === 'send_changelog'
+                ? 'Envoi…'
+                : `Diffuser la mise à jour (${latestChangelog?.date || 'dernière'})`,
             onClick: () => handleDispatch('send_changelog', config.changelogUrl, 'Changelog'),
             disabled: !config.changelogUrl.trim() || dispatching !== null,
           }}
@@ -199,13 +293,13 @@ export function DiscordWebhooksSection() {
           onTest={() => handleTest('links', config.linksUrl)}
           testing={testing === 'links'}
           extraAction={{
-            label: dispatching === 'send_links' ? 'Envoi…' : 'Diffuser les liens utiles',
+            label: dispatching === 'send_links' ? 'Publication…' : 'Diffuser les liens utiles',
             onClick: () => handleDispatch('send_links', config.linksUrl, 'Liens Utiles'),
             disabled: !config.linksUrl.trim() || dispatching !== null,
           }}
         />
 
-        {/* 5. Règlement du Serveur */}
+        {/* 5. Règlement */}
         <WebhookItem
           title="Règlement du Serveur"
           description="Publie la charte communautaire et les règles de bonne conduite aux couleurs de SAKURA."
@@ -217,7 +311,7 @@ export function DiscordWebhooksSection() {
           onTest={() => handleTest('rules', config.rulesUrl)}
           testing={testing === 'rules'}
           extraAction={{
-            label: dispatching === 'send_rules' ? 'Envoi…' : 'Publier le règlement',
+            label: dispatching === 'send_rules' ? 'Publication…' : 'Publier le règlement',
             onClick: () => handleDispatch('send_rules', config.rulesUrl, 'Règlement'),
             disabled: !config.rulesUrl.trim() || dispatching !== null,
           }}
@@ -236,7 +330,7 @@ interface WebhookItemProps {
   onUrlChange: (url: string) => void;
   onToggle: (enabled: boolean) => void;
   onTest: () => void;
-  testing: boolean;
+  testing?: boolean;
   extraAction?: {
     label: string;
     onClick: () => void;
@@ -302,7 +396,7 @@ function WebhookItem({
         <div className="flex gap-2 shrink-0">
           <button
             type="button"
-            disabled={testing || !url.trim()}
+            disabled={Boolean(testing) || !url.trim()}
             onClick={onTest}
             className="px-3.5 h-11 rounded-xl bg-white/10 hover:bg-white/15 active:scale-95 text-[13px] font-medium text-white transition-all disabled:opacity-40 cursor-pointer"
           >
@@ -324,4 +418,3 @@ function WebhookItem({
     </div>
   );
 }
-

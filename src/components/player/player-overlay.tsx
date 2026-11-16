@@ -12,7 +12,13 @@ import { setNowPlayingMeta, setPlayerOpen } from '@/lib/native-media';
 
 const VideoPlayer = dynamic(() => import('./video-player').then((m) => m.VideoPlayer), { ssr: false });
 
-const SKIP_LABEL: Record<SkipInterval['type'], string> = { op: "Passer l'opening", ed: "Passer l'ending" };
+const SKIP_LABEL: Record<SkipInterval['type'], string> = {
+  op: "Passer l'opening",
+  ed: "Passer l'ending",
+  recap: 'Passer le récap',
+  'mixed-op': "Passer l'opening",
+  'mixed-ed': "Passer l'ending",
+};
 
 export interface PlayerSource {
   url: string;
@@ -158,23 +164,40 @@ function PlayerOverlayInner({
   // End-of-episode rating prompt: shown once per episode, never touches the next-episode countdown.
   const [ratePrompt, setRatePrompt] = useState<'hidden' | 'shown' | 'done'>('hidden');
   const [ratePromptManual, setRatePromptManual] = useState(false);
+  const [isRateClosing, setIsRateClosing] = useState(false);
   const [promptFor, setPromptFor] = useState(episodeLabel);
   if (promptFor !== episodeLabel) {
     setPromptFor(episodeLabel);
     setRatePrompt('hidden');
     setRatePromptManual(false);
+    setIsRateClosing(false);
   }
   const showRatePrompt = () => {
     if (onRateEpisode) {
       setRatePromptManual(false);
+      setIsRateClosing(false);
       setRatePrompt((r) => (r === 'hidden' ? 'shown' : r));
     }
   };
+
+  const handleCloseRating = (selectedRating?: number | null) => {
+    if (isRateClosing) return;
+    if (selectedRating != null && onRateEpisode) {
+      onRateEpisode(selectedRating);
+    }
+    setIsRateClosing(true);
+    setTimeout(() => {
+      setRatePrompt('done');
+      setRatePromptManual(false);
+      setIsRateClosing(false);
+    }, 280);
+  };
+
   useEffect(() => {
-    if (ratePrompt !== 'shown' || ratePromptManual) return;
-    const t = setTimeout(() => setRatePrompt('done'), RATE_PROMPT_MS);
+    if (ratePrompt !== 'shown' || ratePromptManual || isRateClosing) return;
+    const t = setTimeout(() => handleCloseRating(), RATE_PROMPT_MS);
     return () => clearTimeout(t);
-  }, [ratePrompt, ratePromptManual]);
+  }, [ratePrompt, ratePromptManual, isRateClosing]);
   const [idle, setIdle] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -543,15 +566,18 @@ function PlayerOverlayInner({
       </div>
 
       {/* End-of-episode rating (bottom-left, independent from the up-next card) */}
-      {ratePrompt === 'shown' && onRateEpisode && (
-        <div className="absolute z-[120] left-3 sm:left-4 md:left-10 bottom-16 sm:bottom-24 w-[min(90vw,340px)] p-3.5 sm:p-4 rounded-3xl bg-black/80 backdrop-blur-xl border border-white/10 text-white shadow-2xl animate-in fade-in slide-in-from-bottom-4 pl-[max(env(safe-area-inset-left),12px)]">
+      {(ratePrompt === 'shown' || isRateClosing) && onRateEpisode && (
+        <div
+          className={`absolute z-[120] left-3 sm:left-4 md:left-10 bottom-16 sm:bottom-24 w-[min(90vw,340px)] p-3.5 sm:p-4 rounded-3xl bg-black/80 backdrop-blur-xl border border-white/10 text-white shadow-2xl pl-[max(env(safe-area-inset-left),12px)] transition-all duration-300 ease-out ${
+            isRateClosing
+              ? 'opacity-0 translate-y-6 scale-95 pointer-events-none'
+              : 'opacity-100 translate-y-0 scale-100 animate-in fade-in slide-in-from-bottom-4'
+          }`}
+        >
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="text-xs font-semibold uppercase tracking-wider text-white/60">Noter cet épisode</div>
             <button
-              onClick={() => {
-                setRatePrompt('done');
-                setRatePromptManual(false);
-              }}
+              onClick={() => handleCloseRating()}
               aria-label="Fermer"
               className="p-1 rounded-full hover:bg-white/10 cursor-pointer"
             >
@@ -562,11 +588,7 @@ function PlayerOverlayInner({
             value={episodeRating}
             size="sm"
             label="Note de cet épisode"
-            onChange={(r) => {
-              onRateEpisode(r);
-              setRatePrompt('done');
-              setRatePromptManual(false);
-            }}
+            onChange={(r) => handleCloseRating(r)}
           />
         </div>
       )}

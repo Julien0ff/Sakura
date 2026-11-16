@@ -158,7 +158,7 @@ function PagePresence() {
 
   useEffect(() => configurePresence({ enabled, browsing }), [enabled, browsing]);
   useEffect(() => {
-    if (!isApp() || pathname === '/anime') return;
+    if (pathname === '/anime') return;
     setPagePresence(buildBrowsingPresence({ path: pathname, since: SESSION_START, origin: window.location.origin }));
   }, [pathname]);
 

@@ -1,0 +1,27 @@
+{
+  "author": {
+    "name": "SAKURA",
+    "id": "1568341036894523432"
+  },
+  "service": "SAKURA",
+  "description": {
+    "en": "Displays what anime or cartoon you are watching on SAKURA.",
+    "fr": "Affiche l'anime ou le dessin animé que vous regardez sur SAKURA."
+  },
+  "url": [
+    "sakura.thefoxy.me",
+    "localhost"
+  ],
+  "version": "1.0.0",
+  "logo": "https://sakura.thefoxy.me/icon.png",
+  "thumbnail": "https://sakura.thefoxy.me/banner-news.png",
+  "color": "#FF2D55",
+  "category": "anime",
+  "tags": [
+    "anime",
+    "cartoons",
+    "streaming",
+    "sakura",
+    "manga"
+  ]
+}

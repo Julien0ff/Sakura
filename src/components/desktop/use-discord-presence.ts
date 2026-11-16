@@ -18,20 +18,18 @@ export interface Playback {
  */
 export function useDiscordPresence(episode: PresenceEpisode | null, playback: Playback) {
   useEffect(() => {
-    if (!isApp()) return;
     setPlaybackPresence(episode ? buildPresence({ ...episode, ...playback, now: Date.now(), origin: window.location.origin }) : null);
   }, [episode, playback]);
 
   useEffect(() => () => setPlaybackPresence(null), []);
 }
 
-/** SAKURA apps: « Death Note · Consulte la fiche » while on an anime page (null = still loading). */
+/** SAKURA apps & web PreMiD: « Death Note · Consulte la fiche » while on an anime page (null = still loading). */
 export function useAnimePagePresence(anime: { id: number; title: string; cover: string | null } | null) {
   const id = anime?.id;
   const title = anime?.title;
   const cover = anime?.cover ?? null;
   useEffect(() => {
-    if (!isApp()) return;
     setPagePresence(
       buildBrowsingPresence({
         path: '/anime',

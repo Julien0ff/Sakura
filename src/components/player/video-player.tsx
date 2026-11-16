@@ -32,7 +32,13 @@ export interface VideoPlayerProps {
   onActiveSkipChange?: (info: { skip: SkipInterval; onSkip: () => void } | null) => void;
 }
 
-export const SKIP_LABEL: Record<SkipInterval['type'], string> = { op: "Passer l'opening", ed: "Passer l'ending" };
+export const SKIP_LABEL: Record<SkipInterval['type'], string> = {
+  op: "Passer l'opening",
+  ed: "Passer l'ending",
+  recap: 'Passer le récap',
+  'mixed-op': "Passer l'opening",
+  'mixed-ed': "Passer l'ending",
+};
 
 export function VideoPlayer({
   src,
@@ -300,6 +306,34 @@ export function VideoPlayer({
       const { startAt: at } = latest.current;
       const initialTime = at > 5 && video.duration && at < video.duration - 30 ? at : (isAnimeSama ? 4 : 0);
       if (initialTime > 0) video.currentTime = initialTime;
+
+      // Detect recap chapters from native textTracks (cartoons / video files with chapters)
+      try {
+        if (video.textTracks) {
+          for (let i = 0; i < video.textTracks.length; i++) {
+            const track = video.textTracks[i];
+            if (track.kind === 'chapters') {
+              track.mode = 'hidden';
+              const cues = track.cues;
+              if (cues) {
+                for (let j = 0; j < cues.length; j++) {
+                  const cue = cues[j] as any;
+                  const text = (cue.text || '').toLowerCase();
+                  if (text.includes('recap') || text.includes('récap') || text.includes('résumé') || text.includes('previously')) {
+                    if (!latest.current.skipTimes.some((s) => s.type === 'recap' && Math.abs(s.start - cue.startTime) < 2)) {
+                      latest.current.skipTimes.push({
+                        type: 'recap',
+                        start: cue.startTime,
+                        end: cue.endTime,
+                      });
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch {}
     };
 
     const onTime = () => {

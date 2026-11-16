@@ -16,9 +16,49 @@ let last: PresencePayload | null = null;
 /** When this tab (= the app window) started: browsing shows « depuis 12:34 ». */
 export const SESSION_START = Date.now();
 
+function updateWebPresence(p: PresencePayload | null) {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+  // Window globals for PreMiD (execInPage / userscripts)
+  (window as any).__SAKURA_PRESENCE__ = p;
+  (window as any).premidData = p;
+
+  let el = document.getElementById('premid-presence');
+  if (!p) {
+    if (el) el.remove();
+    document.dispatchEvent(new CustomEvent('sakura:presence', { detail: null }));
+    return;
+  }
+
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'premid-presence';
+    el.style.display = 'none';
+    el.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(el);
+  }
+
+  el.setAttribute('data-details', p.details || '');
+  el.setAttribute('data-state', p.state || '');
+  el.setAttribute('data-large-image', p.large_image || '');
+  el.setAttribute('data-large-text', p.large_text || '');
+  el.setAttribute('data-small-image', p.small_image || '');
+  el.setAttribute('data-small-text', p.small_text || '');
+  if (p.start != null) el.setAttribute('data-start', String(p.start));
+  else el.removeAttribute('data-start');
+  if (p.end != null) el.setAttribute('data-end', String(p.end));
+  else el.removeAttribute('data-end');
+  el.setAttribute('data-button-label', p.button_label || '');
+  el.setAttribute('data-button-url', p.button_url || '');
+
+  document.dispatchEvent(new CustomEvent('sakura:presence', { detail: p }));
+}
+
 function flush() {
-  if (!isApp()) return;
   const next = enabled ? pickPresence(browsing ? page : null, playback) : null;
+  updateWebPresence(next);
+
+  if (!isApp()) return;
   if (samePresence(last, next)) return;
   last = next;
   void desktop.setPresence(next);

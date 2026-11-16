@@ -70,7 +70,26 @@ export function AppGroup() {
     queryFn: desktop.getAutostart,
   });
 
-  if (!inApp) return null;
+  if (!inApp) {
+    return (
+      <Group title="Discord & PreMiD" footer="Sur le site web, le statut Discord fonctionne en direct avec l’extension PreMiD.">
+        <Toggle
+          label="Statut Discord (PreMiD)"
+          hint="Transmet votre lecture et navigation à PreMiD pour afficher « Regarde <anime> · Épisode » sur votre profil Discord."
+          checked={discordPresence}
+          onChange={(v) => updateSettings({ discordPresence: v })}
+        />
+        {discordPresence && (
+          <Toggle
+            label="Afficher la navigation"
+            hint="Affiche la page consultée (« Parcourt le catalogue », « Cherche un anime »…) quand vous ne regardez rien."
+            checked={discordBrowsing}
+            onChange={(v) => updateSettings({ discordBrowsing: v })}
+          />
+        )}
+      </Group>
+    );
+  }
 
   return (
     <Group

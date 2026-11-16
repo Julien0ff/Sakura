@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --test 'src/**/*.test.ts'",
+    "premid:dev": "cd ../PreMiD-Activities && cp -r ../'Site Anime'/premid/* websites/S/SAKURA/ && npx pmd dev SAKURA",
     "tauri": "tauri",
     "tauri:dev": "tauri dev --config src-tauri/tauri.dev.json"
   },

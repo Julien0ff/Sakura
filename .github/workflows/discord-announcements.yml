@@ -1,0 +1,56 @@
+name: Diffusion Automatique Discord
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/lib/changelog.ts'
+  schedule:
+    # Tous les jours à 12h00 CET (11:00 UTC) et 18h00 CET (17:00 UTC) pour les épisodes
+    - cron: '0 11 * * *'
+    - cron: '0 17 * * *'
+    # Tous les dimanches à 14h00 CET (13:00 UTC) pour les nouveautés animes
+    - cron: '0 13 * * 0'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Type d annonce à diffuser'
+        required: true
+        default: 'changelog'
+        type: choice
+        options:
+          - changelog
+          - episodes
+          - animes
+
+jobs:
+  announce:
+    name: Diffuser sur Discord
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Configurer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Diffuser le Changelog (si modification de changelog.ts ou choix manuel)
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'changelog') }}
+        env:
+          DISCORD_WEBHOOK_CHANGELOG: ${{ secrets.DISCORD_WEBHOOK_CHANGELOG }}
+        run: node scripts/discord-announce.mjs changelog
+
+      - name: Diffuser les Nouveaux Épisodes du Jour (si cron quotidien ou choix manuel)
+        if: ${{ github.event_name == 'schedule' && (github.event.schedule == '0 11 * * *' || github.event.schedule == '0 17 * * *') || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'episodes') }}
+        env:
+          DISCORD_WEBHOOK_EPISODES: ${{ secrets.DISCORD_WEBHOOK_EPISODES }}
+        run: node scripts/discord-announce.mjs episodes
+
+      - name: Diffuser les Nouveautés Catalogue (si cron dimanche ou choix manuel)
+        if: ${{ github.event_name == 'schedule' && github.event.schedule == '0 13 * * 0' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'animes') }}
+        env:
+          DISCORD_WEBHOOK_ANIMES: ${{ secrets.DISCORD_WEBHOOK_ANIMES }}
+        run: node scripts/discord-announce.mjs animes

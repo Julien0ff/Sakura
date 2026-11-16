@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/discord?type=episodes",
+      "schedule": "0 12,18 * * *"
+    },
+    {
+      "path": "/api/cron/discord?type=animes",
+      "schedule": "0 14 * * 0"
+    }
+  ]
+}

@@ -21,6 +21,26 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: '2026-11-16',
+    date: '16 novembre 2026',
+    title: 'Sorties à venir, refonte plein écran mobile et lecteur de dessins animés',
+    banner: '/banner-news.png',
+    features: [
+      { text: 'Sorties et saisons à venir : indication directe sous le titre et dans l’onglet Détails si une nouvelle saison ou un film est prévu (avec la date de sortie si disponible).' },
+      { text: 'Bandes-annonces pour les dessins animés : intégration du lecteur YouTube officiel dans la section Détails de chaque dessin animé.' },
+      { text: 'Saisons réelles pour les dessins animés : affichage uniquement des saisons sorties avec épisodes disponibles (ex. Hazbin Hotel limite désormais le sélecteur aux saisons 1 et 2).' },
+      { text: 'Mode paysage et plein écran sur mobile : refonte complète des contrôles et prise en charge du plein écran natif avec rotation automatique à l’horizontale.' },
+      { text: 'Ambiance lumineuse d’accueil : les dessins animés du carrousel adoptent désormais leur couleur dominante extraite au lieu du bleu par défaut.' },
+    ],
+    fixes: [
+      { text: 'Lecteur de dessins animés restauré : adaptation complète aux nouvelles protections et au format de liens Anime-Sama (12/11/2026) avec bascule automatique VOSTFR si besoin.' },
+      { text: 'Bouton plein écran mobile : compatibilité rétablie sur iPhone, Safari et Android avec gestion des encoches et de l’îlot dynamique (Dynamic Island).' },
+      { text: 'Ergonomie en paysage : réduction de la taille des commandes, ruban défilant des sources et dégradé supérieur allégé pour maximiser la surface vidéo.' },
+      { text: 'Stabilité des fiches et profils : correction des erreurs d’affichage sur les profils publics et sur les fiches d’animes lors du chargement des détails.' },
+      { text: 'Panneau d’administration : fiabilisation de la connexion temps réel pour le suivi des utilisateurs en ligne sans conflit de synchronisation.' },
+    ],
+  },
+  {
     id: '2026-11-11',
     date: '11 novembre 2026',
     title: 'Plein écran en paysage, bannières de dessins animés et webhooks Discord',

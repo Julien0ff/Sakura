@@ -77,6 +77,27 @@ test('cartoonMedia: the anime page shape, seasons without specials, no AniList e
   assert.equal(m.bannerImage, 'https://image.tmdb.org/t/p/w1280/gumball-bg.jpg');
 });
 
+test('cartoonMedia: Gumball with 6 seasons appends Season 7 Le Monde merveilleusement bizarre', () => {
+  const m = cartoonMedia({
+    ...gumball,
+    status: 'Returning Series',
+    number_of_episodes: 240,
+    seasons: [
+      { season_number: 1, name: 'Saison 1', air_date: '2011-05-03', episode_count: 36 },
+      { season_number: 2, name: 'Saison 2', air_date: '2012-08-07', episode_count: 40 },
+      { season_number: 3, name: 'Saison 3', air_date: '2014-06-05', episode_count: 40 },
+      { season_number: 4, name: 'Saison 4', air_date: '2015-07-07', episode_count: 40 },
+      { season_number: 5, name: 'Saison 5', air_date: '2016-09-01', episode_count: 40 },
+      { season_number: 6, name: 'Saison 6', air_date: '2018-01-05', episode_count: 44 },
+    ],
+  });
+  assert.equal(m.id, -37606);
+  assert.equal(m.episodes, 260);
+  assert.deepEqual(m.tmdbSeasons.map((s) => s.season_number), [1, 2, 3, 4, 5, 6, 7]);
+  assert.equal(m.tmdbSeasons[6].name, 'Saison 7 (Le Monde merveilleusement bizarre)');
+  assert.equal(m.tmdbSeasons[6].episode_count, 20);
+});
+
 test('discoverQuery: animated shows outside Asia, sorted like Découvrir', () => {
   const q = new URLSearchParams(discoverQuery('SCORE_DESC', 2));
   assert.equal(q.get('with_genres'), '16');

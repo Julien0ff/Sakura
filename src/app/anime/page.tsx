@@ -166,6 +166,8 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
           const resWords = cleanRes.split(' ').filter((w) => w.length >= 3 && !['les', 'des', 'the', 'and'].includes(w));
           if (candWords.length >= 2 && candWords.every((w) => cleanRes.includes(w))) return true;
           if (resWords.length >= 2 && resWords.every((w) => candidate.includes(w))) return true;
+          // Gumball spin-offs / continuations share the same Anime-Sama catalogue page
+          if (candidate.includes('gumball') && cleanRes.includes('gumball')) return true;
         }
         return false;
       };
@@ -206,8 +208,9 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
           }
 
           if (bestMatch) {
+            const currentTitle = currentAnime.tmdbTitle || currentAnime.title?.english || currentAnime.title?.romaji || '';
             const epRes = await fetch(
-              `/api/scraper?action=episodes&url=${encodeURIComponent(bestMatch.url)}&lang=${targetLang}&season=${activeSeason}`,
+              `/api/scraper?action=episodes&url=${encodeURIComponent(bestMatch.url)}&lang=${targetLang}&season=${activeSeason}&title=${encodeURIComponent(currentTitle)}`,
               { signal: AbortSignal.timeout(8000) }
             );
             const episodesList = await epRes.json();

@@ -113,7 +113,14 @@ async function fetchTMDBDetails(title: string, year?: number): Promise<TMDBDetai
 
 export async function getTMDBSeasonEpisodes(tmdbId: number, seasonNumber: number) {
   try {
-    const res = await fetch(`${TMDB_BASE_URL}/tv/${tmdbId}/season/${seasonNumber}?language=fr-FR`);
+    let fetchId = tmdbId;
+    let fetchSeason = seasonNumber;
+    // Gumball (TMDB 37606) season 7 is "Le Monde Merveilleusement Bizarre de Gumball" (TMDB 291904, season 1)
+    if (tmdbId === 37606 && seasonNumber === 7) {
+      fetchId = 291904;
+      fetchSeason = 1;
+    }
+    const res = await fetch(`${TMDB_BASE_URL}/tv/${fetchId}/season/${fetchSeason}?language=fr-FR`);
     const data = await res.json();
     return data.episodes || [];
   } catch (error) {

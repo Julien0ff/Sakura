@@ -71,13 +71,14 @@ export async function GET(request: Request) {
       const lang = (searchParams.get('lang') || 'vostfr') as 'vf' | 'vostfr';
       const seasonParam = searchParams.get('season');
       const season = seasonParam ? parseInt(seasonParam, 10) : undefined;
+      const title = searchParams.get('title') || undefined;
       
       let episodes: any[] = [];
       try {
         if (url.startsWith('vostfree:')) {
           episodes = await vostfree.getEpisodes(url.replace('vostfree:', ''), lang);
         } else if (url.startsWith('animesama:')) {
-          episodes = await animesama.getEpisodes(url.replace('animesama:', ''), lang, season);
+          episodes = await animesama.getEpisodes(url.replace('animesama:', ''), lang, season, title);
         } else if (url.startsWith('arkanime:')) {
           episodes = await arkanime.getEpisodes(url.replace('arkanime:', ''), lang, season);
         }

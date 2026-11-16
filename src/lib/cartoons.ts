@@ -91,13 +91,32 @@ export function cartoonMedia(d: TmdbCartoonDetails) {
     return false;
   });
   const effectiveSeasons = releasedSeasons.length > 0 ? releasedSeasons : allSeasons.slice(0, 1);
+
+  // Special case: Le Monde incroyable de Gumball (TMDB 37606)
+  // "Le Monde merveilleusement bizarre de Gumball" (The Wonderfully Weird World of Gumball) is Season 7 (20 eps)
+  if (d.id === 37606 && allSeasons.some((s) => s.season_number === 6)) {
+    if (!effectiveSeasons.some((s) => s.season_number === 7)) {
+      effectiveSeasons.push({
+        season_number: 7,
+        name: 'Saison 7 (Le Monde merveilleusement bizarre)',
+        episode_count: 20,
+        air_date: '2025-10-06',
+      });
+    }
+  }
+
   const upcomingSeasons = allSeasons.filter((s) => !effectiveSeasons.some((es) => es.season_number === s.season_number));
+
+  const totalEpisodes =
+    d.id === 37606 && allSeasons.some((s) => s.season_number === 6) && d.number_of_episodes
+      ? d.number_of_episodes + 20
+      : d.number_of_episodes ?? null;
 
   return {
     ...cartoonSummary(d),
     idMal: null,
     status: cartoonStatus(d.status),
-    episodes: d.number_of_episodes ?? null,
+    episodes: totalEpisodes,
     duration: null,
     popularity: null,
     trailer: trailerVideo?.key ? { id: trailerVideo.key, site: 'youtube' } : null,

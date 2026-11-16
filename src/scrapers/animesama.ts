@@ -52,7 +52,7 @@ export class AnimeSamaScraper implements AnimeScraper {
     }
   }
 
-  async getEpisodes(animeUrl: string, lang: 'vf' | 'vostfr' = 'vostfr', season?: number): Promise<AnimeEpisode[]> {
+  async getEpisodes(animeUrl: string, lang: 'vf' | 'vostfr' = 'vostfr', season?: number, title?: string): Promise<AnimeEpisode[]> {
     try {
       const response = await fetch(animeUrl, { headers: this.getHeaders(animeUrl) });
       const html = await response.text();
@@ -64,7 +64,7 @@ export class AnimeSamaScraper implements AnimeScraper {
       while ((pMatch = panelRegex.exec(html)) !== null) {
         const label = pMatch[1].trim();
         const path = pMatch[2].trim();
-        if (path && path !== 'url' && !path.includes('nom') && !path.startsWith('http')) {
+        if (path && path !== 'url' && label !== 'nom' && !path.includes('nom') && !path.startsWith('http')) {
           panels.push({ label, path });
         }
       }
@@ -80,6 +80,22 @@ export class AnimeSamaScraper implements AnimeScraper {
           const path = p.path.toLowerCase();
           const sStr = String(sNum);
           const sPad = sNum < 10 ? `0${sNum}` : sStr;
+
+          // Special case: "Le Monde Merveilleusement Bizarre de Gumball" (saison1hs)
+          if (title && (title.toLowerCase().includes('bizarre') || title.toLowerCase().includes('weird'))) {
+            return path.includes('saison1hs') || l.includes('bizarre');
+          }
+
+          // Special case: Gumball season 7 is "Le Monde Merveilleusement Bizarre de Gumball" (saison1hs)
+          if (sNum === 7 && (animeUrl.includes('gumball') || l.includes('bizarre') || path.includes('saison1hs'))) {
+            return path.includes('saison1hs') || l.includes('bizarre');
+          }
+
+          // Avoid matching "saison1hs" when searching for season 1
+          if (sNum === 1 && (path.includes('saison1hs') || l.includes('bizarre'))) {
+            return false;
+          }
+
           return (
             path.includes(`saison${sStr}`) ||
             path.includes(`saison${sPad}`) ||

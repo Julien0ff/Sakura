@@ -27,7 +27,7 @@ export interface AnimeScraper {
   /**
    * Get all episodes for a specific anime URL
    */
-  getEpisodes(animeUrl: string, lang?: 'vf' | 'vostfr'): Promise<AnimeEpisode[]>;
+  getEpisodes(animeUrl: string, lang?: 'vf' | 'vostfr', season?: number, title?: string): Promise<AnimeEpisode[]>;
   
   /**
    * Resolve an episode URL to direct video streams (.m3u8, .mp4)

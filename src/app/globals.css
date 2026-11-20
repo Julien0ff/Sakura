@@ -757,7 +757,6 @@ html.player-open .top-float {
   /* Filet de sécurité sans JavaScript : la page finit toujours par apparaître. */
   animation: splash-failsafe 0.6s ease 9s forwards;
 }
-html.splash-skip .splash { display: none; }
 .splash-leaving { opacity: 0; visibility: hidden; pointer-events: none; }
 
 .splash-glow {

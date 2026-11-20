@@ -10,8 +10,8 @@ import { Play, X } from '@/components/ui/icons';
 
 /** Once per launch (tab / app session). */
 const SESSION_KEY = 'sakura.resumeOffered';
-/** After the splash screen has gone. */
-const DELAY_MS = 2200;
+/** After the splash screen (3 s + 1.5 s exit, see splash-screen.tsx). */
+const DELAY_MS = 4700;
 /** Synced history can land a few seconds after launch: keep looking for this long. */
 const WATCH_MS = 12_000;
 /** Older than that, it's no longer « where you left off ». */

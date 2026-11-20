@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "SAKURA",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "identifier": "app.sakura.desktop",
   "build": {
     "frontendDist": "offline",
@@ -47,10 +47,6 @@
     "longDescription": "SAKURA : catalogue d’animes, lecteur sans publicité, suivi de visionnage, calendrier des sorties VF/VOSTFR et statut Discord."
   },
   "plugins": {
-    "notification": {
-      "icon": "ic_stat_sakura",
-      "iconColor": "#FF7AA8"
-    },
     "deep-link": {
       "desktop": {
         "schemes": [

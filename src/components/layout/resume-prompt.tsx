@@ -37,6 +37,8 @@ export function ResumePrompt() {
   const [phase, setPhase] = useState<'waiting' | 'open' | 'closing' | 'done'>('waiting');
   const [ready, setReady] = useState(false);
   const [launchedAt] = useState(() => Date.now());
+  /** Phones: shrinks to poster + play + progress once the page scrolls (tap the poster to expand). */
+  const [compact, setCompact] = useState(false);
 
   useEffect(() => {
     let offered = false;
@@ -84,6 +86,20 @@ export function ResumePrompt() {
     }
   }, [onAnimePage, phase]);
 
+  useEffect(() => {
+    if (phase !== 'open') return;
+    const phone = window.matchMedia('(max-width: 767px)');
+    // `scroll` doesn't bubble: listen in the capture phase to hear the page's own scroller (#main-scroll).
+    const onScroll = (e: Event) => {
+      if (!phone.matches) return;
+      const el = e.target instanceof HTMLElement ? e.target : document.scrollingElement;
+      if (!el || (el.id !== 'main-scroll' && el !== document.scrollingElement)) return;
+      setCompact(el.scrollTop > 24);
+    };
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    return () => document.removeEventListener('scroll', onScroll, { capture: true });
+  }, [phase]);
+
   if ((phase !== 'open' && phase !== 'closing') || !last || !progress) return null;
 
   const close = () => {
@@ -93,51 +109,87 @@ export function ResumePrompt() {
   };
   const episode = `${last.season > 1 ? `S${last.season} · ` : ''}Épisode ${last.episodeNumber}`;
 
+  const ease = 'transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]';
+  const percent = Math.round(ratio * 100);
+
   return (
     <div
       role="dialog"
       aria-label="Reprendre la lecture"
-      className={`fixed z-[60] left-3 right-3 md:left-auto md:right-6 bottom-[calc(max(env(safe-area-inset-bottom),12px)+84px)] md:bottom-6 md:w-[380px] transition-all duration-300 ${
-        phase === 'closing' ? 'opacity-0 translate-y-3' : 'animate-in fade-in slide-in-from-bottom-6 duration-500'
-      }`}
+      className={`fixed z-[60] right-3 md:right-6 bottom-[calc(max(env(safe-area-inset-bottom),12px)+84px)] md:bottom-6 ${ease} ${
+        compact ? 'w-[132px]' : 'w-[calc(100vw-24px)]'
+      } md:w-[380px] ${phase === 'closing' ? 'opacity-0 translate-y-3' : 'animate-in fade-in slide-in-from-bottom-6 duration-500'}`}
     >
-      <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-[#1C1C1E]/90 backdrop-blur-2xl shadow-2xl shadow-black/60">
+      <div
+        className={`relative overflow-hidden border border-white/10 bg-[#1C1C1E]/90 backdrop-blur-2xl shadow-2xl shadow-black/60 ${ease} ${
+          compact ? 'rounded-[20px]' : 'rounded-[22px]'
+        }`}
+      >
         <div
           aria-hidden
           className="absolute inset-0 opacity-40"
           style={{ background: `radial-gradient(120% 90% at 0% 0%, ${last.color || '#FF7AA8'} 0%, transparent 60%)` }}
         />
-        <div className="relative flex items-center gap-3 p-3">
-          {last.cover && <img src={last.cover} alt="" className="w-12 aspect-[2/3] rounded-lg object-cover shrink-0" />}
-          <div className="min-w-0 flex-1">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-white/60">Reprendre là où vous en étiez</div>
+        <div className={`relative flex items-center ${ease} ${compact ? 'gap-2 p-2 pb-3' : 'gap-3 p-3'}`}>
+          {last.cover && (
+            <button
+              type="button"
+              onClick={() => compact && setCompact(false)}
+              tabIndex={compact ? 0 : -1}
+              aria-label={compact ? 'Afficher les détails' : undefined}
+              className={`shrink-0 overflow-hidden rounded-lg ${ease} ${compact ? 'w-10 cursor-pointer' : 'w-12 cursor-default'}`}
+            >
+              <img src={last.cover} alt="" className="w-full aspect-[2/3] object-cover" />
+            </button>
+          )}
+          <div className={`min-w-0 overflow-hidden ${ease} ${compact ? 'max-w-0 opacity-0 flex-none' : 'max-w-[400px] opacity-100 flex-1'}`}>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-white/60 whitespace-nowrap">Reprendre là où vous en étiez</div>
             <div className="text-[15px] font-semibold text-white truncate">{last.title}</div>
-            <div className="text-[12px] text-white/70 tabular-nums">
+            <div className="text-[12px] text-white/70 tabular-nums whitespace-nowrap">
               {episode} · {last.lang.toUpperCase()} · {clock(progress.time)} / {clock(progress.duration)}
             </div>
           </div>
+          {compact && (
+            <Link
+              href={`/anime?id=${last.id}&play=1`}
+              onClick={() => haptic('selection')}
+              aria-label={`Reprendre ${last.title}, ${episode}`}
+              className="ml-auto shrink-0 w-11 h-11 rounded-full bg-white text-black flex items-center justify-center active:scale-90 transition-transform animate-in fade-in zoom-in-75 duration-300"
+            >
+              <Play className="w-5 h-5 translate-x-[1px]" />
+            </Link>
+          )}
           <button
             type="button"
             onClick={close}
             aria-label="Fermer"
-            className="self-start p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
+            className={`self-start rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer ${ease} ${
+              compact ? 'w-0 p-0 opacity-0 pointer-events-none' : 'p-1.5 opacity-100'
+            }`}
           >
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="relative px-3 pb-3 flex items-center gap-3">
-          <div className="flex-1 h-1 rounded-full bg-white/15 overflow-hidden" aria-hidden>
-            <div className="h-full rounded-full bg-sakura" style={{ width: `${Math.round(ratio * 100)}%` }} />
+        {compact ? (
+          // Thin bar along the bottom edge of the pill.
+          <div className="absolute inset-x-2 bottom-1.5 h-[3px] rounded-full bg-white/15 overflow-hidden" aria-hidden>
+            <div className="h-full rounded-full bg-sakura" style={{ width: `${percent}%` }} />
           </div>
-          <Link
-            href={`/anime?id=${last.id}&play=1`}
-            onClick={() => haptic('selection')}
-            className="shrink-0 flex items-center gap-1.5 h-9 px-4 rounded-full bg-white text-black text-sm font-bold hover:bg-white/90 active:scale-95 transition-transform"
-          >
-            <Play className="w-4 h-4" />
-            Reprendre
-          </Link>
-        </div>
+        ) : (
+          <div className="relative px-3 pb-3 flex items-center gap-3 animate-in fade-in duration-300">
+            <div className="flex-1 h-1 rounded-full bg-white/15 overflow-hidden" aria-hidden>
+              <div className="h-full rounded-full bg-sakura" style={{ width: `${percent}%` }} />
+            </div>
+            <Link
+              href={`/anime?id=${last.id}&play=1`}
+              onClick={() => haptic('selection')}
+              className="shrink-0 flex items-center gap-1.5 h-9 px-4 rounded-full bg-white text-black text-sm font-bold hover:bg-white/90 active:scale-95 transition-transform"
+            >
+              <Play className="w-4 h-4" />
+              Reprendre
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -364,6 +364,14 @@ mod tests {
         assert!(!q.contains(paris(8, 0)));
     }
 
+    /// tauri-plugin-notification takes no configuration: a `plugins.notification` block in
+    /// tauri.conf.json makes the app quit at launch (0.5.3). Icons go on each notification instead.
+    #[test]
+    fn notification_plugin_has_no_config() {
+        let conf: serde_json::Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        assert!(conf["plugins"].get("notification").is_none());
+    }
+
     #[test]
     fn targets_without_quiet_still_load() {
         let t: Targets = serde_json::from_str(r#"{"anime":[],"langs":["vf"]}"#).unwrap();

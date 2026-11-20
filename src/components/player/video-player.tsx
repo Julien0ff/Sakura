@@ -40,6 +40,15 @@ export const SKIP_LABEL: Record<SkipInterval['type'], string> = {
   'mixed-ed': "Passer l'ending",
 };
 
+
+/** Players that check for an iframe sandbox (PDF plugin trick) and then won't play. */
+const SANDBOX_DETECTING_HOSTS = ['ansembed', 'anime-sama'];
+const IFRAME_SANDBOX = 'allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock allow-orientation-lock';
+
+function sandboxFor(url: string): string | undefined {
+  return SANDBOX_DETECTING_HOSTS.some((h) => url.includes(h)) ? undefined : IFRAME_SANDBOX;
+}
+
 export function VideoPlayer({
   src,
   type = 'hls',
@@ -546,11 +555,10 @@ export function VideoPlayer({
             ref={iframeRef}
             src={iframeSrc}
             className="w-full h-full"
-            allowFullScreen
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-            // Third-party hosts (cartoons, Anime-Sama) open ad pop-ups and redirect the page on the
-            // first click: no popups, no top navigation. Scripts, cookies and fullscreen still work.
-            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock allow-orientation-lock"
+            // Third-party hosts open ad pop-ups and redirect the page on the first click: no popups,
+            // no top navigation. Hosts that detect the sandbox and refuse to play are left out.
+            sandbox={sandboxFor(iframeSrc)}
             onLoad={() => {
               if (slowTimerRef.current) {
                 clearTimeout(slowTimerRef.current);

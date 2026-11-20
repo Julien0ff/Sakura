@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { SakuraLoader } from './sakura-loader';
 import { usePlyr, APITypes } from 'plyr-react';
 import 'plyr-react/plyr.css';
 import Hls from 'hls.js';
@@ -76,9 +77,16 @@ export function VideoPlayer({
 
   const isAnimeSama = Boolean(src && (src.includes('ansembed') || src.includes('anime-sama')));
 
+  // Where this source starts, frozen when the source loads. `startAt` is the saved progress, which the
+  // page updates every 5 s while playing: feeding it into the iframe URL reloaded the player (start=15,
+  // 35, 40…), cutting the episode and replaying Anime-Sama's intro each time.
+  const [initialStart, setInitialStart] = useState({ src, at: startAt });
+  if (initialStart.src !== src) setInitialStart({ src, at: startAt });
+  const startFrom = initialStart.src === src ? initialStart.at : startAt;
+
   // Anime-Sama embeds start with a 4s intro bumper. When starting from 0, jump directly past it.
   const iframeSrc = useMemo(() => {
-    const target = iframeSeekTime ?? (startAt > 4 ? startAt : (isAnimeSama ? 4 : 0));
+    const target = iframeSeekTime ?? (startFrom > 4 ? startFrom : (isAnimeSama ? 4 : 0));
     if (isAnimeSama) {
       const clean = src.replace(/([?&])start=\d+/, '').replace(/#t=\d+/, '');
       const joiner = clean.includes('?') ? '&' : '?';
@@ -90,14 +98,14 @@ export function VideoPlayer({
       return `${clean}#t=${Math.floor(target)}`;
     }
     return src;
-  }, [src, isAnimeSama, startAt, iframeSeekTime]);
+  }, [src, isAnimeSama, startFrom, iframeSeekTime]);
 
-  // Elapsed playhead for iframes
-  const elapsedRef = useRef(startAt || (isAnimeSama ? 4 : 0));
+  // Elapsed playhead for iframes (reset only when the source changes, not on every progress save)
+  const elapsedRef = useRef(startFrom || (isAnimeSama ? 4 : 0));
   useEffect(() => {
-    elapsedRef.current = startAt || (isAnimeSama ? 4 : 0);
+    elapsedRef.current = startFrom || (isAnimeSama ? 4 : 0);
     setIframeSeekTime(null);
-  }, [src, startAt, isAnimeSama]);
+  }, [src, startFrom, isAnimeSama]);
 
   const doIframeSeek = useCallback(
     (time: number) => {
@@ -520,11 +528,14 @@ export function VideoPlayer({
     <div className="relative w-full h-full bg-black">
       {type === 'iframe' ? (
         <>
-          {iframeLoading && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/60 z-10 pointer-events-none">
-              <div className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-              <p className="text-white/80 text-sm">Chargement du lecteur…</p>
-            </div>
+          {iframeLoading && <SakuraLoader compact message="Chargement du lecteur" />}
+          {isAnimeSama && (
+            // Anime-Sama's player has a « Download » button in its top-right corner that opens an ad
+            // page (vidmoly). Cross-origin, so it can't be removed: covered, clicks stop here.
+            <div
+              aria-hidden
+              className="absolute top-0 right-0 z-[5] w-[72px] h-[68px] sm:w-[190px] sm:h-[84px] bg-[radial-gradient(120%_120%_at_100%_0%,#000_45%,transparent_75%)]"
+            />
           )}
           {slowIframe && (
             <div className="absolute top-[max(var(--safe-top),16px)] left-1/2 -translate-x-1/2 z-[115] h-11 flex items-center gap-2.5 px-4 rounded-full bg-black/85 backdrop-blur-xl border border-white/20 text-white text-xs shadow-2xl animate-in fade-in max-w-[90vw]">

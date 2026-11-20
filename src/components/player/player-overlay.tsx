@@ -9,6 +9,7 @@ import { RatingPicker } from '@/components/anime/rating-picker';
 import { toast } from '@/components/ui/toast';
 import { haptic } from '@/lib/haptics';
 import { setImmersive, setNowPlayingMeta, setPlayerOpen } from '@/lib/native-media';
+import { SakuraLoader } from './sakura-loader';
 
 const VideoPlayer = dynamic(() => import('./video-player').then((m) => m.VideoPlayer), { ssr: false });
 
@@ -56,6 +57,8 @@ interface PlayerOverlayProps {
 }
 
 const NEXT_COUNTDOWN = 8;
+/** Sakura intro shown when the player opens, before the episode. */
+const INTRO_MS = 1500;
 /** The end-of-episode rating card hides itself after this long. */
 const RATE_PROMPT_MS = 12000;
 const IDLE_MS = 3000;
@@ -207,6 +210,22 @@ function PlayerOverlayInner({
   const overlayRef = useRef<HTMLDivElement>(null);
   /** Full screen asked by the user: kept when the Fullscreen API fails (Android app hides the bars itself). */
   const fsRequested = useRef(false);
+
+  // Sakura intro when the player opens (the episode loads underneath), then the same screen stays
+  // while the video is being looked for, and fades out once it's there.
+  const [intro, setIntro] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setIntro(false), INTRO_MS);
+    return () => clearTimeout(t);
+  }, []);
+  const busy = intro || isLoading;
+  const [loaderShown, setLoaderShown] = useState(true);
+  if (busy && !loaderShown) setLoaderShown(true);
+  useEffect(() => {
+    if (busy) return;
+    const t = setTimeout(() => setLoaderShown(false), 600);
+    return () => clearTimeout(t);
+  }, [busy]);
 
   useEffect(() => {
     const updateOrientation = (e?: Event) => {
@@ -437,12 +456,17 @@ function PlayerOverlayInner({
     >
       {/* Video / states */}
       <div onDoubleClick={toggleFullscreen} className="absolute inset-0 flex items-center justify-center">
-        {isLoading ? (
-          <div className="flex flex-col items-center gap-4 text-white">
-            <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: color, borderTopColor: 'transparent' }} />
-            <p className="font-semibold text-lg">Recherche de la vidéo…</p>
-          </div>
-        ) : error ? (
+        {loaderShown && (
+          <SakuraLoader
+            title={animeTitle}
+            subtitle={episodeLabel}
+            message={isLoading ? 'Recherche de la vidéo' : 'Préparation de l’épisode'}
+            poster={poster}
+            color={color}
+            leaving={!busy}
+          />
+        )}
+        {isLoading ? null : error ? (
           <div className="mx-6 max-w-md flex flex-col items-center gap-4 text-center text-white bg-white/10 p-8 rounded-3xl backdrop-blur-md">
             <p className="font-bold text-xl">Vidéo indisponible</p>
             <p className="text-white/80">{error}</p>

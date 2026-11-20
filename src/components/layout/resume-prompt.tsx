@@ -111,7 +111,8 @@ export function ResumePrompt() {
 
   // Only opacity and transform move (compositor-only, smooth on phones): the card and the bubble sit
   // on the same bottom-right anchor and cross-fade, nothing is re-laid out.
-  const swap = 'transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform';
+  // Tailwind v4's scale-* / translate-* set the `scale` / `translate` properties, not `transform`.
+  const swap = 'transition-[opacity,scale,translate] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] [will-change:opacity,scale,translate]';
   const percent = Math.round(ratio * 100);
   const href = `/anime?id=${last.id}&play=1`;
   const RING = 2 * Math.PI * 30;
@@ -120,7 +121,7 @@ export function ResumePrompt() {
     <div
       role="dialog"
       aria-label="Reprendre la lecture"
-      className={`pointer-events-none fixed z-[60] right-3 md:right-6 bottom-[calc(max(env(safe-area-inset-bottom),12px)+84px)] md:bottom-6 w-[calc(100vw-24px)] md:w-[380px] transition-[opacity,transform] duration-300 ${
+      className={`pointer-events-none fixed z-[60] right-3 md:right-6 bottom-[calc(max(env(safe-area-inset-bottom),12px)+84px)] md:bottom-6 w-[calc(100vw-24px)] md:w-[380px] transition-[opacity,translate] duration-300 ${
         phase === 'closing' ? 'opacity-0 translate-y-3' : 'animate-in fade-in slide-in-from-bottom-6 duration-500'
       }`}
     >

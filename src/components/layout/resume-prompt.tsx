@@ -109,79 +109,58 @@ export function ResumePrompt() {
   };
   const episode = `${last.season > 1 ? `S${last.season} · ` : ''}Épisode ${last.episodeNumber}`;
 
-  const ease = 'transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]';
+  // Only opacity and transform move (compositor-only, smooth on phones): the card and the bubble sit
+  // on the same bottom-right anchor and cross-fade, nothing is re-laid out.
+  const swap = 'transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform';
   const percent = Math.round(ratio * 100);
+  const href = `/anime?id=${last.id}&play=1`;
+  const RING = 2 * Math.PI * 30;
 
   return (
     <div
       role="dialog"
       aria-label="Reprendre la lecture"
-      className={`fixed z-[60] right-3 md:right-6 bottom-[calc(max(env(safe-area-inset-bottom),12px)+84px)] md:bottom-6 ${ease} ${
-        compact ? 'w-[132px]' : 'w-[calc(100vw-24px)]'
-      } md:w-[380px] ${phase === 'closing' ? 'opacity-0 translate-y-3' : 'animate-in fade-in slide-in-from-bottom-6 duration-500'}`}
+      className={`pointer-events-none fixed z-[60] right-3 md:right-6 bottom-[calc(max(env(safe-area-inset-bottom),12px)+84px)] md:bottom-6 w-[calc(100vw-24px)] md:w-[380px] transition-[opacity,transform] duration-300 ${
+        phase === 'closing' ? 'opacity-0 translate-y-3' : 'animate-in fade-in slide-in-from-bottom-6 duration-500'
+      }`}
     >
+      {/* Full card */}
       <div
-        className={`relative overflow-hidden border border-white/10 bg-[#1C1C1E]/90 backdrop-blur-2xl shadow-2xl shadow-black/60 ${ease} ${
-          compact ? 'rounded-[20px]' : 'rounded-[22px]'
-        }`}
+        aria-hidden={compact}
+        className={`origin-bottom-right ${swap} ${compact ? 'opacity-0 scale-[0.35] translate-y-2' : 'pointer-events-auto opacity-100 scale-100'}`}
       >
-        <div
-          aria-hidden
-          className="absolute inset-0 opacity-40"
-          style={{ background: `radial-gradient(120% 90% at 0% 0%, ${last.color || '#FF7AA8'} 0%, transparent 60%)` }}
-        />
-        <div className={`relative flex items-center ${ease} ${compact ? 'gap-2 p-2 pb-3' : 'gap-3 p-3'}`}>
-          {last.cover && (
+        <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-[#1C1C1E]/90 backdrop-blur-2xl shadow-2xl shadow-black/60">
+          <div
+            aria-hidden
+            className="absolute inset-0 opacity-40"
+            style={{ background: `radial-gradient(120% 90% at 0% 0%, ${last.color || '#FF7AA8'} 0%, transparent 60%)` }}
+          />
+          <div className="relative flex items-center gap-3 p-3">
+            {last.cover && <img src={last.cover} alt="" className="w-12 aspect-[2/3] rounded-lg object-cover shrink-0" />}
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-white/60">Reprendre là où vous en étiez</div>
+              <div className="text-[15px] font-semibold text-white truncate">{last.title}</div>
+              <div className="text-[12px] text-white/70 tabular-nums">
+                {episode} · {last.lang.toUpperCase()} · {clock(progress.time)} / {clock(progress.duration)}
+              </div>
+            </div>
             <button
               type="button"
-              onClick={() => compact && setCompact(false)}
-              tabIndex={compact ? 0 : -1}
-              aria-label={compact ? 'Afficher les détails' : undefined}
-              className={`shrink-0 overflow-hidden rounded-lg ${ease} ${compact ? 'w-10 cursor-pointer' : 'w-12 cursor-default'}`}
+              onClick={close}
+              tabIndex={compact ? -1 : 0}
+              aria-label="Fermer"
+              className="self-start p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
             >
-              <img src={last.cover} alt="" className="w-full aspect-[2/3] object-cover" />
+              <X className="w-4 h-4" />
             </button>
-          )}
-          <div className={`min-w-0 overflow-hidden ${ease} ${compact ? 'max-w-0 opacity-0 flex-none' : 'max-w-[400px] opacity-100 flex-1'}`}>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-white/60 whitespace-nowrap">Reprendre là où vous en étiez</div>
-            <div className="text-[15px] font-semibold text-white truncate">{last.title}</div>
-            <div className="text-[12px] text-white/70 tabular-nums whitespace-nowrap">
-              {episode} · {last.lang.toUpperCase()} · {clock(progress.time)} / {clock(progress.duration)}
-            </div>
           </div>
-          {compact && (
-            <Link
-              href={`/anime?id=${last.id}&play=1`}
-              onClick={() => haptic('selection')}
-              aria-label={`Reprendre ${last.title}, ${episode}`}
-              className="ml-auto shrink-0 w-11 h-11 rounded-full bg-white text-black flex items-center justify-center active:scale-90 transition-transform animate-in fade-in zoom-in-75 duration-300"
-            >
-              <Play className="w-5 h-5 translate-x-[1px]" />
-            </Link>
-          )}
-          <button
-            type="button"
-            onClick={close}
-            aria-label="Fermer"
-            className={`self-start rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer ${ease} ${
-              compact ? 'w-0 p-0 opacity-0 pointer-events-none' : 'p-1.5 opacity-100'
-            }`}
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        {compact ? (
-          // Thin bar along the bottom edge of the pill.
-          <div className="absolute inset-x-2 bottom-1.5 h-[3px] rounded-full bg-white/15 overflow-hidden" aria-hidden>
-            <div className="h-full rounded-full bg-sakura" style={{ width: `${percent}%` }} />
-          </div>
-        ) : (
-          <div className="relative px-3 pb-3 flex items-center gap-3 animate-in fade-in duration-300">
+          <div className="relative px-3 pb-3 flex items-center gap-3">
             <div className="flex-1 h-1 rounded-full bg-white/15 overflow-hidden" aria-hidden>
               <div className="h-full rounded-full bg-sakura" style={{ width: `${percent}%` }} />
             </div>
             <Link
-              href={`/anime?id=${last.id}&play=1`}
+              href={href}
+              tabIndex={compact ? -1 : 0}
               onClick={() => haptic('selection')}
               className="shrink-0 flex items-center gap-1.5 h-9 px-4 rounded-full bg-white text-black text-sm font-bold hover:bg-white/90 active:scale-95 transition-transform"
             >
@@ -189,8 +168,41 @@ export function ResumePrompt() {
               Reprendre
             </Link>
           </div>
-        )}
+        </div>
       </div>
+
+      {/* Bubble (phones, once the page scrolls): the poster in a circle, play in the middle,
+          the progress as a pink ring around it. */}
+      <Link
+        href={href}
+        onClick={() => haptic('selection')}
+        aria-hidden={!compact}
+        tabIndex={compact ? 0 : -1}
+        aria-label={`Reprendre ${last.title}, ${episode} (${percent} %)`}
+        className={`absolute bottom-0 right-0 w-16 h-16 rounded-full origin-bottom-right ${swap} ${
+          compact ? 'pointer-events-auto opacity-100 scale-100' : 'opacity-0 scale-50'
+        } active:scale-90`}
+        style={{ filter: `drop-shadow(0 8px 22px ${last.color ? `${last.color}99` : 'rgba(255,122,168,0.55)'})` }}
+      >
+        <svg viewBox="0 0 64 64" className="absolute inset-0 w-full h-full -rotate-90" aria-hidden>
+          <circle cx="32" cy="32" r="30" fill="#1C1C1E" stroke="rgba(255,255,255,0.18)" strokeWidth="3" />
+          <circle
+            cx="32"
+            cy="32"
+            r="30"
+            fill="none"
+            stroke="#FF7AA8"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeDasharray={RING}
+            strokeDashoffset={RING * (1 - ratio)}
+          />
+        </svg>
+        {last.cover && <img src={last.cover} alt="" className="absolute inset-[5px] w-[calc(100%-10px)] h-[calc(100%-10px)] rounded-full object-cover" />}
+        <span className="absolute inset-[5px] rounded-full bg-black/35 flex items-center justify-center">
+          <Play className="w-6 h-6 text-white translate-x-[1px] drop-shadow" />
+        </span>
+      </Link>
     </div>
   );
 }

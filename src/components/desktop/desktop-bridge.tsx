@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { toast } from '@/components/ui/toast';
 import { routeAfterSignIn } from '@/core/auth';
 import { supabase } from '@/lib/supabase';
-import { desktop, isApp, isDesktop, isLiteRendering, isMobileApp, RELEASES_URL, type AuthLink, type UpdateInfo } from '@/lib/desktop';
+import { desktop, isApp, isDesktop, applyPerfMode, isMobileApp, RELEASES_URL, type AuthLink, type UpdateInfo } from '@/lib/desktop';
 import { useAppStore, useHydrated } from '@/core/store';
 import { notifyTargets } from '@/lib/notify-targets';
 import { syncScheduledReleases } from '@/lib/mobile-notify';
@@ -53,9 +53,10 @@ export function DesktopBridge() {
   const router = useRouter();
 
   useEffect(() => {
+    // Website too: Settings › Performances can turn the light rendering on anywhere.
+    applyPerfMode();
     if (!isApp()) return;
     document.documentElement.classList.add('in-app');
-    if (isLiteRendering()) document.documentElement.classList.add('app-lite');
     if (isMobileApp()) {
       const html = document.documentElement;
       html.classList.add('app-mobile');
@@ -175,10 +176,12 @@ function NotifyTargetsSync() {
   const enabled = useAppStore((s) => s.settings.releaseNotifications ?? true);
   const lang = useAppStore((s) => s.settings.notifyLang ?? 'auto');
   const defaultLang = useAppStore((s) => s.settings.defaultLang);
+  const extra = useAppStore((s) => s.settings.notifyExtra);
+  const quietHours = useAppStore((s) => s.settings.quietHours);
 
   useEffect(() => {
     if (!hydrated || !isApp()) return;
-    const targets = notifyTargets(watchlist, { enabled, lang, defaultLang });
+    const targets = notifyTargets(watchlist, { enabled, lang, defaultLang, extra, quietHours, utcOffset: -new Date().getTimezoneOffset() });
     // PC: the app checks every 15 min itself. Phones: the coming week is scheduled in advance.
     const sync = isDesktop()
       ? () => void desktop.setNotifyTargets(targets)
@@ -199,7 +202,7 @@ function NotifyTargetsSync() {
       clearTimeout(t);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [hydrated, watchlist, enabled, lang, defaultLang]);
+  }, [hydrated, watchlist, enabled, lang, defaultLang, extra, quietHours]);
 
   return null;
 }

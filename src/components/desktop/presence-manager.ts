@@ -1,6 +1,6 @@
 'use client';
 
-import { desktop, isApp } from '@/lib/desktop';
+import { desktop, isApp, isDesktop } from '@/lib/desktop';
 import { pickPresence, samePresence, type PresencePayload } from '@/lib/presence';
 
 /**
@@ -12,6 +12,8 @@ let playback: PresencePayload | null = null;
 let enabled = true;
 let browsing = true;
 let last: PresencePayload | null = null;
+/** Phones: the app is in the background (home screen, other app). The PC app handles it natively (tray). */
+let backgrounded = false;
 
 /** When this tab (= the app window) started: browsing shows « depuis 12:34 ». */
 export const SESSION_START = Date.now();
@@ -59,9 +61,23 @@ function flush() {
   updateWebPresence(next);
 
   if (!isApp()) return;
-  if (samePresence(last, next)) return;
-  last = next;
-  void desktop.setPresence(next);
+  const sent = backgrounded ? null : next;
+  if (samePresence(last, sent)) return;
+  last = sent;
+  void desktop.setPresence(sent);
+}
+
+/** Mobile apps: leaving the app (home button, app switcher) clears the Discord activity; coming back
+ * restores it. Sent right away: a backgrounded WebView may never run a timer. Picture-in-picture
+ * keeps the page visible, so a video playing there keeps its status. */
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (!isApp() || isDesktop()) return;
+    const hidden = document.visibilityState === 'hidden';
+    if (hidden === backgrounded) return;
+    backgrounded = hidden;
+    flush();
+  });
 }
 
 export function setPagePresence(p: PresencePayload | null) {

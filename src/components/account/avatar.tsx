@@ -1,11 +1,15 @@
+'use client';
 /* eslint-disable @next/next/no-img-element -- remote avatars from arbitrary hosts, images are unoptimized anyway */
+import { useState } from 'react';
 import { User } from '@/components/ui/icons';
 
-/** Round avatar with a neutral fallback. */
+/** Round avatar with a neutral fallback, also used when the image is gone (old Discord avatar URL). */
 export function Avatar({ src, alt = '', size = 40, className = '' }: { src?: string | null; alt?: string; size?: number; className?: string }) {
-  return src ? (
+  const [failed, setFailed] = useState<string | null>(null);
+  return src && failed !== src ? (
     <img
       src={src}
+      onError={() => setFailed(src)}
       alt={alt}
       width={size}
       height={size}

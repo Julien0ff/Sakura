@@ -7,12 +7,14 @@
  * - `setWatching(true)` while the player is open: leaving the app then shrinks it to picture-in-picture.
  * - `update(json)` / `clear()`: the media notification (episode, anime, artwork, play state, position).
  * - Buttons in the notification come back as a `sakura-media` window event.
+ * - `setImmersive(on)`: full-screen player hides the status and navigation bars (apps from 0.5.3).
  */
 
 interface Bridge {
   setWatching(on: boolean): void;
   update(json: string): void;
   clear(): void;
+  setImmersive?(on: boolean): void;
 }
 
 export type NowPlayingMeta = { title: string; artist: string; artwork?: string };
@@ -33,6 +35,12 @@ function push() {
 
 export function setPlayerOpen(open: boolean) {
   bridge()?.setWatching(open);
+}
+
+/** Android app: hide / show the system bars (the WebView's Fullscreen API keeps them). */
+export function setImmersive(on: boolean) {
+  const b = bridge();
+  if (typeof b?.setImmersive === 'function') b.setImmersive(on);
 }
 
 export function setNowPlayingMeta(m: NowPlayingMeta | null) {

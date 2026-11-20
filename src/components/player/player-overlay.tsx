@@ -8,7 +8,7 @@ import type { SkipInterval } from '@/core/api/aniskip';
 import { RatingPicker } from '@/components/anime/rating-picker';
 import { toast } from '@/components/ui/toast';
 import { haptic } from '@/lib/haptics';
-import { setNowPlayingMeta, setPlayerOpen } from '@/lib/native-media';
+import { setImmersive, setNowPlayingMeta, setPlayerOpen } from '@/lib/native-media';
 
 const VideoPlayer = dynamic(() => import('./video-player').then((m) => m.VideoPlayer), { ssr: false });
 
@@ -205,13 +205,20 @@ function PlayerOverlayInner({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [activeSkipInfo, setActiveSkipInfo] = useState<{ skip: SkipInterval; onSkip: () => void } | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  /** Full screen asked by the user: kept when the Fullscreen API fails (Android app hides the bars itself). */
+  const fsRequested = useRef(false);
 
   useEffect(() => {
-    const updateOrientation = () => {
+    const updateOrientation = (e?: Event) => {
       const landscape = typeof window !== 'undefined' && window.innerWidth > window.innerHeight;
       setIsLandscape(landscape);
       const fsEl = getFsElement();
-      setIsFullscreen(!!fsEl);
+      // Leaving the real full screen (Échap, back gesture) ends the requested one too.
+      if (e && e.type.toLowerCase().includes('fullscreenchange') && !fsEl && fsRequested.current) {
+        fsRequested.current = false;
+        setImmersive(false);
+      }
+      setIsFullscreen(!!fsEl || fsRequested.current);
       // If a child (e.g. iframe or video) entered fullscreen natively, promote fullscreen to overlayRef
       // so Sakura's controls, popups, and close button stay on the fullscreen top layer.
       if (fsEl && fsEl !== overlayRef.current && overlayRef.current?.contains(fsEl)) {
@@ -248,8 +255,11 @@ function PlayerOverlayInner({
     haptic('light');
     const fsEl = getFsElement();
 
-    if (fsEl) {
-      await exitContainerFullscreen();
+    // Requested too: in the Android app the Fullscreen API can fail while the bars are hidden.
+    if (fsEl || fsRequested.current) {
+      fsRequested.current = false;
+      setImmersive(false);
+      if (fsEl) await exitContainerFullscreen();
       try {
         (screen.orientation as any)?.unlock?.();
       } catch {}
@@ -285,8 +295,22 @@ function PlayerOverlayInner({
       await (screen.orientation as any)?.lock?.('landscape');
     } catch {}
 
+    fsRequested.current = true;
+    setImmersive(true);
     setIsFullscreen(true);
   };
+
+  const toggleFullscreenRef = useRef(toggleFullscreen);
+  useEffect(() => {
+    toggleFullscreenRef.current = toggleFullscreen;
+  });
+
+  // Android app: a phone turned sideways plays full screen, so the status bar goes away too.
+  useEffect(() => {
+    if (isLandscape && window.innerHeight < 600) setImmersive(true);
+    else if (!getFsElement() && !fsRequested.current) setImmersive(false);
+  }, [isLandscape]);
+  useEffect(() => () => setImmersive(false), []);
 
   // System media controls (Android notification, lock screen, media keys): episode, anime, artwork,
   // « next ». Embedded iframe players keep their own (cross-origin), only direct videos use this.
@@ -346,7 +370,7 @@ function PlayerOverlayInner({
       if (e.key === 'Escape' && !document.fullscreenElement) onCloseRef.current();
       if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
-        toggleFullscreen();
+        toggleFullscreenRef.current();
       }
     };
     window.addEventListener('keydown', onKey);

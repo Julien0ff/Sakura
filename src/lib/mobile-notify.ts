@@ -3,8 +3,12 @@
  * launch / return to the app and on every change of « Ma liste » (see DesktopBridge).
  */
 import { invoke } from '@tauri-apps/api/core';
-import type { NotifyTargets } from '@/lib/notify-targets';
+import { afterQuietHours, type NotifyTargets } from '@/lib/notify-targets';
 import { HORIZON_S, upcomingReleases, type AiringItem, type PlanningRelease } from '@/lib/release-schedule';
+
+/** Android drawables (src-tauri/icons/android/res): the flower of the logo, white in the status bar
+ * (Android keeps only the shape) and in color next to the text. iOS uses the app icon. */
+const ICONS = { icon: 'ic_stat_sakura', largeIcon: 'ic_large_sakura', iconColor: '#FF7AA8' } as const;
 
 /** Ids scheduled last time: replaced as a whole on every sync. */
 const STORE_KEY = 'sakura.scheduledReleases';
@@ -96,6 +100,7 @@ export async function sendTestNotification(): Promise<boolean> {
         body: 'Les notifications de sortie sont bien configurées et fonctionnent sur votre appareil !',
         autoCancel: true,
         channelId: 'default',
+        ...ICONS,
       },
     });
     return true;
@@ -121,7 +126,11 @@ export async function syncScheduledReleases(targets: NotifyTargets): Promise<num
         wants('vostfr') ? fetchAiringSafe(ids, now, now + HORIZON_S + 1) : [],
         wants('vf') ? fetchPlanningSafe() : [],
       ]);
-  const list = upcomingReleases(targets, airing, planning, now);
+  // Ne pas déranger: what falls in the quiet hours rings at their end instead.
+  const list = upcomingReleases(targets, airing, planning, now).map((n) => ({
+    ...n,
+    at: afterQuietHours(Math.floor(n.at / 1000), targets.quiet) * 1000,
+  }));
 
   const previous = previousIds();
   if (previous.length) {
@@ -148,6 +157,7 @@ export async function syncScheduledReleases(targets: NotifyTargets): Promise<num
           body: n.body,
           autoCancel: true,
           channelId: 'default',
+          ...ICONS,
           schedule: {
             at: {
               date: new Date(n.at).toISOString(),

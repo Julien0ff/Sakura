@@ -147,19 +147,23 @@ export function VideoPlayer({
     };
   }, [src, type]);
 
-  // For iframe players (cartoons / AnimeSama embeds):
-  // 1. Listen for postMessage events ('ended', 'finish', 'complete')
-  // 2. Track elapsed watch time to periodically report progress, check AniSkip intervals & trigger auto-next
+  // For iframe players (cartoons / AnimeSama embeds) the real playhead is out of reach (cross-origin):
+  // 1. Listen for postMessage events announcing the end of the video.
+  // 2. Estimate the position from the time spent on the loaded player, for progress and the skip button.
+  // The estimate drifts (pauses, buffering, ads), so it never acts by itself: auto-skip and auto-next
+  // used to reload the player or jump to the next episode in the middle of the episode.
   useEffect(() => {
     if (type !== 'iframe') return;
 
     latest.current.onPlayingChange?.(true);
 
     const onMessage = (e: MessageEvent) => {
+      if (e.source !== iframeRef.current?.contentWindow) return;
       try {
         const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
         const evt = String(data?.event || data?.type || data?.action || '');
-        if (/ended|finish|complete/i.test(evt)) {
+        // Exact names only: « setupComplete », « loadComplete »… are not the end of the video.
+        if (/^(ended|complete|finish(ed)?|video[-_:]?(ended|complete))$/i.test(evt)) {
           latest.current.onEnded?.();
         }
       } catch {
@@ -169,31 +173,19 @@ export function VideoPlayer({
     window.addEventListener('message', onMessage);
 
     const duration = estimatedDuration && estimatedDuration > 0 ? estimatedDuration : 1440;
-    const skipped = new Set<string>();
-    let endedFired = false;
 
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
+      if (latest.current.iframeLoading) return;
+      if (elapsedRef.current >= duration) return;
       elapsedRef.current += 1;
       const elapsed = elapsedRef.current;
 
-      // Check AniSkip interval
       const current = latest.current.skipTimes.find((s) => elapsed >= s.start && elapsed < s.end - 1) ?? null;
-      if (current && latest.current.autoSkip && !skipped.has(current.type)) {
-        skipped.add(current.type);
-        doIframeSeek(current.end);
-        setActiveSkip(null);
-      } else {
-        setActiveSkip((prev) => (prev?.type === current?.type && prev?.start === current?.start ? prev : current));
-      }
+      setActiveSkip((prev) => (prev?.type === current?.type && prev?.start === current?.start ? prev : current));
 
       if (elapsed % 5 === 0) {
         latest.current.onProgress?.(elapsed, duration);
-      }
-
-      if (!endedFired && elapsed >= duration) {
-        endedFired = true;
-        latest.current.onEnded?.();
       }
     }, 1000);
 
@@ -203,7 +195,7 @@ export function VideoPlayer({
       latest.current.onPlayingChange?.(false);
       setActiveSkip(null);
     };
-  }, [type, estimatedDuration, isAnimeSama, doIframeSeek]);
+  }, [type, estimatedDuration]);
 
   // Latest callbacks/values in refs so media listeners don't need re-binding.
   const latest = useRef({
@@ -216,6 +208,7 @@ export function VideoPlayer({
     autoSkip,
     startAt,
     onActiveSkipChange,
+    iframeLoading,
   });
   useEffect(() => {
     latest.current = {
@@ -228,6 +221,7 @@ export function VideoPlayer({
       autoSkip,
       startAt,
       onActiveSkipChange,
+      iframeLoading,
     };
   });
 
@@ -554,6 +548,9 @@ export function VideoPlayer({
             className="w-full h-full"
             allowFullScreen
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            // Third-party hosts (cartoons, Anime-Sama) open ad pop-ups and redirect the page on the
+            // first click: no popups, no top navigation. Scripts, cookies and fullscreen still work.
+            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock allow-orientation-lock"
             onLoad={() => {
               if (slowTimerRef.current) {
                 clearTimeout(slowTimerRef.current);

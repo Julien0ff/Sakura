@@ -53,8 +53,8 @@
   --popover: #1C1C1E;
   --popover-foreground: #FFFFFF;
 
-  /* Apple Blue Accent */
-  --primary: #0A84FF;
+  /* Accent SAKURA (rose) */
+  --primary: #FF7AA8;
   --primary-foreground: #FFFFFF;
 
   --secondary: #2C2C2E;
@@ -78,7 +78,7 @@
   --sidebar: rgba(28, 28, 30, 0.5);
   /* Transluscency for Glass */
   --sidebar-foreground: #FFFFFF;
-  --sidebar-primary: #0A84FF;
+  --sidebar-primary: #FF7AA8;
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: rgba(255, 255, 255, 0.1);
   --sidebar-accent-foreground: #FFFFFF;
@@ -94,7 +94,7 @@
   --card-foreground: #FFFFFF;
   --popover: #1C1C1E;
   --popover-foreground: #FFFFFF;
-  --primary: #0A84FF;
+  --primary: #FF7AA8;
   --primary-foreground: #FFFFFF;
   --secondary: #2C2C2E;
   --secondary-foreground: #FFFFFF;
@@ -110,7 +110,7 @@
 
   --sidebar: rgba(28, 28, 30, 0.6);
   --sidebar-foreground: #FFFFFF;
-  --sidebar-primary: #0A84FF;
+  --sidebar-primary: #FF7AA8;
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: rgba(255, 255, 255, 0.1);
   --sidebar-accent-foreground: #FFFFFF;
@@ -190,7 +190,7 @@
 @property --anime-color {
   syntax: '<color>';
   inherits: true;
-  initial-value: #0a84ff;
+  initial-value: #ff7aa8;
 }
 
 .ambient {
@@ -738,4 +738,143 @@ html.player-open .top-float {
     padding-left: max(env(safe-area-inset-left), 0px);
     padding-right: max(env(safe-area-inset-right), 0px);
   }
+}
+
+/* ───────── Écran de chargement (SplashScreen) ─────────
+   Dans le HTML initial : visible dès la première peinture, avant React. La fleur éclot pétale
+   par pétale, le nom apparaît lettre à lettre, puis tout s'ouvre sur le site. */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #000;
+  transition: opacity 0.75s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0.75s;
+  /* Filet de sécurité sans JavaScript : la page finit toujours par apparaître. */
+  animation: splash-failsafe 0.6s ease 9s forwards;
+}
+html.splash-skip .splash { display: none; }
+.splash-leaving { opacity: 0; visibility: hidden; pointer-events: none; }
+
+.splash-glow {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(40% 35% at 50% 46%, rgba(255, 122, 168, 0.32) 0%, transparent 70%),
+    radial-gradient(60% 50% at 50% 60%, rgba(255, 92, 147, 0.12) 0%, transparent 75%);
+  animation: splash-breathe 3.2s ease-in-out infinite;
+}
+
+.splash-center {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  transition: transform 0.75s cubic-bezier(0.4, 0, 0.2, 1), filter 0.75s ease;
+}
+.splash-leaving .splash-center { transform: scale(1.18); filter: blur(6px); }
+
+.splash-flower {
+  width: 112px;
+  height: 112px;
+  overflow: visible;
+  filter: drop-shadow(0 10px 40px rgba(255, 92, 147, 0.45));
+  animation: splash-spin 9s linear infinite;
+}
+.splash-petal {
+  transform-box: view-box;
+  transform-origin: 12px 12px;
+  transform: scale(0) rotate(-40deg);
+  opacity: 0;
+  animation: splash-bloom 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.splash-heart {
+  transform-box: view-box;
+  transform-origin: 12px 12px;
+  transform: scale(0);
+  animation: splash-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.6s forwards;
+}
+
+.splash-word {
+  display: flex;
+  gap: 0.18em;
+  font-size: 34px;
+  letter-spacing: 0.08em;
+  color: #fff;
+}
+.splash-word span {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: splash-letter 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.splash-bar {
+  width: 120px;
+  height: 3px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  opacity: 0;
+  animation: splash-fade-in 0.4s ease 0.9s forwards;
+}
+.splash-bar span {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, #ff7aa8, transparent);
+  animation: splash-sweep 1.1s ease-in-out infinite;
+}
+
+.splash-falling { position: absolute; inset: 0; pointer-events: none; }
+.splash-falling span {
+  position: absolute;
+  top: -24px;
+  width: 12px;
+  height: 10px;
+  border-radius: 12px 2px 12px 2px;
+  background: linear-gradient(135deg, #ffd1e1, #ff7aa8);
+  opacity: 0;
+  animation-name: splash-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/* Le site arrive en douceur derrière le voile qui s'efface. */
+html.splash-reveal .app-root { animation: splash-content-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes splash-bloom {
+  to { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes splash-pop { to { transform: scale(1); } }
+@keyframes splash-spin { to { transform: rotate(360deg); } }
+@keyframes splash-letter { to { opacity: 1; transform: none; } }
+@keyframes splash-fade-in { to { opacity: 1; } }
+@keyframes splash-sweep {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(260%); }
+}
+@keyframes splash-breathe {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+@keyframes splash-fall {
+  0% { opacity: 0; transform: translate3d(0, 0, 0) rotate(0deg); }
+  10% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate3d(var(--drift, 30px), 105vh, 0) rotate(320deg); }
+}
+@keyframes splash-content-in {
+  from { opacity: 0; transform: scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes splash-failsafe { to { opacity: 0; visibility: hidden; pointer-events: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-flower, .splash-glow, .splash-falling span, .splash-bar span { animation: none; }
+  .splash-falling { display: none; }
+  .splash-petal, .splash-heart, .splash-word span { animation-duration: 0.01s; animation-delay: 0s !important; }
+  .splash-leaving .splash-center { transform: none; filter: none; }
 }

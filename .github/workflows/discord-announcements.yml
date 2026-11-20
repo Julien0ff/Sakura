@@ -7,25 +7,30 @@ on:
     paths:
       - 'src/lib/changelog.ts'
   schedule:
-    # Tous les jours à 12h00 CET (11:00 UTC) et 18h00 CET (17:00 UTC) pour les épisodes
-    - cron: '0 11 * * *'
-    - cron: '0 17 * * *'
-    # Tous les dimanches à 14h00 CET (13:00 UTC) pour les nouveautés animes
-    - cron: '0 13 * * 0'
+    # Sorties d'épisodes (et nouveaux animes) : toutes les 15 min, décalé de l'heure pile
+    # (GitHub retarde les crons lancés à :00).
+    - cron: '7,22,37,52 * * * *'
+    # Récap de la semaine : le dimanche à 18 h (heure de Paris, 17 h UTC en hiver).
+    - cron: '3 17 * * 0'
   workflow_dispatch:
     inputs:
       action:
-        description: 'Type d annonce à diffuser'
+        description: "Type d'annonce à diffuser"
         required: true
-        default: 'changelog'
+        default: 'releases'
         type: choice
         options:
+          - releases
+          - recap
           - changelog
-          - episodes
-          - animes
+
+# Deux passages en même temps posteraient les mêmes épisodes deux fois.
+concurrency:
+  group: discord-announcements
+  cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   announce:
@@ -40,31 +45,42 @@ jobs:
         with:
           node-version: 22
 
-      - name: Diffuser le Changelog (si modification de changelog.ts ou choix manuel)
+      - name: Diffuser le Changelog
         if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'changelog') }}
         env:
           DISCORD_WEBHOOK_CHANGELOG: ${{ secrets.DISCORD_WEBHOOK_CHANGELOG }}
         run: node scripts/discord-announce.mjs changelog
 
-      - name: Diffuser les Nouveaux Épisodes du Jour (si cron quotidien ou choix manuel)
-        if: ${{ github.event_name == 'schedule' && (github.event.schedule == '0 11 * * *' || github.event.schedule == '0 17 * * *') || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'episodes') }}
+      # Mémoire des épisodes déjà annoncés : dans le cache d'Actions, pas dans le dépôt
+      # (un commit toutes les 15 min déclencherait un déploiement à chaque fois).
+      - name: Restaurer l'état des annonces
+        if: ${{ (github.event_name == 'schedule' && github.event.schedule != '3 17 * * 0') || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'releases') }}
+        uses: actions/cache/restore@v4
+        with:
+          path: data/discord-state.json
+          key: discord-state-${{ github.run_id }}
+          restore-keys: discord-state-
+
+      - name: Diffuser les nouveaux épisodes et animes
+        if: ${{ (github.event_name == 'schedule' && github.event.schedule != '3 17 * * 0') || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'releases') }}
         env:
           DISCORD_WEBHOOK_EPISODES: ${{ secrets.DISCORD_WEBHOOK_EPISODES }}
-        run: node scripts/discord-announce.mjs episodes
-
-      - name: Diffuser les Nouveautés Catalogue (si cron dimanche ou choix manuel)
-        if: ${{ github.event_name == 'schedule' && github.event.schedule == '0 13 * * 0' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'animes') }}
-        env:
           DISCORD_WEBHOOK_ANIMES: ${{ secrets.DISCORD_WEBHOOK_ANIMES }}
-        run: node scripts/discord-announce.mjs animes
+        run: node scripts/discord-announce.mjs releases
 
-      - name: Sauvegarder l'état de rotation des messages Discord
-        if: always()
-        run: |
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/discord-state.json || true
-          if [ -n "$(git status --porcelain data/discord-state.json)" ]; then
-            git commit -m "chore(discord): update message rotation state [skip ci]"
-            git push origin main || true
-          fi
+      - name: Diffuser le récap de la semaine
+        if: ${{ (github.event_name == 'schedule' && github.event.schedule == '3 17 * * 0') || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'recap') }}
+        env:
+          DISCORD_WEBHOOK_RECAP: ${{ secrets.DISCORD_WEBHOOK_RECAP }}
+          DISCORD_WEBHOOK_EPISODES: ${{ secrets.DISCORD_WEBHOOK_EPISODES }}
+          # Valeurs publiques (déjà dans le site) : le top SAKURA est sauté si elles manquent.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: node scripts/discord-announce.mjs recap
+
+      - name: Sauvegarder l'état des annonces
+        if: ${{ always() && ((github.event_name == 'schedule' && github.event.schedule != '3 17 * * 0') || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'releases')) }}
+        uses: actions/cache/save@v4
+        with:
+          path: data/discord-state.json
+          key: discord-state-${{ github.run_id }}

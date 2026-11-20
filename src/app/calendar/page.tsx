@@ -7,7 +7,8 @@ import type { PlanningItem } from '@/lib/planning';
 import { LangTag } from '@/components/anime/lang-tag';
 import { haptic } from '@/lib/haptics';
 import { useQuery } from '@tanstack/react-query';
-import { Bookmark, CalendarDays } from '@/components/ui/icons';
+import { Bell, Bookmark, CalendarDays } from '@/components/ui/icons';
+import { toast } from '@/components/ui/toast';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
@@ -267,6 +268,37 @@ export default function CalendarPage() {
   );
 }
 
+/**
+ * « Prévenez-moi »: release notifications for an anime that isn't in « Ma liste » (synced setting,
+ * read by the apps). Sibling of the card link, not inside it (no button inside a link).
+ */
+function NotifyBell({ id, title, className = '' }: { id: number; title: string; className?: string }) {
+  const hydrated = useHydrated();
+  const on = useAppStore((s) => (s.settings.notifyExtra ?? []).some((a) => a.id === id));
+  const updateSettings = useAppStore((s) => s.updateSettings);
+  if (!hydrated || !id) return null;
+  const toggle = () => {
+    const extra = useAppStore.getState().settings.notifyExtra ?? [];
+    haptic(on ? 'light' : 'success');
+    updateSettings({ notifyExtra: on ? extra.filter((a) => a.id !== id) : [...extra, { id, title }] });
+    toast(on ? `Plus de notification pour ${title}` : `Vous serez prévenu des sorties de ${title}`);
+  };
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-pressed={on}
+      aria-label={on ? `Ne plus être prévenu pour ${title}` : `Me prévenir des sorties de ${title}`}
+      title={on ? 'Prévenu des sorties (appuyer pour arrêter)' : 'Prévenez-moi des sorties'}
+      className={`flex items-center justify-center rounded-full transition-colors cursor-pointer active:scale-90 ${
+        on ? 'bg-sakura text-black' : 'bg-black/40 text-white/70 hover:text-white hover:bg-black/60'
+      } ${className}`}
+    >
+      <Bell className="w-3.5 h-3.5" />
+    </button>
+  );
+}
+
 /** Link to the anime page, or a plain block when the release isn't matched on AniList (id 0). */
 function MaybeLink({ id, ...props }: { id: number; className: string; title?: string; children: React.ReactNode }) {
   return id ? <Link href={`/anime?id=${id}`} {...props} /> : <div {...props} />;
@@ -304,10 +336,11 @@ function DayList({
         const aired = item.airingAt <= now;
         const isFollowed = followed.has(item.media.id);
         return (
-          <li key={item.id}>
+          <li key={item.id} className="relative">
+            {!isFollowed && <NotifyBell id={item.media.id} title={title ?? ''} className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-8 h-8" />}
             <MaybeLink
               id={item.media.id}
-              className={`flex items-center gap-4 p-3 rounded-2xl border transition-colors ${
+              className={`flex items-center gap-4 p-3 ${isFollowed ? '' : 'pr-14'} rounded-2xl border transition-colors ${
                 isFollowed ? 'bg-white/10 border-white/15' : 'bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10'
               }`}
             >
@@ -343,6 +376,14 @@ function WeekCard({ item, followed, aired }: { item: AiringItem; followed: boole
   const title = item.media.title.english || item.media.title.romaji;
   const color = item.media.coverImage.color || '#3A3A3C';
   return (
+    <div className="relative group/card">
+      {!followed && (
+        <NotifyBell
+          id={item.media.id}
+          title={title ?? ''}
+          className="absolute right-1.5 top-1.5 z-10 w-6 h-6 md:opacity-0 md:group-hover/card:opacity-100 md:focus-visible:opacity-100 aria-pressed:opacity-100"
+        />
+      )}
     <MaybeLink
       id={item.media.id}
       title={title}
@@ -380,5 +421,6 @@ function WeekCard({ item, followed, aired }: { item: AiringItem; followed: boole
         </div>
       </div>
     </MaybeLink>
+    </div>
   );
 }

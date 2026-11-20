@@ -26,6 +26,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import org.json.JSONObject
 import java.net.URL
@@ -106,6 +109,19 @@ class SakuraMedia(private val activity: AppCompatActivity, private val webView: 
 
     @JavascriptInterface
     fun clear() = onSite { hide() }
+
+    /** Player in full screen: hide the status bar (time, notifications) and the navigation bar.
+     * A swipe from the edge shows them for a moment, like any video app. */
+    @JavascriptInterface
+    fun setImmersive(on: Boolean) = onSite {
+        val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+        if (on) {
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+        } else {
+            controller.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
 
     private fun onSite(block: () -> Unit) {
         activity.runOnUiThread {

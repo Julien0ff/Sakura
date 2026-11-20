@@ -13,6 +13,7 @@ import { AppGroup } from '@/components/settings/app-group';
 import { AccountGroup } from '@/components/settings/account-group';
 import { AdminGroup } from '@/components/settings/admin-group';
 import { detectPlatform } from '@/lib/app-release';
+import { getPerfMode, setPerfMode, type PerfMode } from '@/lib/desktop';
 
 const noopSubscribe = () => () => {};
 
@@ -82,6 +83,8 @@ export default function SettingsPage() {
               onChange={(v) => updateSettings({ autoNext: v })}
             />
           </Group>
+
+          <PerformanceGroup />
 
           {/* Phones only: the tab bar doesn't exist from md up. */}
           <div className="md:hidden">
@@ -228,5 +231,39 @@ function HapticTest() {
         </p>
       )}
     </div>
+  );
+}
+
+/** Per device (localStorage), not synced: a slow PC must not change the phone. */
+function PerformanceGroup() {
+  const stored = useSyncExternalStore(
+    () => () => {},
+    getPerfMode,
+    () => 'auto' as PerfMode
+  );
+  const [mode, setMode] = useState<PerfMode | null>(null);
+  const value = mode ?? stored;
+  return (
+    <Group
+      title="Performances"
+      footer="Mode léger : sans flous ni effets au défilement, pour les appareils ou l’app PC qui rament. Auto : activé dans l’app PC sous Linux. Réglage propre à cet appareil."
+    >
+      <Row label="Mode léger" stackOnMobile>
+        <Segmented<PerfMode>
+          label="Mode léger"
+          value={value}
+          options={[
+            ['auto', 'Auto'],
+            ['on', 'Activé'],
+            ['off', 'Désactivé'],
+          ]}
+          onChange={(v) => {
+            haptic('selection');
+            setMode(v);
+            setPerfMode(v);
+          }}
+        />
+      </Row>
+    </Group>
   );
 }

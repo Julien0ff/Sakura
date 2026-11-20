@@ -30,9 +30,12 @@ export default function HistoryPage() {
                   clearHistory();
                 }
               }}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-[#8E8E93] hover:text-white hover:bg-white/10 transition-colors text-sm cursor-pointer"
+              aria-label="Tout effacer"
+              title="Tout effacer"
+              className="shrink-0 flex items-center gap-1.5 h-9 px-3 rounded-full bg-white/5 border border-white/10 text-[#8E8E93] hover:text-white hover:bg-white/10 transition-colors text-xs font-medium whitespace-nowrap cursor-pointer"
             >
-              <Trash2 className="w-4 h-4" /> Tout effacer
+              <Trash2 className="w-4 h-4" />
+              <span className="max-sm:hidden">Tout effacer</span>
             </button>
           )}
         </div>

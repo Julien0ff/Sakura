@@ -99,7 +99,7 @@ export function HeroBanner() {
   const active = animes[currentIndex];
   const activePoster = active?.coverImage?.large || active?.coverImage?.extraLarge || active?.bannerImage;
   const directActiveExtracted = useExtractedColor(activePoster, active?.coverImage?.color);
-  const activeColor = (active && (extractedColors[active.id] || active.coverImage?.color || directActiveExtracted)) || '#0A84FF';
+  const activeColor = (active && (extractedColors[active.id] || active.coverImage?.color || directActiveExtracted)) || '#FF7AA8';
 
   useAmbientColor(active ? activeColor : null);
 
@@ -175,7 +175,7 @@ export function HeroBanner() {
         const isActive = index === currentIndex;
         const title = anime.title.english || anime.title.romaji || '';
         const rating = formatScore(anime.averageScore);
-        const color = extractedColors[anime.id] || anime.coverImage.color || (isActive ? directActiveExtracted : null) || '#0A84FF';
+        const color = extractedColors[anime.id] || anime.coverImage.color || (isActive ? directActiveExtracted : null) || '#FF7AA8';
         const wide = anime.bannerImage || anime.coverImage.extraLarge || undefined;
         const tall = anime.coverImage.extraLarge || wide;
 

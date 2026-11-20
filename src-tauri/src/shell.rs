@@ -40,6 +40,10 @@ pub fn create_main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     use tauri::webview::NewWindowResponse;
     use tauri_plugin_opener::OpenerExt as _;
     let hidden = starts_hidden(&std::env::args().collect::<Vec<_>>());
+    // Started in the tray (autostart): no Discord activity until the window is opened.
+    if hidden {
+      app.state::<crate::presence::Presence>().set_hidden(true);
+    }
     let opener = app.clone();
     builder
       .title("SAKURA")
@@ -122,6 +126,7 @@ pub fn show_main(app: &AppHandle) {
   if let Some(w) = app.get_webview_window(MAIN) {
     let _ = w.unminimize();
     let _ = w.show();
+    app.state::<crate::presence::Presence>().set_hidden(false);
     let _ = w.set_focus();
     // Wayland compositors (KDE, GNOME) refuse focus stealing: flash the taskbar entry instead.
     if !w.is_focused().unwrap_or(false) {

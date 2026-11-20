@@ -58,11 +58,27 @@ pub enum PresenceStatus {
 pub struct Presence {
     tx: Mutex<Sender<Option<CleanPresence>>>,
     status: std::sync::Arc<Mutex<PresenceStatus>>,
+    /// Window closed to the tray: nothing on Discord until it is shown again.
+    hidden: std::sync::atomic::AtomicBool,
+    /// What the page asked for last, re-applied when the window comes back.
+    last: Mutex<Option<CleanPresence>>,
 }
 
 impl Presence {
     pub fn set(&self, activity: Option<PresencePayload>) {
-        let _ = self.tx.lock().unwrap().send(activity.map(sanitize));
+        let activity = activity.map(sanitize);
+        *self.last.lock().unwrap() = activity.clone();
+        if !self.hidden.load(std::sync::atomic::Ordering::Relaxed) {
+            let _ = self.tx.lock().unwrap().send(activity);
+        }
+    }
+    /// Tray: closing the window clears the activity (the app keeps running for notifications).
+    pub fn set_hidden(&self, hidden: bool) {
+        if self.hidden.swap(hidden, std::sync::atomic::Ordering::Relaxed) == hidden {
+            return;
+        }
+        let next = if hidden { None } else { self.last.lock().unwrap().clone() };
+        let _ = self.tx.lock().unwrap().send(next);
     }
     pub fn status(&self) -> PresenceStatus {
         *self.status.lock().unwrap()
@@ -139,7 +155,7 @@ pub fn spawn() -> Presence {
             let _ = client.close();
         })
         .expect("spawn presence thread");
-    Presence { tx: Mutex::new(tx), status }
+    Presence { tx: Mutex::new(tx), status, hidden: Default::default(), last: Mutex::new(None) }
 }
 
 #[cfg(test)]

@@ -12,6 +12,7 @@ fn toggle_main(app: &AppHandle) {
   if let Some(w) = app.get_webview_window(MAIN) {
     if w.is_visible().unwrap_or(false) && !w.is_minimized().unwrap_or(false) {
       let _ = w.hide();
+      app.state::<crate::presence::Presence>().set_hidden(true);
     } else {
       show_main(app);
     }
@@ -69,6 +70,8 @@ pub struct TrayAutostart(pub CheckMenuItem<Wry>);
 pub fn hide_to_tray(window: &tauri::Window) {
   let _ = window.hide();
   let app = window.app_handle();
+  // Closed = gone from Discord too; the app only stays for the release notifications.
+  app.state::<crate::presence::Presence>().set_hidden(true);
   let Ok(dir) = app.path().app_data_dir() else { return };
   let flag = dir.join("tray-hint-shown");
   if flag.exists() {

@@ -60,6 +60,35 @@ export function isLiteRendering(): boolean {
   return isDesktop() && /Linux/i.test(navigator.userAgent) && !/Android/i.test(navigator.userAgent);
 }
 
+/** Settings › Performances, per device (not synced: a slow PC must not change the phone). */
+export type PerfMode = 'auto' | 'on' | 'off';
+const PERF_KEY = 'sakura.perfMode';
+
+export function getPerfMode(): PerfMode {
+  try {
+    const v = localStorage.getItem(PERF_KEY);
+    return v === 'on' || v === 'off' ? v : 'auto';
+  } catch {
+    return 'auto';
+  }
+}
+
+/** `html.app-lite`: no blur, no scroll effects (globals.css). Auto = the Linux app only. */
+export function applyPerfMode(mode: PerfMode = getPerfMode()) {
+  const lite = mode === 'on' || (mode === 'auto' && isLiteRendering());
+  document.documentElement.classList.toggle('app-lite', lite);
+}
+
+export function setPerfMode(mode: PerfMode) {
+  try {
+    if (mode === 'auto') localStorage.removeItem(PERF_KEY);
+    else localStorage.setItem(PERF_KEY, mode);
+  } catch {
+    /* private mode: applies until reload */
+  }
+  applyPerfMode(mode);
+}
+
 async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T | null> {
   if (!isApp()) return null;
   try {

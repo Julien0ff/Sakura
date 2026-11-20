@@ -3,6 +3,7 @@ import { Inter, Permanent_Marker, Bebas_Neue } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { siteConfig } from "@/lib/site-config";
+import { SplashScreen, splashBootScript } from "@/components/layout/splash-screen";
 
 const font = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const graffitiFont = Permanent_Marker({ weight: "400", subsets: ["latin"], variable: "--font-graffiti" });
@@ -44,7 +45,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className="dark h-full antialiased" suppressHydrationWarning>
+      <head>
+        {/* Before the first paint: no splash again on a reload in the same session. */}
+        <script dangerouslySetInnerHTML={{ __html: splashBootScript }} />
+      </head>
       <body className={`${font.className} ${font.variable} ${graffitiFont.variable} ${impactFont.variable} min-h-full flex flex-col bg-background text-foreground overflow-hidden`}>
+        <SplashScreen />
         <Providers>
           {children}
         </Providers>

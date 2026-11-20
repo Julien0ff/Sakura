@@ -25,11 +25,34 @@ pub struct TargetAnime {
     pub title: String,
 }
 
+/// Ne pas déranger (src/lib/notify-targets.ts): minutes since local midnight, and the UTC offset.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Quiet {
+    pub start: i64,
+    pub end: i64,
+    pub utc_offset: i64,
+}
+
+impl Quiet {
+    /// Whether `now` (epoch seconds) is in the window, which may cross midnight (23:00 → 08:00).
+    pub fn contains(&self, now: i64) -> bool {
+        let m = ((now.div_euclid(60) + self.utc_offset) % 1440 + 1440) % 1440;
+        if self.start < self.end {
+            m >= self.start && m < self.end
+        } else {
+            m >= self.start || m < self.end
+        }
+    }
+}
+
 /// Sent by the site (src/lib/notify-targets.ts) and persisted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Targets {
     pub anime: Vec<TargetAnime>,
     pub langs: Vec<String>,
+    #[serde(default)]
+    pub quiet: Option<Quiet>,
 }
 
 #[derive(Debug, Clone)]
@@ -216,6 +239,10 @@ async fn check_once(app: &AppHandle, client: &reqwest::Client) {
         save(app, STATE_FILE, &state);
         return;
     }
+    // Quiet hours: keep the window open, everything due arrives when they end.
+    if targets.quiet.is_some_and(|q| q.contains(now)) {
+        return;
+    }
     let ids: Vec<i64> = targets.anime.iter().map(|a| a.id).collect();
     let wants = |l: &str| targets.langs.iter().any(|x| x == l);
     let airing = if wants("vostfr") { fetch_airing(client, &ids, from, now).await } else { Ok(vec![]) };
@@ -225,15 +252,37 @@ async fn check_once(app: &AppHandle, client: &reqwest::Client) {
         log::warn!("release check failed, will retry");
         return;
     };
+    let icon = notification_icon(app);
     for n in due(&targets, &airing, &planning, from, now, &state.seen) {
         log::info!("release notification: {}", n.key);
-        let _ = app.notification().builder().title(&n.title).body(&n.body).show();
+        let mut builder = app.notification().builder().title(&n.title).body(&n.body);
+        if let Some(icon) = &icon {
+            builder = builder.icon(icon.clone());
+        }
+        let _ = builder.show();
         state.seen.push(n.key);
     }
     let excess = state.seen.len().saturating_sub(SEEN_LIMIT);
     state.seen.drain(..excess);
     state.last_check = now;
     save(app, STATE_FILE, &state);
+}
+
+/// Linux: the notification server looks the icon up by the executable's name, which only works
+/// for the .deb / .rpm installs (not the AppImage). An absolute path to the logo works everywhere.
+#[cfg(target_os = "linux")]
+fn notification_icon(app: &AppHandle) -> Option<String> {
+    const LOGO: &[u8] = include_bytes!("../icons/128x128.png");
+    let path = data_file(app, "notification-icon.png")?;
+    if std::fs::metadata(&path).map(|m| m.len() != LOGO.len() as u64).unwrap_or(true) {
+        std::fs::write(&path, LOGO).ok()?;
+    }
+    Some(path.to_string_lossy().into_owned())
+}
+
+#[cfg(not(target_os = "linux"))]
+fn notification_icon(_app: &AppHandle) -> Option<String> {
+    None
 }
 
 /// Background loop (first check after 1 min, then every 15 min).
@@ -258,6 +307,7 @@ mod tests {
         Targets {
             anime: vec![TargetAnime { id: 1, title: "Blue Box".into() }, TargetAnime { id: 2, title: "Frieren".into() }],
             langs: langs.iter().map(|s| s.to_string()).collect(),
+            quiet: None,
         }
     }
     fn airing(id: i64, ep: i64, at: i64) -> Airing {
@@ -301,6 +351,23 @@ mod tests {
     fn already_seen_and_unfollowed_languages_are_skipped() {
         let n = due(&targets(&["vostfr"]), &[airing(1, 12, 150)], &[vf(Some(1), 150, false)], 100, 200, &["a:1:12".to_string()]);
         assert!(n.is_empty());
+    }
+
+    #[test]
+    fn quiet_hours_cross_midnight() {
+        // Paris winter (UTC+1), 23:00 → 08:00. 2026-11-20 00:00 UTC = 1_795_132_800.
+        let q = Quiet { start: 23 * 60, end: 8 * 60, utc_offset: 60 };
+        let paris = |h: i64, m: i64| 1_795_132_800 + (h - 1) * 3600 + m * 60;
+        assert!(!q.contains(paris(22, 59)));
+        assert!(q.contains(paris(23, 0)));
+        assert!(q.contains(paris(3, 30)));
+        assert!(!q.contains(paris(8, 0)));
+    }
+
+    #[test]
+    fn targets_without_quiet_still_load() {
+        let t: Targets = serde_json::from_str(r#"{"anime":[],"langs":["vf"]}"#).unwrap();
+        assert!(t.quiet.is_none());
     }
 
     #[test]

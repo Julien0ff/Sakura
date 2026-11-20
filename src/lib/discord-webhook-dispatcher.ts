@@ -143,8 +143,7 @@ export interface EpisodePayload {
 }
 
 /**
- * Dispatches an individual rich episode release card with artwork,
- * and automatically deletes the previous episode release message in the channel.
+ * Dispatches an individual rich episode release card with artwork (kept in the channel).
  */
 export async function dispatchEpisodesWebhook(
   targetUrl?: string,
@@ -282,12 +281,12 @@ export async function dispatchEpisodesWebhook(
     embed.thumbnail = { url: coverImage };
   }
 
-  return sendDiscordWebhook(url, { embeds: [embed] }, { rotateKey: 'episodes' });
+  // Every release stays in the channel as a log: no rotation.
+  return sendDiscordWebhook(url, { embeds: [embed] });
 }
 
 /**
- * Dispatches an individual rich anime release/addition card with artwork,
- * and automatically deletes the previous anime announcement in the channel.
+ * Dispatches an individual rich anime release/addition card with artwork (kept in the channel).
  */
 export async function dispatchAnimesWebhook(
   targetUrl?: string,
@@ -378,7 +377,7 @@ export async function dispatchAnimesWebhook(
     embed.thumbnail = { url: anime.coverImage.extraLarge || anime.coverImage.large };
   }
 
-  return sendDiscordWebhook(url, { embeds: [embed] }, { rotateKey: 'animes' });
+  return sendDiscordWebhook(url, { embeds: [embed] });
 }
 
 export async function dispatchChangelogWebhook(targetUrl?: string): Promise<WebhookSendResult> {

@@ -20,11 +20,35 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>(() => ({ session: null, profile: null, loading: true }));
 
+/** Photo uploaded in Settings › Compte (Supabase Storage); anything else comes from Discord / Google. */
+const isUploadedAvatar = (url: string) => url.includes('/storage/v1/object/public/avatars/');
+
+/**
+ * The profile keeps the provider's photo URL from the sign-up. After a new Discord / Google photo,
+ * that URL dies (Discord deletes old avatars): take the one Supabase got at the last sign-in.
+ */
+async function syncProviderAvatar(profile: Profile | null): Promise<Profile | null> {
+  if (!supabase || !profile) return profile;
+  // From the server, not the stored session: a device signed in long ago must not bring back an old photo.
+  const { data } = await supabase.auth.getUser();
+  const user = data.user;
+  if (!user || user.id !== profile.id) return profile;
+  const fresh = (user.user_metadata?.avatar_url ?? user.user_metadata?.picture) as string | undefined;
+  const current = profile.avatar_url;
+  if (!fresh || fresh === current || (current && isUploadedAvatar(current))) return profile;
+  const { error } = await supabase.from('profiles').update({ avatar_url: fresh }).eq('id', user.id);
+  return error ? profile : { ...profile, avatar_url: fresh };
+}
+
 async function loadProfile(userId: string) {
   if (!supabase) return;
   const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+  const session = useAuthStore.getState().session;
   // Ignore a late answer for a user who has since signed out / switched.
-  if (useAuthStore.getState().session?.user.id === userId) useAuthStore.setState({ profile: data ?? null });
+  if (session?.user.id !== userId) return;
+  useAuthStore.setState({ profile: data ?? null });
+  const synced = await syncProviderAvatar(data ?? null).catch(() => data ?? null);
+  if (synced !== data && useAuthStore.getState().session?.user.id === userId) useAuthStore.setState({ profile: synced });
 }
 
 export async function refreshProfile() {

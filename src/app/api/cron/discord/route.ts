@@ -6,10 +6,15 @@ import {
 } from '@/lib/discord-webhook-dispatcher';
 
 /**
- * Endpoint for scheduled cron runs (Vercel Cron / GitHub Actions / uptime monitors).
- * Supports ?type=episodes | ?type=animes | ?type=changelog
+ * Manual trigger (?type=episodes | animes | changelog). Release announcements are scheduled by
+ * .github/workflows/discord-announcements.yml, which remembers what was already posted.
+ * Requires `Authorization: Bearer $CRON_SECRET`: without it anyone could post in the channels.
  */
 export async function GET(req: NextRequest) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {
+    return NextResponse.json({ ok: false, error: 'Non autorisé' }, { status: 401 });
+  }
   const { searchParams } = new URL(req.url);
   const type = searchParams.get('type') || 'episodes';
 

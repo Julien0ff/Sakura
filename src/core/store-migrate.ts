@@ -2,9 +2,9 @@
 import type { SavedAnime, Settings, SyncSnapshot } from './store.ts';
 import { isListStatus } from './tracking.ts';
 
-export const STORE_VERSION = 11;
+export const STORE_VERSION = 12;
 
-export const DEFAULT_SETTINGS: Settings = { defaultLang: 'vostfr', autoSkip: false, autoNext: true, haptics: true, hapticIntensity: 'normal', episodeView: 'auto', calendarLang: 'all', discordPresence: true, discordBrowsing: true, uiStyle: 'default', releaseNotifications: true, notifyLang: 'auto', tabLabels: true };
+export const DEFAULT_SETTINGS: Settings = { defaultLang: 'vostfr', autoSkip: false, autoNext: true, haptics: true, hapticIntensity: 'normal', episodeView: 'auto', calendarLang: 'all', discordPresence: true, discordBrowsing: true, uiStyle: 'default', releaseNotifications: true, notifyLang: 'auto', tabLabels: true, notifyExtra: [], quietHours: { enabled: false, start: '23:00', end: '08:00' } };
 
 /**
  * v0 → v1: settings gained autoSkip / autoNext, progress map added. v2–3: haptics.
@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS: Settings = { defaultLang: 'vostfr', autoSkip: fal
  * v9: settings.releaseNotifications / notifyLang (same).
  * v10: settings.discordBrowsing (same).
  * v11: settings.uiStyle (same).
+ * v12: settings.notifyExtra / quietHours (same).
  */
 export function migrateStore(persisted: unknown, _fromVersion: number): SyncSnapshot {
   const state = (persisted ?? {}) as Partial<SyncSnapshot> & { watchlist?: Partial<SavedAnime>[] };

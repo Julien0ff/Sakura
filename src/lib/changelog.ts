@@ -21,6 +21,30 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: '2026-11-20',
+    date: '20 novembre 2026',
+    title: 'Écran de lancement, reprise de lecture et notifications revues',
+    banner: '/banner-news.png',
+    features: [
+      { text: 'Nouvel écran de lancement animé : la fleur SAKURA éclot à l’ouverture du site et des apps, puis s’ouvre en douceur sur l’accueil.' },
+      { text: 'Reprendre là où vous en étiez : à l’ouverture, SAKURA propose de reprendre le dernier épisode commencé, sur cet appareil ou sur un autre.' },
+      { text: 'Calendrier : bouton « Prévenez-moi » sur chaque sortie pour être notifié d’un anime sans l’ajouter à votre liste.' },
+      { text: 'Ne pas déranger : choisissez une plage horaire sans notification, les sorties arrivent à la fin de la plage.' },
+      { text: 'Discord : chaque nouvel épisode est annoncé dès sa sortie, les nouveaux animes ont leur propre annonce et un récap de la semaine arrive le dimanche.' },
+      { text: 'Mode léger dans Paramètres › Performances : sans flous ni effets au défilement pour les appareils qui rament.' },
+      { text: 'Plein écran sur Android : l’heure et les notifications du téléphone se masquent pendant la vidéo.' },
+      { text: 'Bouton retour flottant sur les fiches et couleur rose SAKURA par défaut dans la navigation.' },
+    ],
+    fixes: [
+      { text: 'L’épisode ne se coupe plus d’un coup : le saut d’opening et l’épisode suivant ne se déclenchent plus au mauvais moment sur les lecteurs intégrés.' },
+      { text: 'Notifications : icône SAKURA sur Android et sur PC, et sorties livrées à l’heure même téléphone en veille.' },
+      { text: 'Statut Discord retiré quand l’app est fermée ou mise en arrière-plan.' },
+      { text: 'Photo de profil Discord mise à jour automatiquement après un changement de photo.' },
+      { text: 'Lecteurs de dessins animés : les fenêtres de publicité et les redirections sont bloquées.' },
+      { text: 'Historique : bouton « Tout effacer » plus compact sur mobile.' },
+    ],
+  },
+  {
     id: '2026-11-16',
     date: '16 novembre 2026',
     title: 'Sorties à venir, refonte plein écran mobile et lecteur de dessins animés',

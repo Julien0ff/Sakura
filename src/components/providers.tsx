@@ -12,6 +12,7 @@ import { DesktopBridge } from '@/components/desktop/desktop-bridge';
 import { NavTracker } from '@/lib/nav-history';
 import { detectPlatform } from '@/lib/app-release';
 import { OnlinePresenceTracker } from '@/lib/online-presence';
+import { ResumePrompt } from '@/components/layout/resume-prompt';
 
 function HapticsSync() {
   const on = useAppStore((s) => s.settings.haptics);
@@ -54,6 +55,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <OnlinePresenceTracker />
         </Suspense>
         {children}
+        <ResumePrompt />
         <Toaster />
       </NextThemesProvider>
     </QueryClientProvider>

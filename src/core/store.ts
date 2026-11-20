@@ -81,6 +81,11 @@ export type Settings = {
   notifyLang: NotifyLang;
   /** Phones: names under the tab bar icons (false = icons only, lower bar). */
   tabLabels: boolean;
+  /** Calendar › « Prévenez-moi »: release notifications for anime that aren't in « Ma liste ». */
+  notifyExtra: { id: number; title: string }[];
+  /** Ne pas déranger: no release notification between `start` and `end` (HH:MM, device time);
+   * the ones due meanwhile arrive at `end`. */
+  quietHours: { enabled: boolean; start: string; end: string };
 };
 
 /** Tombstone keys in `deleted`: a removal must reach the other devices. */

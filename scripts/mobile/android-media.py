@@ -54,6 +54,24 @@ def manifest(app: Path) -> None:
     path.write_text(text.replace(tag, new, 1))
 
 
+def alarm_permissions(app: Path) -> None:
+    """Release notifications are scheduled with AlarmManager (tauri-plugin-notification). Without
+    exact alarms Android batches them and delivers them hours late, or not at all in Doze.
+    USE_EXACT_ALARM is granted at install on Android 13+; SCHEDULE_EXACT_ALARM covers 12 / 12L."""
+    path = app / "src/main/AndroidManifest.xml"
+    text = path.read_text()
+    if "USE_EXACT_ALARM" in text:
+        return
+    perms = (
+        '    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n'
+        '    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />\n'
+    )
+    i = text.find("<application")
+    if i < 0:
+        fail("AndroidManifest.xml : balise <application> introuvable")
+    path.write_text(text[:i] + perms.lstrip() + "    " + text[i:])
+
+
 def main_activity(app: Path) -> None:
     found = list((app / "src/main").rglob("MainActivity.kt"))
     if len(found) != 1:
@@ -112,6 +130,7 @@ def main() -> None:
     app = Path(sys.argv[1]) / "app"
     gradle(app)
     manifest(app)
+    alarm_permissions(app)
     main_activity(app)
     print(f"{MARK} ajouté au projet Android")
 

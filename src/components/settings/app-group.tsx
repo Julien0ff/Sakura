@@ -42,6 +42,8 @@ export function AppGroup() {
   const discordBrowsing = useAppStore((s) => s.settings.discordBrowsing ?? true);
   const releaseNotifications = useAppStore((s) => s.settings.releaseNotifications ?? true);
   const notifyLang = useAppStore((s) => s.settings.notifyLang ?? 'auto');
+  const notifyExtra = useAppStore((s) => s.settings.notifyExtra ?? []);
+  const quietHours = useAppStore((s) => s.settings.quietHours ?? { enabled: false, start: '23:00', end: '08:00' });
   const updateSettings = useAppStore((s) => s.updateSettings);
 
   const { data: version } = useQuery({
@@ -176,6 +178,54 @@ export function AppGroup() {
               onChange={(v) => updateSettings({ notifyLang: v })}
             />
           </Row>
+          <Toggle
+            label="Ne pas déranger"
+            hint="Pendant ces heures, rien ne sonne : les sorties arrivent à la fin de la plage."
+            checked={quietHours.enabled}
+            onChange={(v) => updateSettings({ quietHours: { ...quietHours, enabled: v } })}
+          />
+          {quietHours.enabled && (
+            <Row label="Plage silencieuse" hint="Heure de l’appareil." stackOnMobile>
+              <div className="flex items-center gap-2 text-[15px] text-white">
+                <label className="sr-only" htmlFor="quiet-start">Début</label>
+                <input
+                  id="quiet-start"
+                  type="time"
+                  value={quietHours.start}
+                  onChange={(e) => e.target.value && updateSettings({ quietHours: { ...quietHours, start: e.target.value } })}
+                  className="h-9 px-3 rounded-xl bg-white/10 text-white [color-scheme:dark] tabular-nums"
+                />
+                <span className="text-[#8E8E93]">→</span>
+                <label className="sr-only" htmlFor="quiet-end">Fin</label>
+                <input
+                  id="quiet-end"
+                  type="time"
+                  value={quietHours.end}
+                  onChange={(e) => e.target.value && updateSettings({ quietHours: { ...quietHours, end: e.target.value } })}
+                  className="h-9 px-3 rounded-xl bg-white/10 text-white [color-scheme:dark] tabular-nums"
+                />
+              </div>
+            </Row>
+          )}
+          {notifyExtra.length > 0 && (
+            <Row label="Aussi prévenu pour" hint="Ajoutés depuis le calendrier (« Prévenez-moi »)." stackOnMobile>
+              <ul className="flex flex-wrap gap-2 justify-end">
+                {notifyExtra.map((a) => (
+                  <li key={a.id}>
+                    <button
+                      type="button"
+                      onClick={() => updateSettings({ notifyExtra: notifyExtra.filter((x) => x.id !== a.id) })}
+                      aria-label={`Ne plus être prévenu pour ${a.title}`}
+                      className="flex items-center gap-1.5 h-8 pl-3 pr-2 rounded-full bg-white/10 hover:bg-white/15 text-[13px] text-white cursor-pointer max-w-[220px]"
+                    >
+                      <span className="truncate">{a.title}</span>
+                      <span aria-hidden className="text-[#8E8E93]">✕</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </Row>
+          )}
           <Row label="Tester les notifications" hint="Envoie une notification d'essai pour vérifier l'affichage." stackOnMobile>
             <ActionButton
               onClick={async () => {

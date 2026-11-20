@@ -556,7 +556,7 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
     );
   }
 
-  const animeColor = effectiveColor || '#0A84FF';
+  const animeColor = effectiveColor || '#FF7AA8';
   const rating = formatScore(anime.averageScore);
   const listEntry = watchlist.find((a) => a.id === anime.id);
   const epLayout = EPISODE_LAYOUTS[settings.episodeView ?? 'auto'];
@@ -684,8 +684,8 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
           />
 
           {/* Top Bar Navigation */}
-          {/* Phones: below the status bar (same row as the account button), not under its blur. */}
-          <div className="absolute top-float md:top-6 left-4 md:left-[104px] z-20">
+          {/* Floating like the account / calendar buttons: same glass, same row, stays while scrolling. */}
+          <div className="fixed top-float md:top-6 left-4 md:left-[104px] z-40">
             <button
               type="button"
               onClick={() => {
@@ -693,7 +693,8 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
                 goBack();
               }}
               aria-label="Retour"
-              className="flex items-center justify-center w-10 h-10 rounded-full liquid-glass text-white hover:bg-white/10 transition-colors cursor-pointer"
+              title="Retour"
+              className="w-11 h-11 rounded-full tab-bar-glass float-glass flex items-center justify-center text-white/90 hover:text-white active:scale-95 transition-transform cursor-pointer"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>

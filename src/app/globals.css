@@ -751,7 +751,9 @@ html.player-open .top-float {
   place-items: center;
   overflow: hidden;
   background: #000;
-  transition: opacity 0.75s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0.75s;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  /* Sortie : le voile ne se dissout qu'après l'envol des pétales. */
+  transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1) 0.55s, visibility 0s linear 1.45s;
   /* Filet de sécurité sans JavaScript : la page finit toujours par apparaître. */
   animation: splash-failsafe 0.6s ease 9s forwards;
 }
@@ -760,27 +762,28 @@ html.splash-skip .splash { display: none; }
 
 .splash-glow {
   position: absolute;
-  inset: -20%;
+  inset: 0;
   background:
-    radial-gradient(40% 35% at 50% 46%, rgba(255, 122, 168, 0.32) 0%, transparent 70%),
-    radial-gradient(60% 50% at 50% 60%, rgba(255, 92, 147, 0.12) 0%, transparent 75%);
+    radial-gradient(circle at 50% 46%, rgba(255, 122, 168, 0.32) 0, transparent 38vmax),
+    radial-gradient(circle at 50% 56%, rgba(255, 92, 147, 0.12) 0, transparent 60vmax);
   animation: splash-breathe 3.2s ease-in-out infinite;
 }
 
 .splash-center {
+  --splash-flower: clamp(112px, 34vmin, 188px);
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 22px;
-  transition: transform 0.75s cubic-bezier(0.4, 0, 0.2, 1), filter 0.75s ease;
+  gap: clamp(16px, 3.4vmin, 28px);
+  padding: 0 16px;
+  text-align: center;
 }
-.splash-leaving .splash-center { transform: scale(1.18); filter: blur(6px); }
 
 .splash-flower-wrap {
   position: relative;
-  width: 132px;
-  height: 132px;
+  width: var(--splash-flower);
+  height: var(--splash-flower);
   display: grid;
   place-items: center;
 }
@@ -797,8 +800,8 @@ html.splash-skip .splash { display: none; }
 
 .splash-flower {
   position: relative;
-  width: 132px;
-  height: 132px;
+  width: 100%;
+  height: 100%;
   overflow: visible;
   filter: drop-shadow(0 12px 42px rgba(255, 92, 147, 0.5));
   animation: splash-sway 4.8s ease-in-out 1.2s infinite;
@@ -827,7 +830,7 @@ html.splash-skip .splash { display: none; }
 .splash-word {
   display: flex;
   gap: 0.18em;
-  font-size: 34px;
+  font-size: clamp(30px, 9vmin, 46px);
   letter-spacing: 0.08em;
   color: #fff;
 }
@@ -849,8 +852,8 @@ html.splash-skip .splash { display: none; }
 }
 
 .splash-tagline {
-  margin: -10px 0 0;
-  font-size: 12px;
+  margin: -8px 0 0;
+  font-size: clamp(10px, 2.9vmin, 13px);
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: rgba(255, 194, 214, 0.7);
@@ -859,7 +862,7 @@ html.splash-skip .splash { display: none; }
 }
 
 .splash-bar {
-  width: 120px;
+  width: clamp(96px, 30vmin, 150px);
   height: 3px;
   border-radius: 999px;
   overflow: hidden;
@@ -890,8 +893,27 @@ html.splash-skip .splash { display: none; }
   animation-iteration-count: infinite;
 }
 
-/* Le site arrive en douceur derrière le voile qui s'efface. */
-html.splash-reveal .app-root { animation: splash-content-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
+/* Sortie en trois temps : les pétales s'envolent, le texte s'efface vers le haut, puis le voile se
+   dissout pendant que le site arrive (léger zoom et flou qui se dissipe). */
+.splash-leaving .splash-petal {
+  animation: splash-petal-out 0.85s cubic-bezier(0.55, 0, 0.75, 0.4) forwards;
+}
+.splash-leaving .splash-stamen,
+.splash-leaving .splash-dot,
+.splash-leaving .splash-mark,
+.splash-leaving .splash-halo {
+  animation: splash-fade-out 0.35s ease forwards;
+}
+.splash-leaving .splash-flower { animation: none; }
+.splash-leaving .splash-word,
+.splash-leaving .splash-tagline,
+.splash-leaving .splash-bar {
+  transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+  transform: translateY(-14px);
+}
+.splash-leaving .splash-glow { animation: none; transition: opacity 1s ease 0.3s, transform 1.2s ease; opacity: 0; transform: scale(1.4); }
+html.splash-reveal .app-root { animation: splash-content-in 1.3s cubic-bezier(0.22, 1, 0.36, 1) 0.45s both; }
 
 @keyframes splash-bloom {
   to { transform: scale(1) rotate(0deg); opacity: 1; }
@@ -923,14 +945,20 @@ html.splash-reveal .app-root { animation: splash-content-in 0.8s cubic-bezier(0.
   100% { opacity: 0; transform: translate3d(var(--drift, 30px), 105vh, 0) rotate(320deg); }
 }
 @keyframes splash-content-in {
-  from { opacity: 0; transform: scale(0.985); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; transform: scale(0.97); filter: blur(8px); }
+  to { opacity: 1; transform: none; filter: none; }
 }
+@keyframes splash-petal-out {
+  from { transform: scale(1) rotate(0deg); opacity: 1; }
+  to { transform: translateY(-34px) scale(1.25) rotate(28deg); opacity: 0; }
+}
+@keyframes splash-fade-out { to { opacity: 0; } }
 @keyframes splash-failsafe { to { opacity: 0; visibility: hidden; pointer-events: none; } }
 
 @media (prefers-reduced-motion: reduce) {
   .splash-flower, .splash-glow, .splash-falling span, .splash-bar span, .splash-halo, .splash-word { animation: none; }
   .splash-falling { display: none; }
   .splash-petal, .splash-stamen, .splash-dot, .splash-mark, .splash-word span, .splash-tagline { animation-duration: 0.01s; animation-delay: 0s !important; }
-  .splash-leaving .splash-center { transform: none; filter: none; }
+  .splash-leaving .splash-petal { animation: splash-fade-out 0.4s ease forwards; }
+  html.splash-reveal .app-root { animation-name: splash-fade-in; }
 }

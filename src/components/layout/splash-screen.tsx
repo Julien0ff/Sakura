@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react';
 
 /** Shown once per launch (tab / app session), not on every reload inside it. */
 const SESSION_KEY = 'sakura.splashShown';
-/** Long enough to see the flower bloom, short enough not to slow anyone down. */
-const MIN_VISIBLE_MS = 1300;
+/** The whole bloom (petals, stamens, name) plus a moment to look at it. */
+const MIN_VISIBLE_MS = 3000;
 /** Never block the site: a page that never fires `load` (stuck video host…) still opens. */
 const MAX_VISIBLE_MS = 6000;
-const EXIT_MS = 750;
+/** Matches the staged exit in globals.css (petals fly off, then the veil dissolves). */
+const EXIT_MS = 1500;
 
 /**
  * Runs before the first paint (in <head>): skips the splash when it was already shown in this
@@ -38,7 +39,7 @@ export function replaySplash() {
   window.dispatchEvent(new Event(SPLASH_REPLAY_EVENT));
 }
 /** A replay stays a little longer than a real launch, to really see it. */
-const REPLAY_VISIBLE_MS = 2800;
+const REPLAY_VISIBLE_MS = 3200;
 
 export function SplashScreen() {
   const [phase, setPhase] = useState<'shown' | 'leaving' | 'gone'>('shown');

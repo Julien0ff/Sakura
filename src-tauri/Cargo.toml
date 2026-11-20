@@ -1,6 +1,6 @@
 [package]
 name = "sakura"
-version = "0.5.2"
+version = "0.5.3"
 description = "SAKURA — catalogue et lecteur d'animes"
 authors = ["you"]
 license = "GPL-3.0-or-later"

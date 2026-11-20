@@ -14,6 +14,7 @@ import { AccountGroup } from '@/components/settings/account-group';
 import { AdminGroup } from '@/components/settings/admin-group';
 import { detectPlatform } from '@/lib/app-release';
 import { getPerfMode, setPerfMode, type PerfMode } from '@/lib/desktop';
+import { replaySplash } from '@/components/layout/splash-screen';
 
 const noopSubscribe = () => () => {};
 
@@ -248,6 +249,16 @@ function PerformanceGroup() {
       title="Performances"
       footer="Mode léger : sans flous ni effets au défilement, pour les appareils ou l’app PC qui rament. Auto : activé dans l’app PC sous Linux. Réglage propre à cet appareil."
     >
+      <Row label="Écran de chargement" hint="Celui qui s’affiche au lancement du site et des apps." stackOnMobile>
+        <ActionButton
+          onClick={() => {
+            haptic('selection');
+            replaySplash();
+          }}
+        >
+          Revoir
+        </ActionButton>
+      </Row>
       <Row label="Mode léger" stackOnMobile>
         <Segmented<PerfMode>
           label="Mode léger"

@@ -28,8 +28,46 @@ const FALLING = [
   [93, 0.9, 5.8, 30],
 ] as const;
 
+/** Paramètres › « Revoir l’écran de chargement »: plays it again (for feedback / fun). */
+export const SPLASH_REPLAY_EVENT = 'sakura:splash-replay';
+export function replaySplash() {
+  window.dispatchEvent(new Event(SPLASH_REPLAY_EVENT));
+}
+/** A replay stays a little longer than a real launch, to really see it. */
+const REPLAY_VISIBLE_MS = 2800;
+
 export function SplashScreen() {
   const [phase, setPhase] = useState<'shown' | 'leaving' | 'gone'>('shown');
+  /** Remounts the markup so every animation starts over. */
+  const [run, setRun] = useState(0);
+
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const onReplay = () => {
+      timers.forEach(clearTimeout);
+      const root = document.documentElement;
+      root.classList.remove('splash-skip', 'splash-reveal');
+      setRun((r) => r + 1);
+      setPhase('shown');
+      timers.push(
+        setTimeout(() => {
+          setPhase('leaving');
+          root.classList.add('splash-reveal');
+          timers.push(
+            setTimeout(() => {
+              setPhase('gone');
+              root.classList.remove('splash-reveal');
+            }, EXIT_MS)
+          );
+        }, REPLAY_VISIBLE_MS)
+      );
+    };
+    window.addEventListener(SPLASH_REPLAY_EVENT, onReplay);
+    return () => {
+      window.removeEventListener(SPLASH_REPLAY_EVENT, onReplay);
+      timers.forEach(clearTimeout);
+    };
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -74,7 +112,7 @@ export function SplashScreen() {
   if (phase === 'gone') return null;
 
   return (
-    <div className={`splash ${phase === 'leaving' ? 'splash-leaving' : ''}`} role="status" aria-label="Chargement de SAKURA">
+    <div key={run} className={`splash ${phase === 'leaving' ? 'splash-leaving' : ''}`} role="status" aria-label="Chargement de SAKURA">
       <div className="splash-glow" aria-hidden />
 
       <div className="splash-falling" aria-hidden>

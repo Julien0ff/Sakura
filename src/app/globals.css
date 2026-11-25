@@ -944,9 +944,11 @@ html.splash-reveal .app-root { animation: splash-content-in 1.3s cubic-bezier(0.
   10% { opacity: 0.9; }
   100% { opacity: 0; transform: translate3d(var(--drift, 30px), 105vh, 0) rotate(320deg); }
 }
+/* Opacity only: a transform or filter on .app-root would make its `fixed` bars (mobile tab bar,
+   avatar) position and blur against it, then jump back when the animation ends — the launch glitch. */
 @keyframes splash-content-in {
-  from { opacity: 0; transform: scale(0.97); filter: blur(8px); }
-  to { opacity: 1; transform: none; filter: none; }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 @keyframes splash-petal-out {
   from { transform: scale(1) rotate(0deg); opacity: 1; }

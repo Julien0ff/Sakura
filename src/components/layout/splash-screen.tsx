@@ -9,6 +9,9 @@ const MIN_VISIBLE_MS = 3000;
 const MAX_VISIBLE_MS = 6000;
 /** Matches the staged exit in globals.css (petals fly off, then the veil dissolves). */
 const EXIT_MS = 1500;
+/** The site's fade-in (globals.css `html.splash-reveal .app-root`: 0.45 s delay + 1.3 s), let run to
+ * the end: cutting it short made the page jump. */
+const REVEAL_MS = 1800;
 
 /** Back on the site after this long in the background (tab hidden, phone locked, app switcher). */
 const RESUME_AFTER_MS = 30_000;
@@ -52,10 +55,8 @@ export function SplashScreen() {
     const exit = () => {
       setPhase('leaving');
       root.classList.add('splash-reveal');
-      later(() => {
-        setPhase('gone');
-        root.classList.remove('splash-reveal');
-      }, EXIT_MS);
+      later(() => setPhase('gone'), EXIT_MS);
+      later(() => root.classList.remove('splash-reveal'), REVEAL_MS);
     };
     /** Plays it again from the first petal, then leaves after `visibleMs`. */
     const play = (visibleMs: number) => {

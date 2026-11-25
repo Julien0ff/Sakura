@@ -21,6 +21,22 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: '2026-11-25',
+    date: '25 novembre 2026',
+    title: 'Lecteur sans pubs et notifications plus fiables',
+    banner: '/banner-news.png',
+    features: [
+      { text: 'Lecteur sans publicité : le lecteur principal d’Anime-Sama est désormais lu directement dans le lecteur SAKURA, sans fenêtres ni redirections publicitaires (animes et dessins animés).' },
+      { text: 'Notifications « Auto » : chaque anime est suivi dans la langue où vous le regardez, et dans les deux langues s’il n’est pas encore commencé.' },
+    ],
+    fixes: [
+      { text: 'Beaucoup moins de notifications manquées sur l’app mobile et l’app PC.' },
+      { text: 'Fin de l’écran de lancement plus fluide : la barre de navigation ne saute plus.' },
+      { text: 'Arcane est rangé avec les animes, et non plus avec les dessins animés.' },
+      { text: '« Reprendre » relance l’épisode dans la langue où vous le regardiez (VF ou VOSTFR).' },
+    ],
+  },
+  {
     id: '2026-11-20',
     date: '20 novembre 2026',
     title: 'Écran de lancement, reprise de lecture et notifications revues',

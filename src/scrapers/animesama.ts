@@ -52,6 +52,29 @@ export class AnimeSamaScraper implements AnimeScraper {
     }
   }
 
+  /**
+   * `saison1/vostfr` → `saison1/vf` (then vf1, vf2) for VF, or the reverse: the first variant whose
+   * season page actually has episodes. null when the language doesn't exist for that season.
+   */
+  private async findLanguageVariant(animeUrl: string, path: string, lang: 'vf' | 'vostfr'): Promise<string | null> {
+    const base = path.replace(/\/(vostfr|vf\d*)\/?$/i, '');
+    if (base === path) return null;
+    const variants = lang === 'vf' ? ['vf', 'vf1', 'vf2'] : ['vostfr'];
+    for (const v of variants) {
+      const candidate = `${base}/${v}`;
+      try {
+        const res = await fetch(`${animeUrl}/${candidate}/`.replace(/([^:])\/\//g, '$1/'), {
+          headers: this.getHeaders(animeUrl),
+          signal: AbortSignal.timeout(6000),
+        });
+        if (res.ok && /eps1|epsJeton|episodes\.js/.test(await res.text())) return candidate;
+      } catch {
+        /* try the next variant */
+      }
+    }
+    return null;
+  }
+
   async getEpisodes(animeUrl: string, lang: 'vf' | 'vostfr' = 'vostfr', season?: number, title?: string): Promise<AnimeEpisode[]> {
     try {
       const response = await fetch(animeUrl, { headers: this.getHeaders(animeUrl) });
@@ -112,9 +135,15 @@ export class AnimeSamaScraper implements AnimeScraper {
           if (best) {
             episodesPath = best.path;
           } else {
-            // 2. Try matching season with other language (cartoons often only have VF)
-            const fallbackSeason = panels.find((p) => matchSeason(p, season));
-            if (fallbackSeason) episodesPath = fallbackSeason.path;
+            const seasonPanel = panels.find((p) => matchSeason(p, season));
+            if (seasonPanel) {
+              // 2. Anime-Sama only lists one language per season (« saison1/vostfr ») and reaches the
+              // other one through its language picker: « saison1/vf » (or vf1, vf2…) exists without
+              // being listed. Probe it before settling for the other language.
+              const swapped = await this.findLanguageVariant(animeUrl, seasonPanel.path, targetLang);
+              // 3. Really only in the other language (cartoons often only have VF).
+              episodesPath = swapped ?? seasonPanel.path;
+            }
           }
         }
 

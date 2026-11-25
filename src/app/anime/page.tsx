@@ -25,7 +25,8 @@ import { haptic } from '@/lib/haptics';
 import { toast } from '@/components/ui/toast';
 import { EasterEggDialog, HUNTER_EGG_SRC, isHunterXHunter, useRapidClicks } from '@/components/anime/easter-egg';
 import { getTMDBDetails, getTMDBSeasonEpisodes } from '@/core/api/tmdb';
-import { cartoonMedia, isCartoonId, tmdbIdOf } from '@/lib/cartoons';
+import { cartoonMedia, isCartoonId, isWesternCartoonId, tmdbIdOf } from '@/lib/cartoons';
+import { withDirectStreams } from '@/lib/direct-stream';
 import { setOnlinePlaybackActivity } from '@/lib/online-presence';
 
 function AnimeDetailsContent() {
@@ -78,8 +79,8 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
   const requestIdRef = useRef(0);
   const autoPlayedRef = useRef(false);
   const [activeTab, setActiveTab] = useState<'episodes' | 'details' | 'relations'>('episodes');
-  // Cartoons are dubbed (Anime-Sama often has them in VF only).
-  const [activeLang, setActiveLang] = useState<Lang>(isCartoonId(Number(id)) ? 'vf' : defaultLang);
+  // Cartoons are dubbed (Anime-Sama often has them in VF only); anime-style shows (Arcane) aren't.
+  const [activeLang, setActiveLang] = useState<Lang>(isWesternCartoonId(Number(id)) ? 'vf' : defaultLang);
   const [activeSeason, setActiveSeason] = useState<number>(1);
   const [playingEpisode, setPlayingEpisode] = useState<any>(null);
   const [videoData, setVideoData] = useState<PlayerSource | null>(null);
@@ -269,6 +270,9 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
         }
       }
 
+      // Anime-Sama's main player read straight from its HLS stream: no third-party page, no ads.
+      if (sources && sources.length > 0) sources = await withDirectStreams(sources);
+
       if (isStale()) return;
       if (sources && sources.length > 0) {
         setAvailableSources(sources);
@@ -345,7 +349,9 @@ function AnimeDetails({ id, autoPlay }: { id: string | null; autoPlay: boolean }
     autoPlayedRef.current = true;
     const last = history.find((h) => h.id === anime.id && h.season === activeSeason);
     const ep = (last && episodeList.find((e) => e.episode_number === last.episodeNumber)) || episodeList[0];
-    playEpisode(ep, anime);
+    // Resume in the language it was being watched in (« Reprendre » after VF stays VF).
+    if (last?.lang && last.lang !== activeLang) setActiveLang(last.lang);
+    playEpisode(ep, anime, last?.lang ?? activeLang);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay, anime, isLoadingEpisodes, episodeList.length]);
 

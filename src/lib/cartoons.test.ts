@@ -111,3 +111,12 @@ test('discoverQuery: animated shows outside Asia, sorted like Découvrir', () =>
   // Not the dozens of unknown shows of the day: a few votes at least.
   assert.equal(recent.get('vote_count.gte'), '20');
 });
+
+test('anime-style shows (Arcane) are TMDB shows kept out of the cartoons', async () => {
+  const { isAnimeStyle, isWesternCartoonId } = await import('./cartoons.ts');
+  assert.equal(isAnimeStyle(94605), true);
+  assert.equal(isAnimeStyle(-94605), true);
+  assert.equal(isWesternCartoonId(-94605), false);
+  assert.equal(isWesternCartoonId(-37606), true);
+  assert.equal(isWesternCartoonId(21), false);
+});

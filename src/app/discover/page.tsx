@@ -10,7 +10,7 @@ import { Compass, CalendarDays } from '@/components/ui/icons';
 import Link from 'next/link';
 import { haptic } from '@/lib/haptics';
 import { useState } from 'react';
-import { cartoonSummary, discoverQuery, isCartoon, type TmdbCartoon } from '@/lib/cartoons';
+import { cartoonSummary, discoverQuery, isAnimeStyle, isCartoon, type TmdbCartoon } from '@/lib/cartoons';
 
 // Labels FR -> genres AniList (les valeurs doivent correspondre exactement à l'API).
 const GENRES: { label: string; value: string }[] = [
@@ -39,7 +39,7 @@ async function browseCartoons(sort: string, page: number) {
   if (!res.ok) throw new Error('TMDB');
   const data = (await res.json()) as { results?: TmdbCartoon[]; total_pages?: number };
   return {
-    media: (data.results ?? []).filter(isCartoon).map(cartoonSummary) as AnimeSummary[],
+    media: (data.results ?? []).filter((s) => isCartoon(s) && !isAnimeStyle(s.id)).map(cartoonSummary) as AnimeSummary[],
     hasNext: page < (data.total_pages ?? 0),
     page,
   };

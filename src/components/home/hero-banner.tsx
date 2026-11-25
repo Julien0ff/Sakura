@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAniList, GET_TRENDING_ANIMES } from '@/core/api/anilist';
 import { getTMDBDetails } from '@/core/api/tmdb';
-import { cartoonSummary, discoverQuery, type TmdbCartoon } from '@/lib/cartoons';
+import { cartoonSummary, discoverQuery, isAnimeStyle, type TmdbCartoon } from '@/lib/cartoons';
 import { Play, Info, Star } from '@/components/ui/icons';
 import Link from 'next/link';
 import { formatScore, statusLabel, type AnimeSummary } from '@/lib/anime';
@@ -55,6 +55,7 @@ export function HeroBanner() {
       // Top popular cartoons with high-res backdrop
       const rawCartoons: TmdbCartoon[] = cartoonRes?.results ?? [];
       const cartoonBanners: AnimeSummary[] = rawCartoons
+        .filter((s) => !isAnimeStyle(s.id))
         .slice(0, 4)
         .map(cartoonSummary)
         .filter((c) => Boolean(c.bannerImage)) as unknown as AnimeSummary[];

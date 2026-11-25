@@ -41,6 +41,15 @@ export const cartoonId = (tmdbId: number) => -tmdbId;
 export const isCartoonId = (id: number) => id < 0;
 export const tmdbIdOf = (id: number) => -id;
 
+/**
+ * Western-made series that are anime in spirit (Arcane): TMDB-only like cartoons, but they stay out of
+ * Découvrir › Dessins animés and play in the user's default language, like an anime.
+ */
+const ANIME_STYLE = new Set([94605 /* Arcane */]);
+export const isAnimeStyle = (idOrTmdbId: number) => ANIME_STYLE.has(Math.abs(idOrTmdbId));
+/** A TMDB show that belongs with the cartoons (Découvrir › Dessins animés, VF by default). */
+export const isWesternCartoonId = (id: number) => isCartoonId(id) && !isAnimeStyle(id);
+
 export function isCartoon(show: TmdbCartoon): boolean {
   if (show.genre_ids && !show.genre_ids.includes(ANIMATION)) return false;
   if (show.original_language && ASIAN_LANGUAGES.includes(show.original_language)) return false;

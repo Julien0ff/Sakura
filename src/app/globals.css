@@ -641,8 +641,10 @@ html.app-mobile .status-edge {
    sombre de 35 %. Pas de couleur sur le verre, sauf l'onglet sélectionné. Le verre seul n'existe
    pas en CSS : flou + saturation + remplissage translucide + reflet spéculaire, valeurs de départ
    du guide de traduction (pas des spécifications Apple). */
+/* Le menu des lecteurs (même verre que les boutons du lecteur ailleurs) passe aussi en liquid sur iOS. */
 html.ui-liquid .tab-bar-glass,
-html.ui-liquid .menu-glass {
+html.ui-liquid .menu-glass,
+html.ui-liquid .player-menu-glass {
   /* Reflet spéculaire en diagonale (lumière en haut à gauche, rebond en bas à droite) sur un voile
      léger : on doit voir le contenu passer dessous, pas un panneau dépoli. */
   background:
@@ -692,6 +694,7 @@ html.ui-liquid nav[aria-label='Navigation principale'] [aria-current='page'] > s
 @media (prefers-reduced-transparency: reduce) {
   html.ui-liquid .tab-bar-glass,
   html.ui-liquid .menu-glass,
+  html.ui-liquid .player-menu-glass,
   html.ui-liquid .float-glass,
   html.ui-liquid .sheet-body {
     background: rgb(28, 28, 30);
@@ -702,6 +705,7 @@ html.ui-liquid nav[aria-label='Navigation principale'] [aria-current='page'] > s
 @media (prefers-contrast: more) {
   html.ui-liquid .tab-bar-glass,
   html.ui-liquid .menu-glass,
+  html.ui-liquid .player-menu-glass,
   html.ui-liquid .float-glass,
   html.ui-liquid .sheet-body {
     background-color: rgba(18, 18, 20, 0.92);

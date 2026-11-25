@@ -140,7 +140,7 @@ function SourceMenu({
         <div
           role="menu"
           aria-label="Choisir un lecteur"
-          className="absolute right-0 top-full mt-2 w-60 max-h-[min(60vh,320px)] overflow-y-auto rounded-2xl p-1.5 bg-white/15 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.25)] origin-top-right animate-in fade-in-0 zoom-in-95 duration-200"
+          className="absolute right-0 top-full mt-2 w-60 max-h-[min(60vh,320px)] overflow-y-auto player-menu-glass rounded-2xl p-1.5 bg-white/15 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.25)] origin-top-right animate-in fade-in-0 zoom-in-95 duration-200"
         >
           <div className="px-3 pt-1.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/70">Lecteur</div>
           {sources.map((s, i) => {

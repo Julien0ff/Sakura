@@ -140,9 +140,9 @@ function SourceMenu({
         <div
           role="menu"
           aria-label="Choisir un lecteur"
-          className="absolute right-0 top-full mt-2 w-60 max-h-[min(60vh,320px)] overflow-y-auto menu-glass rounded-2xl p-1.5 origin-top-right animate-in fade-in-0 zoom-in-95 duration-200"
+          className="absolute right-0 top-full mt-2 w-60 max-h-[min(60vh,320px)] overflow-y-auto rounded-2xl p-1.5 bg-white/15 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.25)] origin-top-right animate-in fade-in-0 zoom-in-95 duration-200"
         >
-          <div className="px-3 pt-1.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/55">Lecteur</div>
+          <div className="px-3 pt-1.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/70">Lecteur</div>
           {sources.map((s, i) => {
             const { name, adFree } = splitName(sourceName(s, i));
             const active = current?.url === s.url;
@@ -157,8 +157,8 @@ function SourceMenu({
                   setOpen(false);
                   if (!active) onSelect(s);
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[15px] text-white hover:bg-white/10 transition-colors cursor-pointer ${
-                  active ? 'font-semibold' : ''
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[15px] text-white transition-colors cursor-pointer ${
+                  active ? 'bg-white/15 font-semibold' : 'hover:bg-white/10'
                 }`}
               >
                 <span className="flex-1 min-w-0 truncate">{name}</span>

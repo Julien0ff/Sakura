@@ -40,6 +40,7 @@ export async function withDirectStreams<T extends Source>(sources: T[], timeoutM
   return sources.flatMap((s, i) => {
     const stream = streams[i];
     if (!stream) return [s];
-    return [{ ...s, url: stream, type: 'hls' as const, quality: `${s.quality ?? 'Lecteur'} · sans pub` }, s];
+    const name = s.quality ?? 'Lecteur';
+    return [{ ...s, url: stream, type: 'hls' as const, quality: `${name} · sans pub` }, { ...s, quality: `${name} (secours)` }];
   });
 }

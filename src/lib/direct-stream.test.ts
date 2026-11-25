@@ -20,7 +20,7 @@ test('the direct stream comes first, the embed stays as a fallback', async (t) =
     { url: 'https://ansembed.net/embed-abc.html', type: 'iframe' as const, quality: 'Ansembed' },
     { url: 'https://uqload.vc/embed-abc.html', type: 'iframe' as const, quality: 'Uqload' },
   ]);
-  assert.deepEqual(out.map((s) => [s.type, s.quality]), [['hls', 'Ansembed · sans pub'], ['iframe', 'Ansembed'], ['iframe', 'Uqload']]);
+  assert.deepEqual(out.map((s) => [s.type, s.quality]), [['hls', 'Ansembed · sans pub'], ['iframe', 'Ansembed (secours)'], ['iframe', 'Uqload']]);
 });
 
 test('a page without stream leaves the sources unchanged', async (t) => {

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, FastForward, Maximize, Minimize, SkipForward, Star, X } from '@/components/ui/icons';
+import { ArrowLeft, Check, ChevronDown, FastForward, Maximize, Minimize, MonitorPlay, SkipForward, Star, X } from '@/components/ui/icons';
 import type { SkipInterval } from '@/core/api/aniskip';
 import { RatingPicker } from '@/components/anime/rating-picker';
 import { toast } from '@/components/ui/toast';
@@ -68,6 +68,111 @@ function sourceName(s: PlayerSource, i: number) {
   if (s.url.includes('uqload')) return 'Uqload';
   if (s.url.includes('getvid') || s.url.includes('vip')) return 'VIP';
   return s.quality && s.quality !== 'Auto' ? s.quality : `Lecteur ${i + 1}`;
+}
+
+const AD_FREE = ' · sans pub';
+/** Players read straight from their stream (src/lib/direct-stream.ts) carry this suffix. */
+const splitName = (name: string) =>
+  name.endsWith(AD_FREE) ? { name: name.slice(0, -AD_FREE.length), adFree: true } : { name, adFree: false };
+
+/** Desktop shows the players as pills up to this many; beyond, and always on phones, a menu. */
+const MAX_PILLS = 3;
+
+/**
+ * Player picker as a compact button + drop-down: a row of players hid the episode title on phones.
+ */
+function SourceMenu({
+  sources,
+  current,
+  onSelect,
+  hidden,
+  className = '',
+}: {
+  sources: PlayerSource[];
+  current: PlayerSource | null;
+  onSelect: (s: PlayerSource) => void;
+  /** Player chrome faded out: the menu closes with it. */
+  hidden: boolean;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const currentIdx = Math.max(0, sources.findIndex((s) => s.url === current?.url));
+  const currentName = splitName(sourceName(sources[currentIdx] ?? sources[0], currentIdx));
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const isOpen = open && !hidden;
+
+  return (
+    <div ref={ref} className={`relative ${className}`}>
+      <button
+        type="button"
+        onClick={() => {
+          haptic('light');
+          setOpen((o) => !o);
+        }}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        aria-label={`Lecteur : ${currentName.name}`}
+        className="flex items-center gap-1 sm:gap-1.5 h-9 sm:h-11 px-2.5 sm:px-3.5 rounded-full bg-white/15 backdrop-blur-md text-white hover:bg-white/25 transition-colors cursor-pointer"
+      >
+        <MonitorPlay className="w-4 h-4 shrink-0" />
+        <span className="hidden sm:inline max-w-[8rem] truncate text-xs font-semibold">{currentName.name}</span>
+        <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div
+          role="menu"
+          aria-label="Choisir un lecteur"
+          className="absolute right-0 top-full mt-2 w-56 max-h-[min(60vh,320px)] overflow-y-auto p-1.5 rounded-2xl bg-black/85 backdrop-blur-xl border border-white/10 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-150"
+        >
+          <div className="px-2.5 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/50">Lecteur</div>
+          {sources.map((s, i) => {
+            const { name, adFree } = splitName(sourceName(s, i));
+            const active = current?.url === s.url;
+            return (
+              <button
+                key={s.url}
+                type="button"
+                role="menuitemradio"
+                aria-checked={active}
+                onClick={() => {
+                  haptic('selection');
+                  setOpen(false);
+                  if (!active) onSelect(s);
+                }}
+                className={`w-full flex items-center gap-2 px-2.5 py-2.5 rounded-xl text-left text-sm transition-colors cursor-pointer ${
+                  active ? 'bg-white/15 text-white font-semibold' : 'text-white/80 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <span className="flex-1 min-w-0 truncate">{name}</span>
+                {adFree && (
+                  <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-emerald-400/15 text-emerald-300 text-[10px] font-semibold">Sans pub</span>
+                )}
+                <Check className={`w-4 h-4 shrink-0 ${active ? 'opacity-100' : 'opacity-0'}`} />
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 const subscribeNoop = () => () => {};
@@ -523,7 +628,7 @@ function PlayerOverlayInner({
 
           <div className="min-w-0 flex-1">
             <div className="text-white/70 text-[10px] sm:text-xs font-semibold uppercase tracking-wider truncate">{animeTitle}</div>
-            <div className="text-white text-xs sm:text-base md:text-lg font-bold truncate drop-shadow">{episodeLabel}</div>
+            <div className="text-white text-xs sm:text-base md:text-lg font-bold line-clamp-2 sm:line-clamp-1 break-words leading-tight drop-shadow">{episodeLabel}</div>
           </div>
 
           <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -536,6 +641,15 @@ function PlayerOverlayInner({
               {isFullscreen ? <Minimize className="w-4 h-4 sm:w-5 sm:h-5" /> : <Maximize className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
             {sources.length > 1 && (
+              <SourceMenu
+                sources={sources}
+                current={current}
+                onSelect={onSelectSource}
+                hidden={chromeHidden}
+                className={sources.length > MAX_PILLS ? '' : 'md:hidden'}
+              />
+            )}
+            {sources.length > 1 && sources.length <= MAX_PILLS && (
               <div className="hidden md:flex items-center gap-1 p-1 rounded-full bg-white/10 backdrop-blur-md" role="radiogroup" aria-label="Lecteur">
                 {sources.map((s, i) => (
                   <button
@@ -573,7 +687,7 @@ function PlayerOverlayInner({
                 title={episodeRating != null ? `Note : ${episodeRating}/10` : 'Noter cet épisode'}
               >
                 <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="text-[11px] sm:text-xs font-semibold">{episodeRating != null ? `${episodeRating}/10` : 'Noter'}</span>
+                <span className={`text-[11px] sm:text-xs font-semibold ${episodeRating != null ? '' : 'hidden sm:inline'}`}>{episodeRating != null ? `${episodeRating}/10` : 'Noter'}</span>
               </button>
             )}
             {next && (
@@ -594,23 +708,6 @@ function PlayerOverlayInner({
           </div>
         </div>
 
-        {/* Sources on phones or small screens: scrollable row */}
-        {sources.length > 1 && (
-          <div className="md:hidden relative mt-1.5 sm:mt-3 px-3 sm:px-4 pl-[max(env(safe-area-inset-left),12px)] pr-[max(env(safe-area-inset-right),12px)] flex gap-1 overflow-x-auto scrollbar-none pointer-events-auto">
-            {sources.map((s, i) => (
-              <button
-                key={s.url}
-                onClick={() => {
-                  haptic('selection');
-                  onSelectSource(s);
-                }}
-                className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold ${current?.url === s.url ? 'bg-white text-black' : 'bg-white/15 text-white/80'}`}
-              >
-                {sourceName(s, i)}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* End-of-episode rating (bottom-left, independent from the up-next card) */}

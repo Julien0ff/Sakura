@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { toast } from '@/components/ui/toast';
 import { routeAfterSignIn } from '@/core/auth';
 import { supabase } from '@/lib/supabase';
 import { desktop, isApp, isDesktop, applyPerfMode, isMobileApp, RELEASES_URL, type AuthLink, type UpdateInfo } from '@/lib/desktop';
-import { useAppStore, useHydrated } from '@/core/store';
+import { useAppStore, useHydrated, type Lang } from '@/core/store';
 import { notifyTargets } from '@/lib/notify-targets';
 import { syncScheduledReleases } from '@/lib/mobile-notify';
 import { checkAndroidUpdate, type MobileUpdate } from '@/lib/mobile-update';
@@ -178,10 +178,19 @@ function NotifyTargetsSync() {
   const defaultLang = useAppStore((s) => s.settings.defaultLang);
   const extra = useAppStore((s) => s.settings.notifyExtra);
   const quietHours = useAppStore((s) => s.settings.quietHours);
+  const history = useAppStore((s) => s.history);
+  // « Auto »: the language each anime was last watched in. A key string so that progress saves
+  // (which rewrite the history) don't resend the targets.
+  const watchedKey = useMemo(() => {
+    const seen = new Map<number, Lang>();
+    for (const h of [...history].sort((a, b) => b.watchedAt - a.watchedAt)) if (!seen.has(h.id)) seen.set(h.id, h.lang);
+    return JSON.stringify([...seen]);
+  }, [history]);
 
   useEffect(() => {
     if (!hydrated || !isApp()) return;
-    const targets = notifyTargets(watchlist, { enabled, lang, defaultLang, extra, quietHours, utcOffset: -new Date().getTimezoneOffset() });
+    const watchedLang = new Map<number, Lang>(JSON.parse(watchedKey));
+    const targets = notifyTargets(watchlist, { enabled, lang, defaultLang, extra, quietHours, watchedLang, utcOffset: -new Date().getTimezoneOffset() });
     // PC: the app checks every 15 min itself. Phones: the coming week is scheduled in advance.
     const sync = isDesktop()
       ? () => void desktop.setNotifyTargets(targets)
@@ -202,7 +211,7 @@ function NotifyTargetsSync() {
       clearTimeout(t);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [hydrated, watchlist, enabled, lang, defaultLang, extra, quietHours]);
+  }, [hydrated, watchlist, enabled, lang, defaultLang, extra, quietHours, watchedKey]);
 
   return null;
 }

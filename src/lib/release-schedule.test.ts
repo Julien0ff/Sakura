@@ -70,3 +70,10 @@ test('notificationId: stable positive 31-bit integer (Android notification ids a
   assert.notEqual(a, notificationId('a:1:6'));
   assert.ok(Number.isInteger(a) && a > 0 && a < 2 ** 31);
 });
+
+test('per-anime languages (« Auto »): VOSTFR for one, VF for the other', () => {
+  const now = 1_000_000;
+  const t = { anime: [{ id: 1, title: 'Blue Box', langs: ['vostfr' as const] }, { id: 2, title: 'Frieren', langs: ['vf' as const] }], langs: ['vostfr' as const, 'vf' as const] };
+  const out = upcomingReleases(t, [{ mediaId: 1, episode: 3, airingAt: now + 60 }, { mediaId: 2, episode: 3, airingAt: now + 60 }], [vf(1, now + 120), vf(2, now + 120)], now);
+  assert.deepEqual(out.map((n) => [n.title, n.body.includes('VF') ? 'vf' : 'vostfr']), [['Blue Box', 'vostfr'], ['Frieren', 'vf']]);
+});

@@ -14,8 +14,16 @@ test('only « En cours » and « À voir » are followed', () => {
   assert.deepEqual(notifyTargets(list, { enabled: true, lang: 'all', defaultLang: 'vostfr' }).anime.map((a) => a.id), [1, 2]);
 });
 
-test('auto language follows the default language', () => {
-  assert.deepEqual(notifyTargets(list, { enabled: true, lang: 'auto', defaultLang: 'vf' }).langs, ['vf']);
+test('auto: each anime in the language it is watched in, both when not started', () => {
+  const t = notifyTargets(list, { enabled: true, lang: 'auto', defaultLang: 'vf', watchedLang: new Map([[1, 'vostfr' as const]]) });
+  assert.deepEqual(t.anime.map((a) => [a.id, a.langs]), [[1, ['vostfr']], [2, ['vostfr', 'vf']]]);
+  assert.deepEqual(t.langs, ['vostfr', 'vf']);
+  const vfOnly = notifyTargets(list, { enabled: true, lang: 'auto', defaultLang: 'vostfr', watchedLang: new Map([[1, 'vf' as const], [2, 'vf' as const]]) });
+  assert.deepEqual(vfOnly.langs, ['vf']);
+});
+
+test('fixed languages apply to every anime', () => {
+  assert.equal(notifyTargets(list, { enabled: true, lang: 'vf', defaultLang: 'vf' }).anime[0].langs, undefined);
   assert.deepEqual(notifyTargets(list, { enabled: true, lang: 'all', defaultLang: 'vf' }).langs, ['vostfr', 'vf']);
   assert.deepEqual(notifyTargets(list, { enabled: true, lang: 'vostfr', defaultLang: 'vf' }).langs, ['vostfr']);
 });

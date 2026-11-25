@@ -11,7 +11,8 @@ use tauri_plugin_notification::NotificationExt as _;
 
 use crate::shell::site_url;
 
-const FIRST_CHECK: Duration = Duration::from_secs(60);
+/// Soon after launch: an app opened for a minute or two must still announce what came out.
+const FIRST_CHECK: Duration = Duration::from_secs(10);
 const EVERY: Duration = Duration::from_secs(15 * 60);
 /// App closed for days: only the last 2 days of releases are announced.
 pub const MAX_BACKLOG: i64 = 2 * 86_400;
@@ -23,6 +24,9 @@ const SEEN_LIMIT: usize = 500;
 pub struct TargetAnime {
     pub id: i64,
     pub title: String,
+    /// Languages followed for this anime (« Auto »: the one it's watched in); None → `Targets.langs`.
+    #[serde(default)]
+    pub langs: Option<Vec<String>>,
 }
 
 /// Ne pas déranger (src/lib/notify-targets.ts): minutes since local midnight, and the UTC offset.
@@ -89,7 +93,15 @@ pub fn window_start(last_check: i64, now: i64) -> i64 {
 
 /// Releases in (from, now] for followed anime and languages, minus those already announced.
 pub fn due(targets: &Targets, airing: &[Airing], planning: &[PlanItem], from: i64, now: i64, seen: &[String]) -> Vec<Notice> {
-    let title = |id: i64| targets.anime.iter().find(|a| a.id == id).map(|a| a.title.clone());
+    // The anime's title when its releases in `lang` are followed.
+    let title = |id: i64, lang: &str| {
+        targets
+            .anime
+            .iter()
+            .find(|a| a.id == id)
+            .filter(|a| a.langs.as_ref().unwrap_or(&targets.langs).iter().any(|l| l == lang))
+            .map(|a| a.title.clone())
+    };
     let wants = |lang: &str| targets.langs.iter().any(|l| l == lang);
     let fresh = |key: &str| !seen.iter().any(|k| k == key);
     let in_window = |at: i64| at > from && at <= now;
@@ -98,7 +110,7 @@ pub fn due(targets: &Targets, airing: &[Airing], planning: &[PlanItem], from: i6
     if wants("vostfr") {
         for a in airing {
             let key = format!("a:{}:{}", a.media_id, a.episode);
-            if let (Some(t), true, true) = (title(a.media_id), in_window(a.airing_at), fresh(&key)) {
+            if let (Some(t), true, true) = (title(a.media_id, "vostfr"), in_window(a.airing_at), fresh(&key)) {
                 out.push(Notice { key, title: t, body: format!("L’épisode {} est disponible en VOSTFR.", a.episode) });
             }
         }
@@ -108,7 +120,7 @@ pub fn due(targets: &Targets, airing: &[Airing], planning: &[PlanItem], from: i6
             let Some(id) = p.anilist_id else { continue };
             let at = if p.time_unknown { p.airing_at - UNKNOWN_HOUR_SHIFT } else { p.airing_at };
             let key = format!("v:{}:{}", id, p.airing_at);
-            if let (Some(t), true, true) = (title(id), in_window(at), fresh(&key)) {
+            if let (Some(t), true, true) = (title(id, "vf"), in_window(at), fresh(&key)) {
                 let body = match &p.label {
                     Some(l) => format!("Nouvel épisode en VF ({l})."),
                     None => "Nouvel épisode en VF.".to_string(),
@@ -305,7 +317,7 @@ mod tests {
 
     fn targets(langs: &[&str]) -> Targets {
         Targets {
-            anime: vec![TargetAnime { id: 1, title: "Blue Box".into() }, TargetAnime { id: 2, title: "Frieren".into() }],
+            anime: vec![TargetAnime { id: 1, title: "Blue Box".into(), langs: None }, TargetAnime { id: 2, title: "Frieren".into(), langs: None }],
             langs: langs.iter().map(|s| s.to_string()).collect(),
             quiet: None,
         }
@@ -370,6 +382,16 @@ mod tests {
     fn notification_plugin_has_no_config() {
         let conf: serde_json::Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
         assert!(conf["plugins"].get("notification").is_none());
+    }
+
+    #[test]
+    fn per_anime_languages() {
+        let mut t = targets(&["vostfr", "vf"]);
+        t.anime[0].langs = Some(vec!["vostfr".into()]);
+        t.anime[1].langs = Some(vec!["vf".into()]);
+        let n = due(&t, &[airing(1, 3, 150), airing(2, 3, 150)], &[vf(Some(1), 150, false), vf(Some(2), 150, false)], 100, 200, &[]);
+        let got: Vec<_> = n.iter().map(|n| n.key.as_str()).collect();
+        assert_eq!(got, vec!["a:1:3", "v:2:150"]);
     }
 
     #[test]

@@ -165,7 +165,7 @@ export function AppGroup() {
       />
       {releaseNotifications && (
         <>
-          <Row label="Langue des sorties" hint="Auto : votre langue par défaut." stackOnMobile>
+          <Row label="Langue des sorties" hint="Auto : chaque anime dans la langue où vous le regardez, les deux s’il n’est pas commencé." stackOnMobile>
             <Segmented<NotifyLang>
               label="Langue des sorties"
               value={notifyLang}

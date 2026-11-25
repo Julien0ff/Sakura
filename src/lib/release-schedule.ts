@@ -13,7 +13,7 @@ export const MAX_SCHEDULED = 60;
 const UNKNOWN_HOUR_SHIFT = 23 * 3600 + 59 * 60;
 
 export interface ScheduleTargets {
-  anime: { id: number; title: string }[];
+  anime: { id: number; title: string; langs?: ('vf' | 'vostfr')[] }[];
   langs: ('vf' | 'vostfr')[];
 }
 
@@ -59,13 +59,18 @@ export function upcomingReleases(
   planning: PlanningRelease[],
   now: number,
 ): ScheduledRelease[] {
-  const titles = new Map(targets.anime.map((a) => [a.id, a.title]));
+  const followed = new Map(targets.anime.map((a) => [a.id, a]));
+  /** The anime's title when its releases in `lang` are followed. */
+  const titleFor = (id: number, lang: 'vf' | 'vostfr') => {
+    const a = followed.get(id);
+    return a && (a.langs ?? targets.langs).includes(lang) ? a.title : undefined;
+  };
   const inWindow = (at: number) => at > now && at <= now + HORIZON_S;
   const out: ScheduledRelease[] = [];
 
   if (targets.langs.includes('vostfr')) {
     for (const a of airing) {
-      const title = titles.get(a.mediaId);
+      const title = titleFor(a.mediaId, 'vostfr');
       if (!title || !inWindow(a.airingAt)) continue;
       out.push({ id: notificationId(`a:${a.mediaId}:${a.episode}`), at: a.airingAt * 1000, title, body: `L’épisode ${a.episode} est disponible en VOSTFR.` });
     }
@@ -73,7 +78,7 @@ export function upcomingReleases(
   if (targets.langs.includes('vf')) {
     for (const p of planning) {
       if (p.lang !== 'vf' || !p.anilist) continue;
-      const title = titles.get(p.anilist.id);
+      const title = titleFor(p.anilist.id, 'vf');
       const at = p.time === null ? p.airingAt - UNKNOWN_HOUR_SHIFT : p.airingAt;
       if (!title || !inWindow(at)) continue;
       out.push({

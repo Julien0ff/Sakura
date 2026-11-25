@@ -18,7 +18,9 @@ export interface QuietWindow {
 }
 
 export interface NotifyTargets {
-  anime: { id: number; title: string }[];
+  /** `langs`: the languages followed for that anime (« Auto »); absent → the global `langs`. */
+  anime: { id: number; title: string; langs?: Lang[] }[];
+  /** Every language followed (what the apps fetch). */
   langs: Lang[];
   quiet: QuietWindow | null;
 }
@@ -38,15 +40,29 @@ export function notifyTargets(
     defaultLang: Lang;
     /** Calendar › « Prévenez-moi » (not in the list). */
     extra?: { id: number; title: string }[];
+    /** Language each anime was last watched in (« Auto »). */
+    watchedLang?: Map<number, Lang>;
     quietHours?: { enabled: boolean; start: string; end: string };
     /** `-new Date().getTimezoneOffset()` */
     utcOffset?: number;
   }
 ): NotifyTargets {
   if (!opts.enabled) return { anime: [], langs: [], quiet: null };
-  const langs: Lang[] = opts.lang === 'all' ? ['vostfr', 'vf'] : opts.lang === 'auto' ? [opts.defaultLang] : [opts.lang];
-  const anime = watchlist.filter((a) => FOLLOWED.has(a.listStatus)).map((a) => ({ id: a.id, title: a.title }));
+  const anime: NotifyTargets['anime'] = watchlist.filter((a) => FOLLOWED.has(a.listStatus)).map((a) => ({ id: a.id, title: a.title }));
   for (const a of opts.extra ?? []) if (!anime.some((x) => x.id === a.id)) anime.push({ id: a.id, title: a.title });
+
+  let langs: Lang[];
+  if (opts.lang === 'auto') {
+    // Each anime in the language it's watched in; not started yet: whichever comes out first (a
+    // simulcast only exists in VOSTFR, a dub only in VF). The default language alone missed both.
+    for (const a of anime) {
+      const watched = opts.watchedLang?.get(a.id);
+      a.langs = watched ? [watched] : ['vostfr', 'vf'];
+    }
+    langs = (['vostfr', 'vf'] as Lang[]).filter((l) => anime.some((a) => a.langs!.includes(l)));
+  } else {
+    langs = opts.lang === 'all' ? ['vostfr', 'vf'] : [opts.lang];
+  }
 
   const q = opts.quietHours;
   const start = q?.enabled ? minutes(q.start) : null;

@@ -21,6 +21,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: '2026-11-26',
+    date: '26 novembre 2026',
+    title: 'Choix du lecteur et rangées plus pratiques',
+    banner: '/banner-news.png',
+    features: [
+      { text: 'Choix du lecteur dans un menu déroulant sur mobile : le titre de l’épisode n’est plus caché.' },
+      { text: 'Flèches pour faire défiler les rangées de l’accueil à la souris sur PC.' },
+    ],
+    fixes: [
+      { text: 'La carte « Épisode suivant » s’affiche de nouveau en fin d’épisode avec le lecteur sans pub.' },
+    ],
+  },
+  {
     id: '2026-11-25',
     date: '25 novembre 2026',
     title: 'Lecteur sans pubs et notifications plus fiables',

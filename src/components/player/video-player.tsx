@@ -298,6 +298,7 @@ export function VideoPlayer({
     let attempts = 0;
     let lastReport = 0;
     let resumed = false;
+    let endedFired = false;
     const skipped = new Set<string>();
 
     const report = (force = false) => {
@@ -359,6 +360,12 @@ export function VideoPlayer({
         setActiveSkip((prev) => (prev?.type === current?.type && prev?.start === current?.start ? prev : current));
       }
       report();
+      // Some HLS streams stall a hair before their announced duration and never fire « ended »:
+      // treat the last second as the end so the up-next card still shows.
+      if (video.duration && isFinite(video.duration)) {
+        if (t >= video.duration - 1) onEnd();
+        else if (t < video.duration - 5) endedFired = false;
+      }
       if (Date.now() - lastPosition > 5000) {
         lastPosition = Date.now();
         syncPosition();
@@ -411,6 +418,8 @@ export function VideoPlayer({
       }
     };
     const onEnd = () => {
+      if (endedFired) return;
+      endedFired = true;
       report(true);
       latest.current.onEnded?.();
     };
